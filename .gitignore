@@ -1,0 +1,5 @@
+virtualenv
+.python-version
+.DS_Store
+.env
+*.xml
