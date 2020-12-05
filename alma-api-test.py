@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_URL = os.getenv('API_URL')
-mms_id = '991010192989702766' # 991027386919702766, 991019003459702766, 991030970559702766, 991010192989702766
-params = {'view': 'full', 'expand': 'p_avail'}
+mms_id = '991027386919702766' # 991027386919702766, 991019003459702766, 991030970559702766, 991010192989702766
+params = {'view': 'full'} # {'view': 'full', 'expand': 'p_avail'}
 API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': 'apikey ' + API_KEY}
 
@@ -22,7 +22,6 @@ print('Encoding:', response.encoding)
 
 root = ET.fromstring(response.text)
 
-# first_035_element = root.find('./record/datafield[@tag="035"]')
 record_element = root.find('./record')
 
 # Get index of first 035 element
@@ -42,12 +41,8 @@ first_035_element_index = list(record_element).index(
 
 print('Index of first 035 element:', first_035_element_index)
 
-# print(ET.tostring(record_element[first_035_element_index]))
 print('\nFirst 035 element:')
 ET.dump(record_element[first_035_element_index])
-
-# Copy element
-# new_035_element = record_element[first_035_element_index]
 
 # Create new 035 element with OCLC number
 new_035_element = ET.Element('datafield')
@@ -70,8 +65,18 @@ ET.dump(root)
 print('\nOriginal record:')
 print(response.text)
 
-# print('\nRecord root node:', root.tag)
-# for child in root:
-#     print(child.tag, child.attrib)
-#     for subchild in child:
-#         print('    ', subchild.tag, subchild.attrib)
+# Send PUT request
+headers['Content-Type'] = 'application/xml'
+payload = ET.tostring(root, encoding='UTF-8')
+print('Type:', type(payload))
+print('Payload:', payload)
+put_response = requests.put(API_URL + mms_id, headers=headers,
+    data=payload, timeout=45)
+
+print('\nPUT reponse:', put_response)
+print('Request URL:', put_response.url)
+print('Status:', put_response.status_code)
+print('Raise for status:', put_response.raise_for_status())
+print('Encoding:', put_response.encoding)
+print('\nPUT response body:')
+print(put_response.text)
