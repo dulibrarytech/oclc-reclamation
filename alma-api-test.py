@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_URL = os.getenv('API_URL')
-mms_id = '991027386919702766' # 991027386919702766, 991019003459702766, 991030970559702766, 991010192989702766
-params = {'view': 'full'} # {'view': 'full', 'expand': 'p_avail'}
+mms_id = '991013441369702766'
+params = {'view': 'full'}
 API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': 'apikey ' + API_KEY}
 
@@ -58,9 +58,6 @@ record_element.insert(first_035_element_index, new_035_element)
 
 print('\nFirst 035 element after insert:')
 ET.dump(record_element[first_035_element_index])
-
-print('\nModified record:')
-ET.dump(root)
 
 print('\nOriginal record:')
 print(response.text)
