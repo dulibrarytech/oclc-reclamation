@@ -6,21 +6,27 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_URL = os.getenv('API_URL')
-mms_id = '991013441369702766'
+mms_id = '991013470129702766'
 params = {'view': 'full'}
 API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': 'apikey ' + API_KEY}
 
-response = requests.get(API_URL + mms_id, params=params, headers=headers,
-    timeout=45)
+def get_alma_record(mms_id):
+    """GET record based on MMS ID. Return root element of parsed XML tree."""
+    response = requests.get(API_URL + mms_id, params=params, headers=headers,
+        timeout=45)
 
-print(response)
-print('Request URL:', response.url)
-print('Status:', response.status_code)
-print('Raise for status:', response.raise_for_status())
-print('Encoding:', response.encoding)
+    print('\nGET reponse:', response)
+    print('Request URL:', response.url)
+    print('Status:', response.status_code)
+    print('Raise for status:', response.raise_for_status())
+    print('Encoding:', response.encoding)
+    print('\nOriginal record:')
+    print(response.text)
 
-root = ET.fromstring(response.text)
+    return ET.fromstring(response.text)
+
+root = get_alma_record(mms_id)
 
 record_element = root.find('./record')
 
@@ -39,7 +45,7 @@ first_035_element_index = list(record_element).index(
 # SOLUTION: If we can assume that <record>'s children are in ascending order, then you can find the
 # index of the first element > 035 and insert into that index.
 
-print('Index of first 035 element:', first_035_element_index)
+print('\nIndex of first 035 element:', first_035_element_index)
 
 print('\nFirst 035 element:')
 ET.dump(record_element[first_035_element_index])
@@ -59,13 +65,10 @@ record_element.insert(first_035_element_index, new_035_element)
 print('\nFirst 035 element after insert:')
 ET.dump(record_element[first_035_element_index])
 
-print('\nOriginal record:')
-print(response.text)
-
 # Send PUT request
 headers['Content-Type'] = 'application/xml'
 payload = ET.tostring(root, encoding='UTF-8')
-print('Type:', type(payload))
+print('\nType:', type(payload))
 print('Payload:', payload)
 put_response = requests.put(API_URL + mms_id, headers=headers,
     data=payload, timeout=45)
