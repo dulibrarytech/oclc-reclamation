@@ -6,7 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_URL = os.getenv('API_URL')
-mms_id = '991013470129702766'
+mms_id = '991013439399702766'
+oclc_num = '12345678 '
 params = {'view': 'full'}
 API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': 'apikey ' + API_KEY}
@@ -26,57 +27,58 @@ def get_alma_record(mms_id):
 
     return ET.fromstring(response.text)
 
-root = get_alma_record(mms_id)
+def update_alma_record(mms_id, oclc_num):
+    """Insert OCLC number into Alma record."""
+    root = get_alma_record(mms_id)
+    record_element = root.find('./record')
 
-record_element = root.find('./record')
+    # Get index of first 035 element
+    first_035_element_index = list(record_element).index(
+        record_element.find('./datafield[@tag="035"]')
+    )
+    print('\nIndex of first 035 element:', first_035_element_index)
 
-# Get index of first 035 element
-first_035_element_index = list(record_element).index(
-    record_element.find('./datafield[@tag="035"]')
-)
+    print('\nFirst 035 element:')
+    ET.dump(record_element[first_035_element_index])
 
-# To get the index of last 035 element, this might be helpful:
-# https://stackoverflow.com/questions/35371607/parsing-xml-find-last-element-with-matching-attributes
-#
-# However, I think it's going to be tricky because there are non-035 children as well.
-# So even if the 035 elements are grouped together, finding the index of the last such element
-# is still difficult.
-#
-# SOLUTION: If we can assume that <record>'s children are in ascending order, then you can find the
-# index of the first element > 035 and insert into that index.
+    # Check if first 035 element already has an OCLC number
+    print('\nSubfield:', record_element[first_035_element_index][0].text)
+    if record_element[first_035_element_index][0].text.startswith('(OCoLC)'):
+        print('\nSkipping record because it already has an OCLC number.')
+        return
 
-print('\nIndex of first 035 element:', first_035_element_index)
+    # Create new 035 element with OCLC number
+    new_035_element = ET.Element('datafield')
+    new_035_element.set('ind1', ' ')
+    new_035_element.set('ind2', ' ')
+    new_035_element.set('tag', '035')
+    sub_element = ET.SubElement(new_035_element, 'subfield')
+    sub_element.set('code', 'a')
 
-print('\nFirst 035 element:')
-ET.dump(record_element[first_035_element_index])
+    # Create OCLC number string based on length of oclc_num
+    # TO DO: Add code that forms the appropriate prefix based on oclc_num length
+    prefix = 'ocm'
+    # TO DO: Add code that appends a space to oclc_num if necessary based on oclc_num length
+    sub_element.text = '(OCoLC)' + prefix + oclc_num
 
-# Create new 035 element with OCLC number
-new_035_element = ET.Element('datafield')
-new_035_element.set('ind1', ' ')
-new_035_element.set('ind2', ' ')
-new_035_element.set('tag', '035')
-sub_element = ET.SubElement(new_035_element, 'subfield')
-sub_element.set('code', 'a')
-sub_element.text = '(OCoLC)ocm12345678 '
+    # Insert new 035 element into XML
+    record_element.insert(first_035_element_index, new_035_element)
 
-# Insert new 035 element into XML
-record_element.insert(first_035_element_index, new_035_element)
+    print('\nFirst 035 element after insert:')
+    ET.dump(record_element[first_035_element_index])
 
-print('\nFirst 035 element after insert:')
-ET.dump(record_element[first_035_element_index])
+    # Send PUT request
+    headers['Content-Type'] = 'application/xml'
+    payload = ET.tostring(root, encoding='UTF-8')
+    put_response = requests.put(API_URL + mms_id, headers=headers,
+        data=payload, timeout=45)
 
-# Send PUT request
-headers['Content-Type'] = 'application/xml'
-payload = ET.tostring(root, encoding='UTF-8')
-print('\nType:', type(payload))
-print('Payload:', payload)
-put_response = requests.put(API_URL + mms_id, headers=headers,
-    data=payload, timeout=45)
+    print('\nPUT reponse:', put_response)
+    print('Request URL:', put_response.url)
+    print('Status:', put_response.status_code)
+    print('Raise for status:', put_response.raise_for_status())
+    print('Encoding:', put_response.encoding)
+    print('\nPUT response body:')
+    print(put_response.text)
 
-print('\nPUT reponse:', put_response)
-print('Request URL:', put_response.url)
-print('Status:', put_response.status_code)
-print('Raise for status:', put_response.raise_for_status())
-print('Encoding:', put_response.encoding)
-print('\nPUT response body:')
-print(put_response.text)
+update_alma_record(mms_id, oclc_num)
