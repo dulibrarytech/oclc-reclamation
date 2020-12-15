@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_URL = os.getenv('API_URL')
-mms_id = '991013439399702766'
-oclc_num = '12345678 '
+mms_id = '991027348609702766'
+oclc_num = '12345678 ' # <-- has 'ocm' prefix'; '123456789' <-- has 'ocn' prefix
 params = {'view': 'full'}
 API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': 'apikey ' + API_KEY}
@@ -24,6 +24,10 @@ def get_alma_record(mms_id):
     print('Encoding:', response.encoding)
     print('\nOriginal record:')
     print(response.text)
+
+    # create XML file
+    with open('xml/' + mms_id + '_original.xml', 'w') as file:
+        file.write(response.text)
 
     return ET.fromstring(response.text)
 
@@ -57,7 +61,7 @@ def update_alma_record(mms_id, oclc_num):
 
     # Create OCLC number string based on length of oclc_num
     # TO DO: Add code that forms the appropriate prefix based on oclc_num length
-    prefix = 'ocm'
+    prefix = 'ocm' # 'ocn'
     # TO DO: Add code that appends a space to oclc_num if necessary based on oclc_num length
     sub_element.text = '(OCoLC)' + prefix + oclc_num
 
@@ -80,5 +84,9 @@ def update_alma_record(mms_id, oclc_num):
     print('Encoding:', put_response.encoding)
     print('\nPUT response body:')
     print(put_response.text)
+
+    # create XML file
+    with open('xml/' + mms_id + '_modified.xml', 'w') as file:
+        file.write(put_response.text)
 
 update_alma_record(mms_id, oclc_num)
