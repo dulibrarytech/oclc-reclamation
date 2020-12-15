@@ -1,12 +1,13 @@
 import os
 import requests
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 from dotenv import load_dotenv
 
 load_dotenv()
 
 API_URL = os.getenv('API_URL')
-mms_id = '991027348609702766'
+mms_id = '991017143999702766'
 oclc_num = '12345678 ' # <-- has 'ocm' prefix'; '123456789' <-- has 'ocn' prefix
 params = {'view': 'full'}
 API_KEY = os.getenv('API_KEY')
@@ -22,12 +23,18 @@ def get_alma_record(mms_id):
     print('Status:', response.status_code)
     print('Raise for status:', response.raise_for_status())
     print('Encoding:', response.encoding)
-    print('\nOriginal record:')
-    print(response.text)
 
-    # create XML file
-    with open('xml/' + mms_id + '_original.xml', 'w') as file:
-        file.write(response.text)
+    # Pretty-print XML response
+    xml_as_pretty_printed_str = \
+        minidom.parseString(response.text).toprettyxml(indent='  ',
+        encoding='UTF-8')
+    print('\nOriginal record:')
+    print(str(xml_as_pretty_printed_str, 'utf-8'))
+    print('\nType:', type(xml_as_pretty_printed_str))
+
+    # Create XML file
+    with open('xml/' + mms_id + '_original.xml', 'wb') as file:
+        file.write(xml_as_pretty_printed_str)
 
     return ET.fromstring(response.text)
 
@@ -82,11 +89,17 @@ def update_alma_record(mms_id, oclc_num):
     print('Status:', put_response.status_code)
     print('Raise for status:', put_response.raise_for_status())
     print('Encoding:', put_response.encoding)
-    print('\nPUT response body:')
-    print(put_response.text)
+
+    # Pretty-print XML response
+    xml_as_pretty_printed_str = \
+        minidom.parseString(put_response.text).toprettyxml(indent='  ',
+        encoding='UTF-8')
+    print('\nModified record:')
+    print(str(xml_as_pretty_printed_str, 'utf-8'))
+    print('\nType:', type(xml_as_pretty_printed_str))
 
     # create XML file
-    with open('xml/' + mms_id + '_modified.xml', 'w') as file:
-        file.write(put_response.text)
+    with open('xml/' + mms_id + '_modified.xml', 'wb') as file:
+        file.write(xml_as_pretty_printed_str)
 
 update_alma_record(mms_id, oclc_num)
