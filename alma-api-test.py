@@ -41,14 +41,28 @@ def get_alma_record(mms_id):
 def update_alma_record(mms_id, oclc_num):
     """Insert OCLC number into Alma record."""
 
-    print('Type of mms_id:', type(mms_id))
-    print('Type of oclc_num:', type(oclc_num))
-
     # Make sure OCLC number contains numbers only
     if not oclc_num.isdigit():
-        print('ERROR: Invalid OCLC number: ' + oclc_num +
-            ' must contain only digits.')
+        print('ERROR: Invalid OCLC number: "' + oclc_num +
+            '" must contain only digits.')
         return
+
+    # Create full OCLC number string based on length of oclc_num
+    full_oclc_num = '(OCoLC)'
+    oclc_num_len = len(oclc_num)
+    if oclc_num_len == 8:
+        full_oclc_num += 'ocm' + oclc_num + ' '
+    elif oclc_num_len == 9:
+        full_oclc_num += 'ocn' + oclc_num
+    elif oclc_num_len > 9:
+        full_oclc_num += 'on' + oclc_num
+    else:
+        print('ERROR: Invalid OCLC number: "' + oclc_num +
+            '" contains ' + str(oclc_num_len) + ' digits. To be valid, ' +
+            'it must contain 8 or more digits.')
+        return
+
+    print('Full OCLC number:', full_oclc_num)
 
     root = get_alma_record(mms_id)
     record_element = root.find('./record')
@@ -75,23 +89,6 @@ def update_alma_record(mms_id, oclc_num):
     new_035_element.set('tag', '035')
     sub_element = ET.SubElement(new_035_element, 'subfield')
     sub_element.set('code', 'a')
-
-    # Create full OCLC number string based on length of oclc_num
-    full_oclc_num = '(OCoLC)'
-    oclc_num_len = len(oclc_num)
-    if oclc_num_len == 8:
-        full_oclc_num += 'ocm' + oclc_num + ' '
-    elif oclc_num_len == 9:
-        full_oclc_num += 'ocn' + oclc_num
-    elif oclc_num_len > 9:
-        full_oclc_num += 'on' + oclc_num
-    else:
-        print('ERROR: Invalid OCLC number. The OCLC number is: ' + oclc_num +
-            ', which contains ' + str(oclc_num_len) + ' digits. To be valid, ' +
-            'it should contain 8 or more digits.')
-        return
-
-    print('Full OCLC number:', full_oclc_num)
     sub_element.text = full_oclc_num
 
     # Insert new 035 element into XML
