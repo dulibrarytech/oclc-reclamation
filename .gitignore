@@ -3,3 +3,4 @@ virtualenv
 .DS_Store
 .env
 *.xml
+*.xlsx

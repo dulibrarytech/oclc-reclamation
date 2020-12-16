@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import requests
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -30,7 +31,6 @@ def get_alma_record(mms_id):
         encoding='UTF-8')
     print('\nOriginal record:')
     print(str(xml_as_pretty_printed_str, 'utf-8'))
-    print('\nType:', type(xml_as_pretty_printed_str))
 
     # Create XML file
     with open('xml/' + mms_id + '_original.xml', 'wb') as file:
@@ -96,10 +96,16 @@ def update_alma_record(mms_id, oclc_num):
         encoding='UTF-8')
     print('\nModified record:')
     print(str(xml_as_pretty_printed_str, 'utf-8'))
-    print('\nType:', type(xml_as_pretty_printed_str))
 
     # create XML file
     with open('xml/' + mms_id + '_modified.xml', 'wb') as file:
         file.write(xml_as_pretty_printed_str)
 
-update_alma_record(mms_id, oclc_num)
+# Convert excel file into pandas DataFrame
+data = pd.read_excel('xlsx/alma-test.xlsx', 'Sheet1', engine='openpyxl',
+    dtype={'MMS ID': 'str', 'OCLC Number': 'str'})
+
+# Loop over rows in DataFrame and update the corresponding Alma record
+for index, row in data.iterrows():
+    # print(index, row['MMS ID'], row['OCLC Number'])
+    update_alma_record(row['MMS ID'], row['OCLC Number'])
