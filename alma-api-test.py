@@ -12,7 +12,7 @@ mms_id = '991017143999702766'
 oclc_num = '12345678 ' # <-- has 'ocm' prefix'; '123456789' <-- has 'ocn' prefix
 params = {'view': 'full'}
 API_KEY = os.getenv('API_KEY')
-headers = {'Authorization': 'apikey ' + API_KEY}
+headers = {'Authorization': f'apikey {API_KEY}'}
 
 def get_alma_record(mms_id):
     """GET record based on MMS ID. Return root element of parsed XML tree."""
@@ -33,7 +33,7 @@ def get_alma_record(mms_id):
     print(str(xml_as_pretty_printed_str, 'utf-8'))
 
     # Create XML file
-    with open('xml/' + mms_id + '_original.xml', 'wb') as file:
+    with open(f'xml/{mms_id}_original.xml', 'wb') as file:
         file.write(xml_as_pretty_printed_str)
 
     return ET.fromstring(response.text)
@@ -43,23 +43,23 @@ def update_alma_record(mms_id, oclc_num):
 
     # Make sure OCLC number contains numbers only
     if not oclc_num.isdigit():
-        print('ERROR: Invalid OCLC number: "' + oclc_num +
-            '" must contain only digits.')
+        print(f'ERROR: Invalid OCLC number: "{oclc_num}" must contain only ' \
+            f'digits.')
         return
 
     # Create full OCLC number string based on length of oclc_num
     full_oclc_num = '(OCoLC)'
     oclc_num_len = len(oclc_num)
     if oclc_num_len == 8:
-        full_oclc_num += 'ocm' + oclc_num + ' '
+        full_oclc_num += f'ocm{oclc_num} '
     elif oclc_num_len == 9:
-        full_oclc_num += 'ocn' + oclc_num
+        full_oclc_num += f'ocn{oclc_num}'
     elif oclc_num_len > 9:
-        full_oclc_num += 'on' + oclc_num
+        full_oclc_num += f'on{oclc_num}'
     else:
-        print('ERROR: Invalid OCLC number: "' + oclc_num +
-            '" contains ' + str(oclc_num_len) + ' digits. To be valid, ' +
-            'it must contain 8 or more digits.')
+        print(f'ERROR: Invalid OCLC number: "{oclc_num}" contains ' \
+            f'{oclc_num_len} digits. To be valid, it must contain 8 or more ' \
+            f'digits.')
         return
 
     print('Full OCLC number:', full_oclc_num)
@@ -117,7 +117,7 @@ def update_alma_record(mms_id, oclc_num):
     print(str(xml_as_pretty_printed_str, 'utf-8'))
 
     # create XML file
-    with open('xml/' + mms_id + '_modified.xml', 'wb') as file:
+    with open(f'xml/{mms_id}_modified.xml', 'wb') as file:
         file.write(xml_as_pretty_printed_str)
 
 # Convert excel file into pandas DataFrame
