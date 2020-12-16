@@ -40,6 +40,16 @@ def get_alma_record(mms_id):
 
 def update_alma_record(mms_id, oclc_num):
     """Insert OCLC number into Alma record."""
+
+    print('Type of mms_id:', type(mms_id))
+    print('Type of oclc_num:', type(oclc_num))
+
+    # Make sure OCLC number contains numbers only
+    if not oclc_num.isdigit():
+        print('ERROR: Invalid OCLC number: ' + oclc_num +
+            ' must contain only digits.')
+        return
+
     root = get_alma_record(mms_id)
     record_element = root.find('./record')
 
@@ -66,11 +76,23 @@ def update_alma_record(mms_id, oclc_num):
     sub_element = ET.SubElement(new_035_element, 'subfield')
     sub_element.set('code', 'a')
 
-    # Create OCLC number string based on length of oclc_num
-    # TO DO: Add code that forms the appropriate prefix based on oclc_num length
-    prefix = 'ocm' # 'ocn'
-    # TO DO: Add code that appends a space to oclc_num if necessary based on oclc_num length
-    sub_element.text = '(OCoLC)' + prefix + oclc_num
+    # Create full OCLC number string based on length of oclc_num
+    full_oclc_num = '(OCoLC)'
+    oclc_num_len = len(oclc_num)
+    if oclc_num_len == 8:
+        full_oclc_num += 'ocm' + oclc_num + ' '
+    elif oclc_num_len == 9:
+        full_oclc_num += 'ocn' + oclc_num
+    elif oclc_num_len > 9:
+        full_oclc_num += 'on' + oclc_num
+    else:
+        print('ERROR: Invalid OCLC number. The OCLC number is: ' + oclc_num +
+            ', which contains ' + str(oclc_num_len) + ' digits. To be valid, ' +
+            'it should contain 8 or more digits.')
+        return
+
+    print('Full OCLC number:', full_oclc_num)
+    sub_element.text = full_oclc_num
 
     # Insert new 035 element into XML
     record_element.insert(first_035_element_index, new_035_element)
@@ -107,5 +129,4 @@ data = pd.read_excel('xlsx/alma-test.xlsx', 'Sheet1', engine='openpyxl',
 
 # Loop over rows in DataFrame and update the corresponding Alma record
 for index, row in data.iterrows():
-    # print(index, row['MMS ID'], row['OCLC Number'])
     update_alma_record(row['MMS ID'], row['OCLC Number'])
