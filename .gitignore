@@ -4,6 +4,4 @@ virtualenv
 .env
 *.xml
 *.xlsx
-logs
-logs/*.gz
 *.log
