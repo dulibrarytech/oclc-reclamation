@@ -12,9 +12,9 @@
 Objective: To create Python scripts to reconcile a library's local holdings in
 Ex Libris Alma with OCLC's WorldCat database.
 
-The current script (`alma-api-test.py`) takes an Excel file (`alma-test.xlsx`)
-and, for each row, adds the corresponding OCLC Number to the specified Alma
-record (indicated by the MMS ID).
+The current test script (`alma-api-test.py`) takes an Excel file
+(`alma-test.xlsx`) and, for each row, adds the corresponding OCLC Number to the
+specified Alma record (indicated by the MMS ID).
 
 You will need an Ex Libris Developer Network account and an API key (see [Alma
 API documentation](https://developers.exlibrisgroup.com/alma/apis/) for more
@@ -29,15 +29,15 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
 ### Local Environment Setup
 
 - Go into `oclc-reclamation` folder (i.e. root folder of repository)
-- Recommended: Create and activate virtual environment (see, for example,
+- Recommended: Create and activate virtual environment (for example, see
   [venv](https://docs.python.org/3/library/venv.html))
 - Run `pip install -r requirements.txt`
 - Add `.env` file to root folder (you can copy `.env-example`) and initialize
   the variables:
   - `API_URL`
-    - if you're in North America, use
+    - If you're in North America, use
     `https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/`
-    - if not,
+    - If not,
     [look here](https://developers.exlibrisgroup.com/alma/apis/#calling) for the
     base URL for your geographic region
   - `API_KEY`
@@ -47,6 +47,7 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
   - `alma-test.xlsx` should contain:
     - `MMS ID` and `OCLC Number` column headings
     - at least one row with a valid Alma `MMS ID` and `OCLC Number`
+- Run `python alma-api-test.py`
 
 ### Maintainers
 
