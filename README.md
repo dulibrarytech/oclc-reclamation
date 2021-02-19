@@ -46,7 +46,7 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
   `alma-test-example.xlsx`)
   - `alma-test.xlsx` should contain:
     - `MMS ID` and `OCLC Number` column headings
-    - at least one row with a valid Alma `MMS ID` and `OCLC Number`
+    - at least one row with a valid `MMS ID` and `OCLC Number`
 - Run `python alma-api-test.py`
 
 ### Maintainers
