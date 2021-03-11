@@ -61,5 +61,5 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
 
 Ways to get in touch:
 
-* Kim Pham (IT Librarian at University of Denver) - kim.pham60@du.edu
+* Contact the Digital Infrastructure & Technology Coordinator at [University of Denver, Library Technology Services](https://library.du.edu/contact/department-directory.html)
 * Create an issue in this repository

@@ -48,7 +48,7 @@ def update_alma_record(mms_id, oclc_num):
 
     logger.debug(f'Attempting to update MMS ID "{mms_id}"...')
 
-    # Make sure Alma number contains numbers only.
+    # Make sure MMS ID contains numbers only.
     # Don't validate the length because "The MMS ID can be 8 to 19 digits long
     # (with the first two digits referring to the record type and the last four
     # digits referring to a unique identifier for the institution)".
