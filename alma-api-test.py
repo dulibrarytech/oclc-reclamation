@@ -53,7 +53,8 @@ def update_alma_record(mms_id, oclc_num):
     # (with the first two digits referring to the record type and the last four
     # digits referring to a unique identifier for the institution)".
     # Source: https://knowledge.exlibrisgroup.com/Alma/Product_Documentation/010Alma_Online_Help_(English)/120Alma_Glossary
-    # TO DO: Add assertion that mms_id contains numbers only.
+    assert mms_id.isdigit(), f'Invalid MMS ID: "{mms_id}" must ' \
+        f'contain only digits.'
 
     # Make sure OCLC number contains numbers only and has at least 8 digits
     assert oclc_num.isdigit(), f'Invalid OCLC number: "{oclc_num}" must ' \
