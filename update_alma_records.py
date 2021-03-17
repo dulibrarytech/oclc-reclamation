@@ -19,7 +19,7 @@ API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': f'apikey {API_KEY}'}
 params = {'view': 'full'}
 
-def get_alma_record(mms_id):
+def get_alma_record(mms_id: str) -> ET.Element:
     """GET record based on MMS ID. Return root element of parsed XML tree."""
 
     response = requests.get(f'{API_URL}{mms_id}', params=params,
@@ -44,7 +44,7 @@ def get_alma_record(mms_id):
     # Return root element of XML tree
     return ET.fromstring(response.text)
 
-def update_alma_record(mms_id, oclc_num):
+def update_alma_record(mms_id: str, oclc_num: str) -> None:
     """Insert OCLC number into Alma record."""
 
     logger.debug(f'Attempting to update MMS ID "{mms_id}"...')
@@ -142,7 +142,7 @@ def update_alma_record(mms_id, oclc_num):
     logger.debug(f'MMS ID "{mms_id}" has been updated.')
 
 def init_argparse() -> argparse.ArgumentParser:
-    """Initialize parser. Return ArgumentParser object."""
+    """Initialize and return ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
         usage='%(prog)s [option] excel_file',
