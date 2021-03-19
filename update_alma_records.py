@@ -111,7 +111,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
         record_element.findall('./datafield[@tag="035"]')):
         # Extract subfield a (which would contain the OCLC number if present)
         subfield_a = element.find('./subfield[@code="a"]').text
-        logger.debug(f'035 field #{i}, subfield a: {subfield_a}')
+        logger.debug(f'035 field #{i + 1}, subfield a: {subfield_a}')
 
         # Skip this 035 field if it's not an OCLC number
         if not subfield_a.startswith('(OCoLC)'):
@@ -126,15 +126,15 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
             f'with an OCLC number that has no digits ({subfield_a}).'
 
         extracted_oclc_num_from_record = \
-            subfield_a[match_on_first_digit.start():]
-        logger.debug(f'035 field #{i}, extracted OCLC number: ' \
+            subfield_a[match_on_first_digit.start():].strip()
+        logger.debug(f'035 field #{i + 1}, extracted OCLC number: ' \
             f'{extracted_oclc_num_from_record}')
 
         oclc_nums_from_record.append(extracted_oclc_num_from_record)
 
         # Compare the extracted OCLC number to the current OCLC number
         extracted_oclc_num_matches_current_oclc_num = \
-            oclc_num.strip() == extracted_oclc_num_from_record.strip()
+            oclc_num.strip() == extracted_oclc_num_from_record
         logger.debug(f'Does the extracted OCLC number ' \
             f'({extracted_oclc_num_from_record}) match the current OCLC ' \
             f'number ({oclc_num})? ' \
@@ -181,8 +181,34 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
             f'with an (OCoLC) prefix. Here are the OCLC numbers from the ' \
             f'original record:\n{oclc_nums_str}\nHere is the same list in another format: {oclc_nums_from_record}.')
 
-    # TO DO: Add old OCLC numbers to 019 field
     logger.debug(f'{oclc_nums_for_019_field=}')
+
+    # Only add or edit the 019 field if oclc_nums_for_019_field set is non-empty
+    if oclc_nums_for_019_field:
+        # Search record for 019 field
+        first_019_element = record_element.find('./datafield[@tag="019"]')
+
+        # If the record has no 019 field, create one
+        if not first_019_element:
+            logger.debug(f'Original record does not have an 019 field.')
+            first_019_element = ET.SubElement(record_element, 'datafield')
+            first_019_element.set('ind1', ' ')
+            first_019_element.set('ind2', ' ')
+            first_019_element.set('tag', '019')
+
+        # TO DO: Consider deleting the first_019_element_index if it's not needed.
+        # Is there a way of using the tostring() function without first_019_element_index?
+        first_019_element_index = list(record_element).index(first_019_element)
+        first_019_element_as_str = \
+            ET.tostring(record_element[first_019_element_index], encoding="unicode")
+        logger.debug(f'First 019 element:\n{first_019_element_as_str}')
+        logger.debug(f'Index of first 019 element: {first_019_element_index}')
+
+        # Add old OCLC numbers to 019 field
+        for old_oclc_num in oclc_nums_for_019_field:
+            sub_element = ET.SubElement(first_019_element, 'subfield')
+            sub_element.set('code', 'a')
+            sub_element.text = old_oclc_num
 
     if not found_035_field_with_current_oclc_num:
         # Create new 035 element with OCLC number
