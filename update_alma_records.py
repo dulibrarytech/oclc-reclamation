@@ -196,19 +196,20 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
             first_019_element.set('ind2', ' ')
             first_019_element.set('tag', '019')
 
-        # TO DO: Consider deleting the first_019_element_index if it's not needed.
-        # Is there a way of using the tostring() function without first_019_element_index?
-        first_019_element_index = list(record_element).index(first_019_element)
         first_019_element_as_str = \
-            ET.tostring(record_element[first_019_element_index], encoding="unicode")
+            ET.tostring(first_019_element, encoding="unicode")
         logger.debug(f'First 019 element:\n{first_019_element_as_str}')
-        logger.debug(f'Index of first 019 element: {first_019_element_index}')
 
         # Add old OCLC numbers to 019 field
         for old_oclc_num in oclc_nums_for_019_field:
             sub_element = ET.SubElement(first_019_element, 'subfield')
             sub_element.set('code', 'a')
             sub_element.text = old_oclc_num
+
+            first_019_element_as_str = \
+                ET.tostring(first_019_element, encoding="unicode")
+            logger.debug(f'First 019 element after adding {old_oclc_num}:\n' \
+                f'{first_019_element_as_str}')
 
     if not found_035_field_with_current_oclc_num:
         # Create new 035 element with OCLC number
@@ -226,6 +227,8 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
         first_035_element_as_str = \
             ET.tostring(record_element[first_035_element_index], encoding="unicode")
         logger.debug(f'First 035 element after insert:\n{first_035_element_as_str}')
+
+        need_to_update_record = True
 
     if need_to_update_record:
         # Send PUT request
