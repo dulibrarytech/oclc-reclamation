@@ -81,16 +81,6 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
     root = get_alma_record(mms_id)
     record_element = root.find('./record')
 
-    # Search record for 035 field
-    first_035_element = record_element.find('./datafield[@tag="035"]')
-
-    if first_035_element:
-        first_035_element_as_str = \
-            ET.tostring(first_035_element, encoding="unicode")
-        logger.debug(f'First 035 element:\n{first_035_element_as_str}')
-    else:
-        logger.debug(f'Original record does not have an 035 field.')
-
     need_to_update_record = False
     oclc_nums_from_record = list()
     oclc_nums_for_019_field = set()
@@ -156,21 +146,15 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
         else:
             found_035_field_with_current_oclc_num = True
 
-    # for i, extracted_oclc_num in enumerate(oclc_nums_from_record):
-    #     logger.debug(f'Comparing oclc_nums_from_record[{i}] = ' \
-    #         f'{extracted_oclc_num} to current OCLC number = {oclc_num}.')
-    #
-    #     if oclc_num != extracted_oclc_num:
-    #         oclc_nums_for_019_field.add(extracted_oclc_num)
-    #     else:
-    #         found_035_field_with_current_oclc_num = True
-
     # TO DO: Decide on where to log this warning (should I add this to a
     # spreadsheet?), and then delete the duplicate formatting in the
     # logger.warning message.
-    if len(oclc_nums_from_record) > 1:
+    oclc_nums_from_record_list_length = len(oclc_nums_from_record)
+    if oclc_nums_from_record_list_length == 0:
+        logger.debug(f'Original record does not have an 035 $$a with an OCLC number.')
+    elif oclc_nums_from_record_list_length > 1:
         oclc_nums_str = '\n'.join(oclc_nums_from_record)
-        logger.warning(f'Original record contained more than one 035 field ' \
+        logger.warning(f'Original record for {mms_id} contained more than one 035 field ' \
             f'with an (OCoLC) prefix. Here are the OCLC numbers from the ' \
             f'original record:\n{oclc_nums_str}\nHere is the same list in another format: {oclc_nums_from_record}.')
 
@@ -214,9 +198,9 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
         sub_element.set('code', 'a')
         sub_element.text = full_oclc_num
 
-        first_035_element_as_str = \
-            ET.tostring(record_element.find('./datafield[@tag="035"]'), encoding="unicode")
-        logger.debug(f'First 035 element after insert:\n{first_035_element_as_str}')
+        new_035_element_as_str = \
+            ET.tostring(new_035_element, encoding="unicode")
+        logger.debug(f'New 035 element:\n{new_035_element_as_str}')
 
         need_to_update_record = True
 
