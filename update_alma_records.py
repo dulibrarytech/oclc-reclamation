@@ -81,25 +81,15 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
     root = get_alma_record(mms_id)
     record_element = root.find('./record')
 
-    # Get index of first 035 element
-    first_035_element_index = list(record_element).index(
-        record_element.find('./datafield[@tag="035"]')
-    )
-    logger.debug(f'Index of first 035 element: {first_035_element_index}')
+    # Search record for 035 field
+    first_035_element = record_element.find('./datafield[@tag="035"]')
 
-    first_035_element_as_str = \
-        ET.tostring(record_element[first_035_element_index], encoding="unicode")
-    logger.debug(f'First 035 element:\n{first_035_element_as_str}')
-
-    # Check if first 035 element already has an OCLC number
-    # TO DO: If so, compare OCLC numbers and update/move if different?
-    # TO DO: Consider checking all 035 elements for (OCoLC) prefix (instead of
-    # just the first element). Note that you will have to do this for the
-    # script that updates the OCLC number.
-    # assert not record_element[first_035_element_index][0].text.startswith(
-    #     '(OCoLC)'), \
-    #     f'This record already has an OCLC number: ' \
-    #     f'"{record_element[first_035_element_index][0].text}".'
+    if first_035_element:
+        first_035_element_as_str = \
+            ET.tostring(first_035_element, encoding="unicode")
+        logger.debug(f'First 035 element:\n{first_035_element_as_str}')
+    else:
+        logger.debug(f'Original record does not have an 035 field.')
 
     need_to_update_record = False
     oclc_nums_from_record = list()
@@ -175,6 +165,9 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
     #     else:
     #         found_035_field_with_current_oclc_num = True
 
+    # TO DO: Decide on where to log this warning (should I add this to a
+    # spreadsheet?), and then delete the duplicate formatting in the
+    # logger.warning message.
     if len(oclc_nums_from_record) > 1:
         oclc_nums_str = '\n'.join(oclc_nums_from_record)
         logger.warning(f'Original record contained more than one 035 field ' \
@@ -213,7 +206,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
 
     if not found_035_field_with_current_oclc_num:
         # Create new 035 element with OCLC number
-        new_035_element = ET.Element('datafield')
+        new_035_element = ET.SubElement(record_element, 'datafield')
         new_035_element.set('ind1', ' ')
         new_035_element.set('ind2', ' ')
         new_035_element.set('tag', '035')
@@ -221,11 +214,8 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
         sub_element.set('code', 'a')
         sub_element.text = full_oclc_num
 
-        # Insert new 035 element into XML
-        record_element.insert(first_035_element_index, new_035_element)
-
         first_035_element_as_str = \
-            ET.tostring(record_element[first_035_element_index], encoding="unicode")
+            ET.tostring(record_element.find('./datafield[@tag="035"]'), encoding="unicode")
         logger.debug(f'First 035 element after insert:\n{first_035_element_as_str}')
 
         need_to_update_record = True
