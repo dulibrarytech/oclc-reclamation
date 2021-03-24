@@ -21,7 +21,21 @@ headers = {'Authorization': f'apikey {API_KEY}'}
 params = {'view': 'full'}
 
 def get_alma_record(mms_id: str) -> ET.Element:
-    """GET record based on MMS ID. Return root element of parsed XML tree."""
+    """GETs the Alma record with the given MMS ID.
+
+    Sends a GET request to the Ex Libris Alma BIBs API:
+    https://developers.exlibrisgroup.com/alma/apis/bibs/
+
+    Parameters
+    ----------
+    mms_id: str
+        The MMS ID of the Alma record
+
+    Returns
+    -------
+    ET.Element
+        The root element of the parsed XML tree
+    """
 
     response = requests.get(f'{API_URL}{mms_id}', params=params,
         headers=headers, timeout=45)
@@ -45,8 +59,31 @@ def get_alma_record(mms_id: str) -> ET.Element:
     # Return root element of XML tree
     return ET.fromstring(response.text)
 
-def update_alma_record(mms_id: str, oclc_num: str) -> None:
-    """Insert OCLC number into Alma record."""
+def update_alma_record(mms_id: str, oclc_num: str) -> bool:
+    """Updates the Alma record to have the given OCLC number (if needed).
+
+    Compares all 035 fields containing an OCLC number (in the subfield $a) to
+    the oclc_num parameter. If needed, updates the Alma record such that:
+    - the record contains the given OCLC number (oclc_num)
+    - any non-matching OCLC numbers from an 035 field (in the subfield $a) are
+      moved to the 019 field (and that 035 field is removed, along with any
+      data in its subfields)
+
+    Updates the Alma record by sending a PUT request to the Ex Libris Alma
+    BIBs API: https://developers.exlibrisgroup.com/alma/apis/bibs/
+
+    Parameters
+    ----------
+    mms_id: str
+        The MMS ID of the Alma record to be updated
+    oclc_num: str
+        The OCLC number that the Alma record should have in an 035 field
+
+    Returns
+    -------
+    bool
+        True if the Alma record was updated; otherwise, False
+    """
 
     logger.debug(f'Attempting to update MMS ID "{mms_id}"...')
 
@@ -229,11 +266,13 @@ def update_alma_record(mms_id: str, oclc_num: str) -> None:
             file.write(xml_as_pretty_printed_str)
 
         logger.debug(f'MMS ID "{mms_id}" has been updated.')
-    else:
-        logger.debug(f'No update needed for MMS ID "{mms_id}".')
+        return True
+
+    logger.debug(f'No update needed for MMS ID "{mms_id}".')
+    return False
 
 def init_argparse() -> argparse.ArgumentParser:
-    """Initialize and return ArgumentParser object."""
+    """Initializes and returns ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
         usage='%(prog)s [option] excel_file',
@@ -266,8 +305,8 @@ data = pd.read_excel(args.Excel_file, 'Sheet1', engine='openpyxl',
 num_records_updated = 0
 for index, row in data.iterrows():
     try:
-        update_alma_record(row['MMS ID'], row['OCLC Number'])
-        num_records_updated += 1
+        if update_alma_record(row['MMS ID'], row['OCLC Number']):
+            num_records_updated += 1
     except AssertionError as assert_err:
         logger.exception(f'An assertion error occurred when processing ' \
             f'MMS ID "{row["MMS ID"]}": {assert_err}')
