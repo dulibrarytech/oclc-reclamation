@@ -303,18 +303,37 @@ data = pd.read_excel(args.Excel_file, 'Sheet1', engine='openpyxl',
 
 # Loop over rows in DataFrame and update the corresponding Alma record
 num_records_updated = 0
-for index, row in data.iterrows():
-    try:
-        if update_alma_record(row['MMS ID'], row['OCLC Number']):
-            num_records_updated += 1
-    except AssertionError as assert_err:
-        logger.exception(f'An assertion error occurred when processing ' \
-            f'MMS ID "{row["MMS ID"]}": {assert_err}')
-    except HTTPError as http_err:
-        logger.exception(f'An HTTP error occurred when processing MMS ID ' \
-            f'"{row["MMS ID"]}": {http_err}')
-    except Exception as err:
-        logger.exception(f'An error occurred when processing MMS ID ' \
-            f'"{row["MMS ID"]}": {err}')
+with open('xlsx/records_updated.csv', mode='a') as records_updated, \
+    open('xlsx/records_with_no_update_needed.csv', mode='a') as \
+    records_with_no_update_needed, \
+    open('xlsx/records_with_errors.csv', mode='a') as records_with_errors:
+    for index, row in data.iterrows():
+        error_occurred = True
+        # TO DO: Figure out how to get all the data you need for the output
+        # spreadsheets. You'll probably have to return more than a single boolean
+        # value from update_alma_record().
+        try:
+            if update_alma_record(row['MMS ID'], row['OCLC Number']):
+                num_records_updated += 1
+                # add record to records_updated spreadsheet
+                records_updated.write(f'\n{row["MMS ID"]}, updated')
+            else:
+                # add record to records_with_no_update_needed spreadsheet
+                records_with_no_update_needed.write(f'\n{row["MMS ID"]}, no update needed')
+            error_occurred = False
+        except AssertionError as assert_err:
+            logger.exception(f'An assertion error occurred when processing ' \
+                f'MMS ID "{row["MMS ID"]}": {assert_err}')
+        except HTTPError as http_err:
+            logger.exception(f'An HTTP error occurred when processing MMS ID ' \
+                f'"{row["MMS ID"]}": {http_err}')
+        except Exception as err:
+            logger.exception(f'An error occurred when processing MMS ID ' \
+                f'"{row["MMS ID"]}": {err}')
+        finally:
+            if error_occurred:
+                # add record to records_with_errors spreadsheet
+                records_with_errors.write(f'\n{row["MMS ID"]}, error')
+
 print(f'\nEnd of script. {num_records_updated} of {len(data.index)} ' \
     f'records updated.')
