@@ -20,6 +20,7 @@ API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': f'apikey {API_KEY}'}
 params = {'view': 'full'}
 
+
 def get_alma_record(mms_id: str) -> ET.Element:
     """GETs the Alma record with the given MMS ID.
 
@@ -58,6 +59,7 @@ def get_alma_record(mms_id: str) -> ET.Element:
 
     # Return root element of XML tree
     return ET.fromstring(response.text)
+
 
 def update_alma_record(mms_id: str, oclc_num: str) -> bool:
     """Updates the Alma record to have the given OCLC number (if needed).
@@ -151,24 +153,12 @@ def update_alma_record(mms_id: str, oclc_num: str) -> bool:
 
         # Compare the extracted OCLC number to the current OCLC number
         extracted_oclc_num_matches_current_oclc_num = \
-            oclc_num.strip() == extracted_oclc_num_from_record
+            extracted_oclc_num_from_record == oclc_num.strip()
         logger.debug(f'Does the extracted OCLC number ' \
             f'({extracted_oclc_num_from_record}) match the current OCLC ' \
             f'number ({oclc_num})? ' \
             f'{extracted_oclc_num_matches_current_oclc_num}')
 
-        # (not A or (B and A)) can be simplified to (not A or B) because the
-        # second operand (B and A) is not evaluated when the boolean expression
-        # can be determined from the first operand (not A) alone. This is called
-        # short-circuit (lazy) evaluation, which is used by Python.
-        # Therefore:
-        #     not extracted_oclc_num_matches_current_oclc_num or (
-        #        found_035_field_with_current_oclc_num and
-        #        extracted_oclc_num_matches_current_oclc_num
-        #     )
-        # can be simplified to:
-        #     not extracted_oclc_num_matches_current_oclc_num or
-        #     found_035_field_with_current_oclc_num
         if (not extracted_oclc_num_matches_current_oclc_num or
             found_035_field_with_current_oclc_num):
             # This 035 field either contains an old OCLC number or is a
@@ -271,6 +261,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> bool:
     logger.debug(f'No update needed for MMS ID "{mms_id}".')
     return False
 
+
 def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
@@ -292,6 +283,7 @@ def init_argparse() -> argparse.ArgumentParser:
             f'format (e.g. xlsx/filename.xlsx)'
     )
     return parser
+
 
 # Initialize parser and parse command-line args
 parser = init_argparse()
