@@ -27,24 +27,6 @@ class Record_confirmation(NamedTuple):
     orig_oclc_nums : str
 
 
-def is_file_empty(filename : str) -> bool:
-    """Checks whether the given file is empty.
-
-    Returns FileNotFoundError if file doesn't exist.
-
-    Parameters
-    ----------
-    filename: str
-        The name (and relative path) of the file to check
-
-    Returns
-    -------
-    bool
-        True if the file is empty; otherwise, False
-    """
-    return os.stat(filename).st_size == 0
-
-
 def get_alma_record(mms_id: str) -> ET.Element:
     """GETs the Alma record with the given MMS ID.
 
