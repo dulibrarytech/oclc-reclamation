@@ -6,8 +6,10 @@ import pandas as pd
 import re
 import requests
 import xml.etree.ElementTree as ET
+from csv import writer
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
+from typing import NamedTuple
 from xml.dom import minidom
 
 load_dotenv()
@@ -19,6 +21,28 @@ API_URL = os.getenv('API_URL')
 API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': f'apikey {API_KEY}'}
 params = {'view': 'full'}
+
+class Record_confirmation(NamedTuple):
+    was_updated : bool
+    orig_oclc_nums : str
+
+
+def is_file_empty(filename : str) -> bool:
+    """Checks whether the given file is empty.
+
+    Returns FileNotFoundError if file doesn't exist.
+
+    Parameters
+    ----------
+    filename: str
+        The name (and relative path) of the file to check
+
+    Returns
+    -------
+    bool
+        True if the file is empty; otherwise, False
+    """
+    return os.stat(filename).st_size == 0
 
 
 def get_alma_record(mms_id: str) -> ET.Element:
@@ -61,7 +85,7 @@ def get_alma_record(mms_id: str) -> ET.Element:
     return ET.fromstring(response.text)
 
 
-def update_alma_record(mms_id: str, oclc_num: str) -> bool:
+def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     """Updates the Alma record to have the given OCLC number (if needed).
 
     Compares all 035 fields containing an OCLC number (in the subfield $a) to
@@ -83,8 +107,9 @@ def update_alma_record(mms_id: str, oclc_num: str) -> bool:
 
     Returns
     -------
-    bool
-        True if the Alma record was updated; otherwise, False
+    Record_confirmation
+        NamedTuple with details about the update attempt. Includes the
+        following fields: was_updated and orig_oclc_nums
     """
 
     logger.debug(f'Attempting to update MMS ID "{mms_id}"...')
@@ -173,17 +198,10 @@ def update_alma_record(mms_id: str, oclc_num: str) -> bool:
         else:
             found_035_field_with_current_oclc_num = True
 
-    # TO DO: Decide on where to log this warning (should I add this to a
-    # spreadsheet?), and then delete the duplicate formatting in the
-    # logger.warning message.
     oclc_nums_from_record_list_length = len(oclc_nums_from_record)
-    if oclc_nums_from_record_list_length == 0:
-        logger.debug(f'Original record does not have an 035 $$a with an OCLC number.')
-    elif oclc_nums_from_record_list_length > 1:
-        oclc_nums_str = '\n'.join(oclc_nums_from_record)
-        logger.warning(f'Original record for {mms_id} contained more than one 035 field ' \
-            f'with an (OCoLC) prefix. Here are the OCLC numbers from the ' \
-            f'original record:\n{oclc_nums_str}\nHere is the same list in another format: {oclc_nums_from_record}.')
+    oclc_nums_from_record_str = None
+    if oclc_nums_from_record_list_length > 0:
+        oclc_nums_from_record_str = ', '.join(oclc_nums_from_record)
 
     logger.debug(f'{oclc_nums_for_019_field=}')
 
@@ -256,10 +274,10 @@ def update_alma_record(mms_id: str, oclc_num: str) -> bool:
             file.write(xml_as_pretty_printed_str)
 
         logger.debug(f'MMS ID "{mms_id}" has been updated.')
-        return True
+        return Record_confirmation(True, oclc_nums_from_record_str)
 
     logger.debug(f'No update needed for MMS ID "{mms_id}".')
-    return False
+    return Record_confirmation(False, oclc_nums_from_record_str)
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -295,37 +313,67 @@ data = pd.read_excel(args.Excel_file, 'Sheet1', engine='openpyxl',
 
 # Loop over rows in DataFrame and update the corresponding Alma record
 num_records_updated = 0
-with open('xlsx/records_updated.csv', mode='a') as records_updated, \
-    open('xlsx/records_with_no_update_needed.csv', mode='a') as \
-    records_with_no_update_needed, \
-    open('xlsx/records_with_errors.csv', mode='a') as records_with_errors:
+with open('xlsx/records_updated.csv', mode='a',
+        newline='') as records_updated, \
+    open('xlsx/records_with_no_update_needed.csv', mode='a',
+        newline='') as records_with_no_update_needed, \
+    open('xlsx/records_with_errors.csv', mode='a',
+        newline='') as records_with_errors:
+
+    records_updated_writer = writer(records_updated)
+    records_with_no_update_needed_writer = writer(records_with_no_update_needed)
+    records_with_errors_writer = writer(records_with_errors)
+
     for index, row in data.iterrows():
         error_occurred = True
-        # TO DO: Figure out how to get all the data you need for the output
-        # spreadsheets. You'll probably have to return more than a single boolean
-        # value from update_alma_record().
+        error_msg = None
         try:
-            if update_alma_record(row['MMS ID'], row['OCLC Number']):
+            record = update_alma_record(row['MMS ID'], row['OCLC Number'])
+            if record.was_updated:
                 num_records_updated += 1
+
                 # add record to records_updated spreadsheet
-                records_updated.write(f'\n{row["MMS ID"]}, updated')
+                if records_updated.tell() == 0:
+                    # write header row
+                    records_updated_writer.writerow([ 'MMS ID',
+                        'Original OCLC Number(s)', 'New OCLC Number' ])
+
+                records_updated_writer.writerow([ row['MMS ID'],
+                    record.orig_oclc_nums, row['OCLC Number'] ])
             else:
                 # add record to records_with_no_update_needed spreadsheet
-                records_with_no_update_needed.write(f'\n{row["MMS ID"]}, no update needed')
+                if records_with_no_update_needed.tell() == 0:
+                    # write header row
+                    records_with_no_update_needed_writer.writerow([ 'MMS ID',
+                        'OCLC Number' ])
+
+                records_with_no_update_needed_writer.writerow([ row['MMS ID'],
+                    row['OCLC Number'] ])
+
             error_occurred = False
         except AssertionError as assert_err:
             logger.exception(f'An assertion error occurred when processing ' \
                 f'MMS ID "{row["MMS ID"]}": {assert_err}')
+            error_msg = f'Assertion Error: {assert_err}'
         except HTTPError as http_err:
             logger.exception(f'An HTTP error occurred when processing MMS ID ' \
                 f'"{row["MMS ID"]}": {http_err}')
+            error_msg = f'HTTP Error: {http_err}'
         except Exception as err:
             logger.exception(f'An error occurred when processing MMS ID ' \
                 f'"{row["MMS ID"]}": {err}')
+            error_msg = err
         finally:
             if error_occurred:
                 # add record to records_with_errors spreadsheet
-                records_with_errors.write(f'\n{row["MMS ID"]}, error')
+                if records_with_errors.tell() == 0:
+                    # write header row
+                    records_with_errors_writer.writerow([ 'MMS ID',
+                        "OCLC Number(s) from Alma Record's 035 $a",
+                        'Current OCLC Number', 'Error' ])
+
+                records_with_errors_writer.writerow([ row['MMS ID'],
+                    record.orig_oclc_nums, row['OCLC Number'], error_msg ])
 
 print(f'\nEnd of script. {num_records_updated} of {len(data.index)} ' \
     f'records updated.')
