@@ -94,23 +94,29 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         following fields: was_updated and orig_oclc_nums
     """
 
-    logger.debug(f'Attempting to update MMS ID "{mms_id}"...')
+    logger.debug(f"Attempting to update MMS ID '{mms_id}'...")
+
+    assert mms_id is not None and len(mms_id) > 0, f"Invalid MMS ID: " \
+        f"'{mms_id}'. It cannot be empty."
+
+    assert oclc_num is not None and len(oclc_num) > 0, f"Invalid OCLC " \
+        f"number: '{oclc_num}'. It cannot be empty."
 
     # Make sure MMS ID contains numbers only.
     # Don't validate the length because "The MMS ID can be 8 to 19 digits long
     # (with the first two digits referring to the record type and the last four
     # digits referring to a unique identifier for the institution)".
     # Source: https://knowledge.exlibrisgroup.com/Alma/Product_Documentation/010Alma_Online_Help_(English)/120Alma_Glossary
-    assert mms_id.isdigit(), f'Invalid MMS ID: "{mms_id}" must ' \
-        f'contain only digits.'
+    assert mms_id.isdigit(), f"Invalid MMS ID: '{mms_id}' must " \
+        f"contain only digits."
 
     # Make sure OCLC number contains numbers only and has at least 8 digits
-    assert oclc_num.isdigit(), f'Invalid OCLC number: "{oclc_num}" must ' \
-        f'contain only digits.'
+    assert oclc_num.isdigit(), f"Invalid OCLC number: '{oclc_num}' must " \
+        f"contain only digits."
 
     oclc_num_len = len(oclc_num)
-    assert oclc_num_len >= 8, f'Invalid OCLC number: "{oclc_num}" contains ' \
-        f'{oclc_num_len} digits. To be valid, it must contain 8 or more digits.'
+    assert oclc_num_len >= 8, f"Invalid OCLC number: '{oclc_num}' contains " \
+        f"{oclc_num_len} digits. To be valid, it must contain 8 or more digits."
 
     # Create full OCLC number string based on length of oclc_num
     full_oclc_num = '(OCoLC)'
@@ -255,10 +261,10 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         with open(f'xml/{mms_id}_modified.xml', 'wb') as file:
             file.write(xml_as_pretty_printed_str)
 
-        logger.debug(f'MMS ID "{mms_id}" has been updated.')
+        logger.debug(f"MMS ID '{mms_id}' has been updated.")
         return Record_confirmation(True, oclc_nums_from_record_str)
 
-    logger.debug(f'No update needed for MMS ID "{mms_id}".')
+    logger.debug(f"No update needed for MMS ID '{mms_id}'.")
     return Record_confirmation(False, oclc_nums_from_record_str)
 
 
@@ -291,7 +297,7 @@ args = parser.parse_args()
 
 # Convert excel file into pandas DataFrame
 data = pd.read_excel(args.Excel_file, 'Sheet1', engine='openpyxl',
-    dtype={'MMS ID': 'str', 'OCLC Number': 'str'})
+    dtype={'MMS ID': 'str', 'OCLC Number': 'str'}, keep_default_na=False)
 
 # Loop over rows in DataFrame and update the corresponding Alma record
 num_records_updated = 0
@@ -309,6 +315,7 @@ with open('xlsx/records_updated.csv', mode='a',
     for index, row in data.iterrows():
         error_occurred = True
         error_msg = None
+        record = None
         try:
             record = update_alma_record(row['MMS ID'], row['OCLC Number'])
             if record.was_updated:
@@ -334,16 +341,16 @@ with open('xlsx/records_updated.csv', mode='a',
 
             error_occurred = False
         except AssertionError as assert_err:
-            logger.exception(f'An assertion error occurred when processing ' \
-                f'MMS ID "{row["MMS ID"]}": {assert_err}')
-            error_msg = f'Assertion Error: {assert_err}'
+            logger.exception(f"An assertion error occurred when processing " \
+                f"MMS ID '{row['MMS ID']}': {assert_err}")
+            error_msg = f"Assertion Error: {assert_err}"
         except HTTPError as http_err:
-            logger.exception(f'An HTTP error occurred when processing MMS ID ' \
-                f'"{row["MMS ID"]}": {http_err}')
-            error_msg = f'HTTP Error: {http_err}'
+            logger.exception(f"An HTTP error occurred when processing MMS ID " \
+                f"'{row['MMS ID']}': {http_err}")
+            error_msg = f"HTTP Error: {http_err}"
         except Exception as err:
-            logger.exception(f'An error occurred when processing MMS ID ' \
-                f'"{row["MMS ID"]}": {err}')
+            logger.exception(f"An error occurred when processing MMS ID " \
+                f"'{row['MMS ID']}': {err}")
             error_msg = err
         finally:
             if error_occurred:
@@ -355,7 +362,9 @@ with open('xlsx/records_updated.csv', mode='a',
                         'Current OCLC Number', 'Error' ])
 
                 records_with_errors_writer.writerow([ row['MMS ID'],
-                    record.orig_oclc_nums, row['OCLC Number'], error_msg ])
+                    record.orig_oclc_nums if record is not None
+                    else '<record not checked>',
+                    row['OCLC Number'], error_msg ])
 
 print(f'\nEnd of script. {num_records_updated} of {len(data.index)} ' \
     f'records updated.')
