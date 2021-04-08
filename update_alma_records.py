@@ -23,8 +23,19 @@ headers = {'Authorization': f'apikey {API_KEY}'}
 params = {'view': 'full'}
 
 class Record_confirmation(NamedTuple):
-    was_updated : bool
-    orig_oclc_nums : str
+    """Details about a specific call to the update_alma_record function.
+
+    Fields
+    ------
+    was_updated: bool
+        True if the update_alma_record function call resulted in the record
+        actually being updated; otherwise, False
+    orig_oclc_nums: str
+        A comma-separated listing of the original OCLC Number(s) from the Alma
+        record's 035 $a field(s)
+    """
+    was_updated: bool
+    orig_oclc_nums: str
 
 
 def get_alma_record(mms_id: str) -> ET.Element:
