@@ -304,9 +304,9 @@ def init_argparse() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Updates Alma records from input file with corresponding OCLC numbers.
+    """Updates Alma records to have the corresponding OCLC number.
 
-    For each row in the Excel file, the corresponding OCLC number is added to
+    For each row in the input file, the corresponding OCLC number is added to
     the specified Alma record (indicated by the MMS ID), unless the Alma record
     already contains that OCLC number. If the Alma record contains non-matching
     OCLC numbers in an 035 field (in the subfield $a), those OCLC numbers are
