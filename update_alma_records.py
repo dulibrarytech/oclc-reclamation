@@ -22,6 +22,7 @@ API_KEY = os.getenv('API_KEY')
 headers = {'Authorization': f'apikey {API_KEY}'}
 params = {'view': 'full'}
 
+
 class Record_confirmation(NamedTuple):
     """Details about a specific call to the update_alma_record function.
 
@@ -302,80 +303,94 @@ def init_argparse() -> argparse.ArgumentParser:
     return parser
 
 
-# Initialize parser and parse command-line args
-parser = init_argparse()
-args = parser.parse_args()
+def main() -> None:
+    """Updates Alma records from input file with corresponding OCLC numbers.
 
-# Convert excel file into pandas DataFrame
-data = pd.read_excel(args.Excel_file, 'Sheet1', engine='openpyxl',
-    dtype={'MMS ID': 'str', 'OCLC Number': 'str'}, keep_default_na=False)
+    For each row in the Excel file, the corresponding OCLC number is added to
+    the specified Alma record (indicated by the MMS ID), unless the Alma record
+    already contains that OCLC number. If the Alma record contains non-matching
+    OCLC numbers in an 035 field (in the subfield $a), those OCLC numbers are
+    moved to the 019 field.
+    """
 
-# Loop over rows in DataFrame and update the corresponding Alma record
-num_records_updated = 0
-with open('xlsx/records_updated.csv', mode='a',
-        newline='') as records_updated, \
-    open('xlsx/records_with_no_update_needed.csv', mode='a',
-        newline='') as records_with_no_update_needed, \
-    open('xlsx/records_with_errors.csv', mode='a',
-        newline='') as records_with_errors:
+    # Initialize parser and parse command-line args
+    parser = init_argparse()
+    args = parser.parse_args()
 
-    records_updated_writer = writer(records_updated)
-    records_with_no_update_needed_writer = writer(records_with_no_update_needed)
-    records_with_errors_writer = writer(records_with_errors)
+    # Convert excel file into pandas DataFrame
+    data = pd.read_excel(args.Excel_file, 'Sheet1', engine='openpyxl',
+        dtype={'MMS ID': 'str', 'OCLC Number': 'str'}, keep_default_na=False)
 
-    for index, row in data.iterrows():
-        error_occurred = True
-        error_msg = None
-        record = None
-        try:
-            record = update_alma_record(row['MMS ID'], row['OCLC Number'])
-            if record.was_updated:
-                num_records_updated += 1
+    # Loop over rows in DataFrame and update the corresponding Alma record
+    num_records_updated = 0
+    with open('xlsx/records_updated.csv', mode='a',
+            newline='') as records_updated, \
+        open('xlsx/records_with_no_update_needed.csv', mode='a',
+            newline='') as records_with_no_update_needed, \
+        open('xlsx/records_with_errors.csv', mode='a',
+            newline='') as records_with_errors:
 
-                # add record to records_updated spreadsheet
-                if records_updated.tell() == 0:
-                    # write header row
-                    records_updated_writer.writerow([ 'MMS ID',
-                        'Original OCLC Number(s)', 'New OCLC Number' ])
+        records_updated_writer = writer(records_updated)
+        records_with_no_update_needed_writer = writer(records_with_no_update_needed)
+        records_with_errors_writer = writer(records_with_errors)
 
-                records_updated_writer.writerow([ row['MMS ID'],
-                    record.orig_oclc_nums, row['OCLC Number'] ])
-            else:
-                # add record to records_with_no_update_needed spreadsheet
-                if records_with_no_update_needed.tell() == 0:
-                    # write header row
-                    records_with_no_update_needed_writer.writerow([ 'MMS ID',
-                        'OCLC Number' ])
+        for index, row in data.iterrows():
+            error_occurred = True
+            error_msg = None
+            record = None
+            try:
+                record = update_alma_record(row['MMS ID'], row['OCLC Number'])
+                if record.was_updated:
+                    num_records_updated += 1
 
-                records_with_no_update_needed_writer.writerow([ row['MMS ID'],
-                    row['OCLC Number'] ])
+                    # add record to records_updated spreadsheet
+                    if records_updated.tell() == 0:
+                        # write header row
+                        records_updated_writer.writerow([ 'MMS ID',
+                            'Original OCLC Number(s)', 'New OCLC Number' ])
 
-            error_occurred = False
-        except AssertionError as assert_err:
-            logger.exception(f"An assertion error occurred when processing " \
-                f"MMS ID '{row['MMS ID']}': {assert_err}")
-            error_msg = f"Assertion Error: {assert_err}"
-        except HTTPError as http_err:
-            logger.exception(f"An HTTP error occurred when processing MMS ID " \
-                f"'{row['MMS ID']}': {http_err}")
-            error_msg = f"HTTP Error: {http_err}"
-        except Exception as err:
-            logger.exception(f"An error occurred when processing MMS ID " \
-                f"'{row['MMS ID']}': {err}")
-            error_msg = err
-        finally:
-            if error_occurred:
-                # add record to records_with_errors spreadsheet
-                if records_with_errors.tell() == 0:
-                    # write header row
-                    records_with_errors_writer.writerow([ 'MMS ID',
-                        "OCLC Number(s) from Alma Record's 035 $a",
-                        'Current OCLC Number', 'Error' ])
+                    records_updated_writer.writerow([ row['MMS ID'],
+                        record.orig_oclc_nums, row['OCLC Number'] ])
+                else:
+                    # add record to records_with_no_update_needed spreadsheet
+                    if records_with_no_update_needed.tell() == 0:
+                        # write header row
+                        records_with_no_update_needed_writer.writerow([ 'MMS ID',
+                            'OCLC Number' ])
 
-                records_with_errors_writer.writerow([ row['MMS ID'],
-                    record.orig_oclc_nums if record is not None
-                    else '<record not checked>',
-                    row['OCLC Number'], error_msg ])
+                    records_with_no_update_needed_writer.writerow([ row['MMS ID'],
+                        row['OCLC Number'] ])
 
-print(f'\nEnd of script. {num_records_updated} of {len(data.index)} ' \
-    f'records updated.')
+                error_occurred = False
+            except AssertionError as assert_err:
+                logger.exception(f"An assertion error occurred when processing " \
+                    f"MMS ID '{row['MMS ID']}': {assert_err}")
+                error_msg = f"Assertion Error: {assert_err}"
+            except HTTPError as http_err:
+                logger.exception(f"An HTTP error occurred when processing MMS ID " \
+                    f"'{row['MMS ID']}': {http_err}")
+                error_msg = f"HTTP Error: {http_err}"
+            except Exception as err:
+                logger.exception(f"An error occurred when processing MMS ID " \
+                    f"'{row['MMS ID']}': {err}")
+                error_msg = err
+            finally:
+                if error_occurred:
+                    # add record to records_with_errors spreadsheet
+                    if records_with_errors.tell() == 0:
+                        # write header row
+                        records_with_errors_writer.writerow([ 'MMS ID',
+                            "OCLC Number(s) from Alma Record's 035 $a",
+                            'Current OCLC Number', 'Error' ])
+
+                    records_with_errors_writer.writerow([ row['MMS ID'],
+                        record.orig_oclc_nums if record is not None
+                        else '<record not checked>',
+                        row['OCLC Number'], error_msg ])
+
+    print(f'\nEnd of script. {num_records_updated} of {len(data.index)} ' \
+        f'records updated.')
+
+
+if __name__ == "__main__":
+    main()
