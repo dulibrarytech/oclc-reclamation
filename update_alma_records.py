@@ -364,15 +364,15 @@ def main() -> None:
                 error_occurred = False
             except AssertionError as assert_err:
                 logger.exception(f"An assertion error occurred when processing " \
-                    f"MMS ID '{row['MMS ID']}': {assert_err}")
+                    f"MMS ID '{row['MMS ID']}' (at row {index + 2} of input file): {assert_err}")
                 error_msg = f"Assertion Error: {assert_err}"
             except HTTPError as http_err:
                 logger.exception(f"An HTTP error occurred when processing MMS ID " \
-                    f"'{row['MMS ID']}': {http_err}")
+                    f"'{row['MMS ID']}' (at row {index + 2} of input file): {http_err}")
                 error_msg = f"HTTP Error: {http_err}"
             except Exception as err:
                 logger.exception(f"An error occurred when processing MMS ID " \
-                    f"'{row['MMS ID']}': {err}")
+                    f"'{row['MMS ID']}' (at row {index + 2} of input file): {err}")
                 error_msg = err
             finally:
                 if error_occurred:
