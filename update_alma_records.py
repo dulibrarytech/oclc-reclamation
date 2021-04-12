@@ -331,7 +331,8 @@ def main() -> None:
             newline='') as records_with_errors:
 
         records_updated_writer = writer(records_updated)
-        records_with_no_update_needed_writer = writer(records_with_no_update_needed)
+        records_with_no_update_needed_writer = \
+            writer(records_with_no_update_needed)
         records_with_errors_writer = writer(records_with_errors)
 
         for index, row in data.iterrows():
@@ -355,24 +356,27 @@ def main() -> None:
                     # add record to records_with_no_update_needed spreadsheet
                     if records_with_no_update_needed.tell() == 0:
                         # write header row
-                        records_with_no_update_needed_writer.writerow([ 'MMS ID',
-                            'OCLC Number' ])
+                        records_with_no_update_needed_writer.writerow(
+                            [ 'MMS ID', 'OCLC Number' ])
 
-                    records_with_no_update_needed_writer.writerow([ row['MMS ID'],
-                        row['OCLC Number'] ])
+                    records_with_no_update_needed_writer.writerow(
+                        [ row['MMS ID'], row['OCLC Number'] ])
 
                 error_occurred = False
             except AssertionError as assert_err:
-                logger.exception(f"An assertion error occurred when processing " \
-                    f"MMS ID '{row['MMS ID']}' (at row {index + 2} of input file): {assert_err}")
+                logger.exception(f"An assertion error occurred when " \
+                    f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}" \
+                    f" of input file): {assert_err}")
                 error_msg = f"Assertion Error: {assert_err}"
             except HTTPError as http_err:
-                logger.exception(f"An HTTP error occurred when processing MMS ID " \
-                    f"'{row['MMS ID']}' (at row {index + 2} of input file): {http_err}")
+                logger.exception(f"An HTTP error occurred when processing " \
+                    f"MMS ID '{row['MMS ID']}' (at row {index + 2} of input " \
+                    f"file): {http_err}")
                 error_msg = f"HTTP Error: {http_err}"
             except Exception as err:
                 logger.exception(f"An error occurred when processing MMS ID " \
-                    f"'{row['MMS ID']}' (at row {index + 2} of input file): {err}")
+                    f"'{row['MMS ID']}' (at row {index + 2} of input file): " \
+                    f"{err}")
                 error_msg = err
             finally:
                 if error_occurred:
