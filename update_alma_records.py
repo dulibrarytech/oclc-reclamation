@@ -158,21 +158,34 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         logger.debug(f'035 field #{i + 1}, subfield a: {subfield_a}')
 
         # Skip this 035 field if it's not an OCLC number
-        if not subfield_a.startswith('(OCoLC)'):
+        oclc_org_code_prefix = '(OCoLC)'
+        oclc_org_code_prefix_len = len(oclc_org_code_prefix)
+
+        if not subfield_a.startswith(oclc_org_code_prefix):
             continue
 
         # Extract the OCLC number itself
         match_on_first_digit = re.search(r'\d', subfield_a)
 
-        # TO DO: Decide if this should be an assertion, which prevents further
-        # processing of the record.
-        assert match_on_first_digit, f'This record contains an 035 field ' \
-            f'with an OCLC number that has no digits ({subfield_a}).'
+        extracted_oclc_num_from_record = ''
 
-        extracted_oclc_num_from_record = \
-            subfield_a[match_on_first_digit.start():].strip()
+        if match_on_first_digit is None:
+            logger.debug(f'This OCLC number has no digits: {subfield_a}')
+            if len(subfield_a) > oclc_org_code_prefix_len:
+                extracted_oclc_num_from_record = \
+                    subfield_a[oclc_org_code_prefix_len:].strip()
+        else:
+            extracted_oclc_num_from_record = \
+                subfield_a[match_on_first_digit.start():].strip()
+
         logger.debug(f'035 field #{i + 1}, extracted OCLC number: ' \
             f'{extracted_oclc_num_from_record}')
+
+        # Extract the OCLC number itself
+        # extracted_oclc_num_from_record = \
+        #     subfield_a[match_on_first_digit.start():].strip()
+        # logger.debug(f'035 field #{i + 1}, extracted OCLC number: ' \
+        #     f'{extracted_oclc_num_from_record}')
 
         oclc_nums_from_record.append(extracted_oclc_num_from_record)
 
@@ -191,19 +204,23 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             # In either case, remove this 035 field.
             record_element.remove(element)
 
-            if not extracted_oclc_num_matches_current_oclc_num:
+            # To only add extracted strings with digits to 019 field, add
+            # extracted_oclc_num_from_record.isdigit() condition here
+            if (not extracted_oclc_num_matches_current_oclc_num and
+                len(extracted_oclc_num_from_record) > 0):
                 oclc_nums_for_019_field.add(extracted_oclc_num_from_record)
 
             need_to_update_record = True
         else:
             found_035_field_with_current_oclc_num = True
 
+    logger.debug(f'{oclc_nums_for_019_field=}')
+    logger.debug(f'{len(oclc_nums_for_019_field)=}')
+
     oclc_nums_from_record_list_length = len(oclc_nums_from_record)
     oclc_nums_from_record_str = None
     if oclc_nums_from_record_list_length > 0:
         oclc_nums_from_record_str = ', '.join(oclc_nums_from_record)
-
-    logger.debug(f'{oclc_nums_for_019_field=}')
 
     # Only add or edit the 019 field if oclc_nums_for_019_field set is non-empty
     if oclc_nums_for_019_field:
