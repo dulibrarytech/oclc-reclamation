@@ -1,7 +1,9 @@
+xml_files_to_extract_from
 virtualenv
 .python-version
 .DS_Store
 .env
-*.xml
-*.xlsx
+*.csv
 *.log
+*.xlsx
+*.xml
