@@ -2,6 +2,7 @@ import argparse
 import logging
 import logging.config
 import os
+import re
 import xml.etree.ElementTree as ET
 from csv import reader, writer
 
@@ -70,47 +71,143 @@ def main() -> None:
     print(f'\n{alma_records_with_current_oclc_num=}')
     print(f'{type(alma_records_with_current_oclc_num)=}\n')
 
-    # Check every XML file in directory
-    for file in os.listdir(args.Directory_with_xml_files):
-        if not file.endswith('.xml'):
-            print(f'\n{file} is not an XML file')
-            continue
+    with open('csv/master_list_records_with_current_oclc_num.csv', mode='a',
+            newline='') as records_with_current_oclc_num, \
+        open('csv/master_list_records_with_potentially_old_oclc_num.csv',
+            mode='a', newline='') as records_with_potentially_old_oclc_num, \
+        open('csv/master_list_records_with_errors.csv', mode='a',
+            newline='') as records_with_errors:
 
-        print(f'\n{file} is an XML file')
+        records_with_current_oclc_num_writer = \
+            writer(records_with_current_oclc_num)
+        records_with_potentially_old_oclc_num_writer = \
+            writer(records_with_potentially_old_oclc_num)
+        records_with_errors_writer = writer(records_with_errors)
 
-        # Get root element of XML file
-        root = ET.parse(f'{args.Directory_with_xml_files}/{file}').getroot()
-
-        # Iterate over each record element
-        for i, element in enumerate(root.findall('record')):
-            # Extract MMS ID from 001 field
-            mms_id = element.find('./controlfield[@tag="001"]').text
-            print(f'\n{mms_id=}')
-
-            # Check if MMS ID is a member of mms_ids_already_processed set
-            # If so, continue (i.e. skip to next record)
-            if mms_id in mms_ids_already_processed:
-                print(f'{mms_id} has already been processed')
+        # Check every XML file in directory
+        for file in os.listdir(args.Directory_with_xml_files):
+            if not file.endswith('.xml'):
+                print(f'\n{file} is not an XML file')
                 continue
 
-            print(f'Processing {mms_id}...')
+            print(f'\n{file} is an XML file')
+            logger.debug(f'Parsing {file} ...')
 
-            # Add MMS ID to mms_ids_already_processed set
-            mms_ids_already_processed.add(mms_id)
+            # Get root element of XML file
+            root = ET.parse(f'{args.Directory_with_xml_files}/{file}').getroot()
 
-            # Extract all OCLC numbers from 035 $a fields and add to list
+            # Iterate over each record element
+            for record_element in root.findall('record'):
+                # Extract MMS ID from 001 field
+                mms_id = record_element.find('./controlfield[@tag="001"]').text
+                print(f'\n{mms_id=}')
 
-            # If list length > 1, append MMS ID and OCLC numbers to
-            # master_list_records_with_errors CSV file (an error message within the
-            # CSV file probably isn't necessary for this case).
+                # Check if MMS ID is a member of mms_ids_already_processed set
+                if mms_id in mms_ids_already_processed:
+                    logger.debug(f'{mms_id} has already been processed')
+                    continue
 
-            # Check if MMS ID is a member of alma_records_with_current_oclc_num set
-            # - If so, append MMS ID and OCLC number to
-            #   master_list_records_with_current_oclc_num CSV file
-            # - If not, append MMS ID and OCLC number to
-            #   master_list_records_with_potentially_old_oclc_num CSV file
+                logger.debug(f'Processing {mms_id}...')
 
-        print(f'\n{mms_ids_already_processed=}')
+                # Add MMS ID to mms_ids_already_processed set
+                mms_ids_already_processed.add(mms_id)
+
+                # Iterate over each 035 $a field and add OCLC numbers to list
+                # TO DO: Consider making this a set (if we are going to handle
+                # the special case where the extracted OCLC numbers are all
+                # equivalent)
+                oclc_nums_from_record = list()
+
+                for i, element in enumerate(
+                    record_element.findall('./datafield[@tag="035"]')):
+                    # Extract subfield a (which would contain the OCLC number
+                    # if present)
+                    subfield_a = element.find('./subfield[@code="a"]').text
+                    logger.debug(f'035 field #{i + 1}, subfield a: ' \
+                        f'{subfield_a}')
+
+                    # Skip this 035 field if it's not an OCLC number
+                    oclc_org_code_prefix = '(OCoLC)'
+                    oclc_org_code_prefix_len = len(oclc_org_code_prefix)
+
+                    if not subfield_a.startswith(oclc_org_code_prefix):
+                        continue
+
+                    # Extract the OCLC number itself
+                    match_on_first_digit = re.search(r'\d', subfield_a)
+
+                    extracted_oclc_num_from_record = ''
+
+                    if match_on_first_digit is None:
+                        logger.debug(f'This OCLC number has no digits: ' \
+                            f'{subfield_a}')
+                        if len(subfield_a) > oclc_org_code_prefix_len:
+                            extracted_oclc_num_from_record = \
+                                subfield_a[oclc_org_code_prefix_len:].strip()
+                    else:
+                        extracted_oclc_num_from_record = \
+                            subfield_a[match_on_first_digit.start():].strip()
+
+                    logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
+                        f'number: {extracted_oclc_num_from_record}')
+
+                    oclc_nums_from_record.append(extracted_oclc_num_from_record)
+
+                error_found = False
+                oclc_nums_from_record_len = len(oclc_nums_from_record)
+                oclc_nums_from_record_str = None
+
+                if oclc_nums_from_record_len == 0:
+                    oclc_nums_from_record_str = '<none>'
+                    logger.debug(f'{mms_id} has no OCLC numbers in 035 $a')
+                    error_found = True
+                elif oclc_nums_from_record_len == 1:
+                    oclc_nums_from_record_str = oclc_nums_from_record[0]
+                else:
+                    # oclc_nums_from_record_len > 1
+                    oclc_nums_from_record_str = ', '.join(oclc_nums_from_record)
+                    logger.debug(f'{mms_id} has multiple OCLC numbers: ' \
+                        f'{oclc_nums_from_record_str}')
+                    error_found = True
+
+                if error_found:
+                    # Add record to records_with_errors spreadsheet
+                    if records_with_errors.tell() == 0:
+                        # Write header row
+                        records_with_errors_writer.writerow([ 'MMS ID',
+                            "OCLC Number(s) from Alma Record's 035 $a" ])
+
+                    records_with_errors_writer.writerow([ mms_id,
+                        oclc_nums_from_record_str ])
+
+                    continue
+
+                # Check if MMS ID is a member of
+                # alma_records_with_current_oclc_num set
+                if mms_id in alma_records_with_current_oclc_num:
+                    logger.debug(f'{mms_id} has current OCLC number')
+
+                    # Add record to records_with_current_oclc_num spreadsheet
+                    if records_with_current_oclc_num.tell() == 0:
+                        # Write header row
+                        records_with_current_oclc_num_writer.writerow([
+                            'MMS ID', 'Current OCLC Number' ])
+
+                    records_with_current_oclc_num_writer.writerow([ mms_id,
+                        oclc_nums_from_record_str ])
+                else:
+                    logger.debug(f'{mms_id} has a potentially old OCLC number')
+
+                    # Add record to records_with_current_oclc_num spreadsheet
+                    if records_with_potentially_old_oclc_num.tell() == 0:
+                        # Write header row
+                        records_with_potentially_old_oclc_num_writer.writerow([
+                            'MMS ID', "OCLC Number from Alma Record's 035 $a" ])
+
+                    records_with_potentially_old_oclc_num_writer.writerow([
+                        mms_id, oclc_nums_from_record_str ])
+
+    print(f'\n{mms_ids_already_processed=}')
 
 
 if __name__ == "__main__":
