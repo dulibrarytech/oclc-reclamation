@@ -73,20 +73,30 @@ def main() -> None:
     # Check every XML file in directory
     for file in os.listdir(args.Directory_with_xml_files):
         if not file.endswith('.xml'):
-            print(f'{file} is not an XML file')
+            print(f'\n{file} is not an XML file')
             continue
 
-        print(f'{file} is an XML file')
+        print(f'\n{file} is an XML file')
 
-        # Get XML file as ET.Element
+        # Get root element of XML file
+        root = ET.parse(f'{args.Directory_with_xml_files}/{file}').getroot()
 
-        # for record in ET.Element:
+        # Iterate over each record element
+        for i, element in enumerate(root.findall('record')):
             # Extract MMS ID from 001 field
+            mms_id = element.find('./controlfield[@tag="001"]').text
+            print(f'\n{mms_id=}')
 
             # Check if MMS ID is a member of mms_ids_already_processed set
             # If so, continue (i.e. skip to next record)
+            if mms_id in mms_ids_already_processed:
+                print(f'{mms_id} has already been processed')
+                continue
+
+            print(f'Processing {mms_id}...')
 
             # Add MMS ID to mms_ids_already_processed set
+            mms_ids_already_processed.add(mms_id)
 
             # Extract all OCLC numbers from 035 $a fields and add to list
 
@@ -99,6 +109,8 @@ def main() -> None:
             #   master_list_records_with_current_oclc_num CSV file
             # - If not, append MMS ID and OCLC number to
             #   master_list_records_with_potentially_old_oclc_num CSV file
+
+        print(f'\n{mms_ids_already_processed=}')
 
 
 if __name__ == "__main__":
