@@ -71,6 +71,9 @@ def main() -> None:
     print(f'\n{alma_records_with_current_oclc_num=}')
     print(f'{type(alma_records_with_current_oclc_num)=}\n')
 
+    oclc_org_code_prefix = '(OCoLC)'
+    oclc_org_code_prefix_len = len(oclc_org_code_prefix)
+
     with open('csv/master_list_records_with_current_oclc_num.csv', mode='a',
             newline='') as records_with_current_oclc_num, \
         open('csv/master_list_records_with_potentially_old_oclc_num.csv',
@@ -113,10 +116,9 @@ def main() -> None:
                 mms_ids_already_processed.add(mms_id)
 
                 # Iterate over each 035 $a field and add OCLC numbers to list
-                # TO DO: Consider making this a set (if we are going to handle
-                # the special case where the extracted OCLC numbers are all
-                # equivalent)
-                oclc_nums_from_record = list()
+                # and set
+                all_oclc_nums_from_record = list()
+                unique_oclc_nums_from_record = set()
 
                 for i, element in enumerate(
                     record_element.findall('./datafield[@tag="035"]')):
@@ -127,47 +129,61 @@ def main() -> None:
                         f'{subfield_a}')
 
                     # Skip this 035 field if it's not an OCLC number
-                    oclc_org_code_prefix = '(OCoLC)'
-                    oclc_org_code_prefix_len = len(oclc_org_code_prefix)
-
                     if not subfield_a.startswith(oclc_org_code_prefix):
                         continue
 
                     # Extract the OCLC number itself
-                    match_on_first_digit = re.search(r'\d', subfield_a)
+                    oclc_num_without_org_code_prefix = \
+                        subfield_a[oclc_org_code_prefix_len:].strip()
 
-                    extracted_oclc_num_from_record = ''
+                    match_on_first_digit = re.search(r'\d',
+                        oclc_num_without_org_code_prefix)
+
+                    if oclc_num_without_org_code_prefix == '':
+                        oclc_num_without_org_code_prefix = \
+                            f'<nothing after {oclc_org_code_prefix}>'
+
+                    extracted_oclc_num_from_record = \
+                        oclc_num_without_org_code_prefix
 
                     if match_on_first_digit is None:
                         logger.debug(f'This OCLC number has no digits: ' \
                             f'{subfield_a}')
-                        if len(subfield_a) > oclc_org_code_prefix_len:
-                            extracted_oclc_num_from_record = \
-                                subfield_a[oclc_org_code_prefix_len:].strip()
                     else:
                         extracted_oclc_num_from_record = \
-                            subfield_a[match_on_first_digit.start():].strip()
+                            oclc_num_without_org_code_prefix[
+                                match_on_first_digit.start():].strip()
 
                     logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
                         f'number: {extracted_oclc_num_from_record}')
 
-                    oclc_nums_from_record.append(extracted_oclc_num_from_record)
+                    all_oclc_nums_from_record.append(
+                        oclc_num_without_org_code_prefix)
+
+                    unique_oclc_nums_from_record.add(
+                        extracted_oclc_num_from_record)
+
+                logger.debug(f'{unique_oclc_nums_from_record=}')
+                logger.debug(f'{all_oclc_nums_from_record=}')
 
                 error_found = False
-                oclc_nums_from_record_len = len(oclc_nums_from_record)
-                oclc_nums_from_record_str = None
+                unique_oclc_nums_from_record_len = \
+                    len(unique_oclc_nums_from_record)
+                unique_oclc_nums_from_record_str = None
 
-                if oclc_nums_from_record_len == 0:
-                    oclc_nums_from_record_str = '<none>'
+                if unique_oclc_nums_from_record_len == 0:
+                    unique_oclc_nums_from_record_str = '<none>'
                     logger.debug(f'{mms_id} has no OCLC numbers in 035 $a')
                     error_found = True
-                elif oclc_nums_from_record_len == 1:
-                    oclc_nums_from_record_str = oclc_nums_from_record[0]
+                elif unique_oclc_nums_from_record_len == 1:
+                    unique_oclc_nums_from_record_str = \
+                        next(iter(unique_oclc_nums_from_record))
                 else:
-                    # oclc_nums_from_record_len > 1
-                    oclc_nums_from_record_str = ', '.join(oclc_nums_from_record)
+                    # unique_oclc_nums_from_record_len > 1
+                    unique_oclc_nums_from_record_str = \
+                        ', '.join(unique_oclc_nums_from_record)
                     logger.debug(f'{mms_id} has multiple OCLC numbers: ' \
-                        f'{oclc_nums_from_record_str}')
+                        f'{unique_oclc_nums_from_record_str}')
                     error_found = True
 
                 if error_found:
@@ -175,11 +191,15 @@ def main() -> None:
                     if records_with_errors.tell() == 0:
                         # Write header row
                         records_with_errors_writer.writerow([ 'MMS ID',
-                            "OCLC Number(s) from Alma Record's 035 $a" ])
+                            "Unique OCLC Number(s) from Alma Record's 035 $a",
+                            "All OCLC Numbers from Alma Record's 035 $a" ])
 
                     records_with_errors_writer.writerow([ mms_id,
-                        oclc_nums_from_record_str ])
+                        unique_oclc_nums_from_record_str,
+                        '<none>' if len(all_oclc_nums_from_record) == 0
+                        else ', '.join(all_oclc_nums_from_record) ])
 
+                    # Go to next record
                     continue
 
                 # Check if MMS ID is a member of
@@ -194,7 +214,7 @@ def main() -> None:
                             'MMS ID', 'Current OCLC Number' ])
 
                     records_with_current_oclc_num_writer.writerow([ mms_id,
-                        oclc_nums_from_record_str ])
+                        unique_oclc_nums_from_record_str ])
                 else:
                     logger.debug(f'{mms_id} has a potentially old OCLC number')
 
@@ -202,10 +222,14 @@ def main() -> None:
                     if records_with_potentially_old_oclc_num.tell() == 0:
                         # Write header row
                         records_with_potentially_old_oclc_num_writer.writerow([
-                            'MMS ID', "OCLC Number from Alma Record's 035 $a" ])
+                            'MMS ID',
+                            "Unique OCLC Number from Alma Record's 035 $a",
+                            "All OCLC Numbers from Alma Record's 035 $a" ])
 
                     records_with_potentially_old_oclc_num_writer.writerow([
-                        mms_id, oclc_nums_from_record_str ])
+                        mms_id, unique_oclc_nums_from_record_str,
+                        '<none>' if len(all_oclc_nums_from_record) == 0
+                        else ', '.join(all_oclc_nums_from_record) ])
 
     print(f'\n{mms_ids_already_processed=}')
 
