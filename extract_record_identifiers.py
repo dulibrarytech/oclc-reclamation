@@ -120,11 +120,16 @@ def main() -> None:
                 all_oclc_nums_from_record = list()
                 unique_oclc_nums_from_record = set()
 
-                for i, element in enumerate(
+                for i, field_035_element in enumerate(
                     record_element.findall('./datafield[@tag="035"]')):
                     # Extract subfield a (which would contain the OCLC number
                     # if present)
-                    subfield_a = element.find('./subfield[@code="a"]').text
+                    subfield_a_element = \
+                        field_035_element.find('./subfield[@code="a"]')
+                    if subfield_a_element is None:
+                        continue
+
+                    subfield_a = subfield_a_element.text
                     logger.debug(f'035 field #{i + 1}, subfield a: ' \
                         f'{subfield_a}')
 
@@ -178,6 +183,11 @@ def main() -> None:
                 elif unique_oclc_nums_from_record_len == 1:
                     unique_oclc_nums_from_record_str = \
                         next(iter(unique_oclc_nums_from_record))
+                    if not unique_oclc_nums_from_record_str.isdigit():
+                        logger.debug(f'{mms_id} has an OCLC number with at ' \
+                            f'least one non-digit character: ' \
+                            f'{unique_oclc_nums_from_record_str}')
+                        error_found = True
                 else:
                     # unique_oclc_nums_from_record_len > 1
                     unique_oclc_nums_from_record_str = \
