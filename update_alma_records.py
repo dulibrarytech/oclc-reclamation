@@ -34,9 +34,13 @@ class Record_confirmation(NamedTuple):
     orig_oclc_nums: str
         A comma-separated listing of the original OCLC Number(s) from the Alma
         record's 035 $a field(s)
+    error_msg: str
+        Message explaining the error encountered by the update_alma_record
+        function call
     """
     was_updated: bool
     orig_oclc_nums: str
+    error_msg: str
 
 
 def get_alma_record(mms_id: str) -> ET.Element:
@@ -103,7 +107,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     -------
     Record_confirmation
         NamedTuple with details about the update attempt. Includes the
-        following fields: was_updated and orig_oclc_nums
+        following fields: was_updated, orig_oclc_nums, error_msg
     """
 
     logger.debug(f"Attempting to update MMS ID '{mms_id}'...")
@@ -145,22 +149,28 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     root = get_alma_record(mms_id)
     record_element = root.find('./record')
 
+    # Define the OCLC prefixes
+    oclc_org_code_prefix = '(OCoLC)'
+    oclc_org_code_prefix_len = len(oclc_org_code_prefix)
+    valid_oclc_number_prefixes = {'ocm', 'ocn', 'on'}
+    valid_oclc_number_prefixes_str = f"If present, the OCLC number prefix " \
+        f"must be one of the following: {', '.join(valid_oclc_number_prefixes)}"
+
     need_to_update_record = False
     oclc_nums_from_record = list()
     oclc_nums_for_019_field = set()
     found_035_field_with_current_oclc_num = False
+    found_potentially_valid_OCLC_number_with_invalid_OCLC_prefix = False
+    error_msg = None
 
     # Iterate over each 035 field
     for i, element in enumerate(
         record_element.findall('./datafield[@tag="035"]')):
         # Extract subfield a (which would contain the OCLC number if present)
         subfield_a = element.find('./subfield[@code="a"]').text
-        logger.debug(f'035 field #{i + 1}, subfield a: {subfield_a}')
+        logger.debug(f'035 field #{i + 1}, subfield $a: {subfield_a}')
 
         # Skip this 035 field if it's not an OCLC number
-        oclc_org_code_prefix = '(OCoLC)'
-        oclc_org_code_prefix_len = len(oclc_org_code_prefix)
-
         if not subfield_a.startswith(oclc_org_code_prefix):
             continue
 
@@ -168,6 +178,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         match_on_first_digit = re.search(r'\d', subfield_a)
 
         extracted_oclc_num_from_record = ''
+        extracted_oclc_num_prefix = ''
 
         if match_on_first_digit is None:
             logger.debug(f'This OCLC number has no digits: {subfield_a}')
@@ -177,42 +188,66 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         else:
             extracted_oclc_num_from_record = \
                 subfield_a[match_on_first_digit.start():].strip()
+            extracted_oclc_num_prefix = \
+                subfield_a[
+                    oclc_org_code_prefix_len:match_on_first_digit.start()]
 
         logger.debug(f'035 field #{i + 1}, extracted OCLC number: ' \
             f'{extracted_oclc_num_from_record}')
 
-        # Extract the OCLC number itself
-        # extracted_oclc_num_from_record = \
-        #     subfield_a[match_on_first_digit.start():].strip()
-        # logger.debug(f'035 field #{i + 1}, extracted OCLC number: ' \
-        #     f'{extracted_oclc_num_from_record}')
+        if len(extracted_oclc_num_prefix) > 0:
+            logger.debug(f'035 field #{i + 1}, extracted OCLC number prefix: ' \
+                f'{extracted_oclc_num_prefix}')
 
-        oclc_nums_from_record.append(extracted_oclc_num_from_record)
+            # Check for invalid prefix attached to potentially valid number
+            if (extracted_oclc_num_prefix not in valid_oclc_number_prefixes and
+                extracted_oclc_num_from_record.isdigit()):
+                found_potentially_valid_OCLC_number_with_invalid_OCLC_prefix = \
+                    True
 
-        # Compare the extracted OCLC number to the current OCLC number
-        extracted_oclc_num_matches_current_oclc_num = \
-            extracted_oclc_num_from_record == oclc_num.strip()
-        logger.debug(f'Does the extracted OCLC number ' \
-            f'({extracted_oclc_num_from_record}) match the current OCLC ' \
-            f'number ({oclc_num})? ' \
-            f'{extracted_oclc_num_matches_current_oclc_num}')
+                logger.debug(f"'{extracted_oclc_num_prefix}' is an invalid " \
+                    f"OCLC number prefix. {valid_oclc_number_prefixes_str}")
 
-        if (not extracted_oclc_num_matches_current_oclc_num or
-            found_035_field_with_current_oclc_num):
-            # This 035 field either contains an old OCLC number or is a
-            # duplicate of another 035 field with the current OCLC number.
-            # In either case, remove this 035 field.
-            record_element.remove(element)
+                if error_msg is None:
+                    error_msg = f"Record contains at least one OCLC number " \
+                        f"with an invalid prefix. " \
+                        f"{valid_oclc_number_prefixes_str}"
 
-            # To only add extracted strings with digits to 019 field, add
-            # extracted_oclc_num_from_record.isdigit() condition here
-            if (not extracted_oclc_num_matches_current_oclc_num and
-                len(extracted_oclc_num_from_record) > 0):
-                oclc_nums_for_019_field.add(extracted_oclc_num_from_record)
+                # Include invalid prefix with OCLC number for clarity
+                extracted_oclc_num_from_record = \
+                    extracted_oclc_num_prefix + extracted_oclc_num_from_record
 
-            need_to_update_record = True
-        else:
-            found_035_field_with_current_oclc_num = True
+        oclc_nums_from_record.append(extracted_oclc_num_from_record
+            if extracted_oclc_num_from_record != ''
+            else f'<nothing after {oclc_org_code_prefix}>')
+
+        if not found_potentially_valid_OCLC_number_with_invalid_OCLC_prefix:
+            # Compare the extracted OCLC number to the current OCLC number
+            extracted_oclc_num_matches_current_oclc_num = \
+                extracted_oclc_num_from_record == oclc_num.strip()
+            logger.debug(f'Does the extracted OCLC number ' \
+                f'({extracted_oclc_num_from_record}) match the current OCLC ' \
+                f'number ({oclc_num})? ' \
+                f'{extracted_oclc_num_matches_current_oclc_num}')
+
+            if (not extracted_oclc_num_matches_current_oclc_num or
+                found_035_field_with_current_oclc_num):
+                # This 035 field either (1) contains an old, empty or invalid
+                # OCLC number or (2) is a duplicate of another 035 field with
+                # the current OCLC number. In either case, remove this 035
+                # field.
+                record_element.remove(element)
+                logger.debug(f'Removed 035 field #{i + 1}, whose subfield $a '
+                    f'is: {subfield_a}')
+
+                if (not extracted_oclc_num_matches_current_oclc_num and
+                    len(extracted_oclc_num_from_record) > 0 and
+                    extracted_oclc_num_from_record.isdigit()):
+                    oclc_nums_for_019_field.add(extracted_oclc_num_from_record)
+
+                need_to_update_record = True
+            else:
+                found_035_field_with_current_oclc_num = True
 
     logger.debug(f'{oclc_nums_for_019_field=}')
     logger.debug(f'{len(oclc_nums_for_019_field)=}')
@@ -221,6 +256,18 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     oclc_nums_from_record_str = None
     if oclc_nums_from_record_list_length > 0:
         oclc_nums_from_record_str = ', '.join(oclc_nums_from_record)
+
+    logger.debug(f'{oclc_nums_from_record=}')
+    logger.debug(f'{oclc_nums_from_record_list_length=}')
+    logger.debug(f'{oclc_nums_from_record_str=}')
+
+    # Don't update the record if it contains a potentially valid OCLC number
+    # with an invalid prefix.
+    if found_potentially_valid_OCLC_number_with_invalid_OCLC_prefix:
+        logger.debug(f"Did not update MMS ID '{mms_id} because it contains " \
+            f"at least one potentially valid OCLC number with an invalid " \
+            f"prefix.")
+        return Record_confirmation(False, oclc_nums_from_record_str, error_msg)
 
     # Only add or edit the 019 field if oclc_nums_for_019_field set is non-empty
     if oclc_nums_for_019_field:
@@ -291,10 +338,10 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             file.write(xml_as_pretty_printed_str)
 
         logger.debug(f"MMS ID '{mms_id}' has been updated.")
-        return Record_confirmation(True, oclc_nums_from_record_str)
+        return Record_confirmation(True, oclc_nums_from_record_str, None)
 
     logger.debug(f"No update needed for MMS ID '{mms_id}'.")
-    return Record_confirmation(False, oclc_nums_from_record_str)
+    return Record_confirmation(False, oclc_nums_from_record_str, None)
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -358,6 +405,11 @@ def main() -> None:
             record = None
             try:
                 record = update_alma_record(row['MMS ID'], row['OCLC Number'])
+                if record.error_msg is None:
+                    error_occurred = False
+                else:
+                    error_msg = record.error_msg
+
                 if record.was_updated:
                     num_records_updated += 1
 
@@ -369,7 +421,7 @@ def main() -> None:
 
                     records_updated_writer.writerow([ row['MMS ID'],
                         record.orig_oclc_nums, row['OCLC Number'] ])
-                else:
+                elif record.error_msg is None:
                     # add record to records_with_no_update_needed spreadsheet
                     if records_with_no_update_needed.tell() == 0:
                         # write header row
@@ -378,8 +430,6 @@ def main() -> None:
 
                     records_with_no_update_needed_writer.writerow(
                         [ row['MMS ID'], row['OCLC Number'] ])
-
-                error_occurred = False
             except AssertionError as assert_err:
                 logger.exception(f"An assertion error occurred when " \
                     f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}" \
