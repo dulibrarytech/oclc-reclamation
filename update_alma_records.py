@@ -26,6 +26,9 @@ params = {'view': 'full'}
 class Record_confirmation(NamedTuple):
     """Details about a specific call to the update_alma_record function.
 
+    Instances should adhere to the following rule:
+    - If the was_updated field is True, then the error_msg field should be None.
+
     Fields
     ------
     was_updated: bool
@@ -404,6 +407,11 @@ def main() -> None:
             error_msg = None
             record = None
             try:
+                # Note: The update_alma_record function returns a
+                # Record_confirmation NamedTuple which should adhere to the
+                # following rule:
+                # - If the was_updated field is True, then the error_msg field
+                # will be None.
                 record = update_alma_record(row['MMS ID'], row['OCLC Number'])
                 if record.error_msg is None:
                     error_occurred = False
@@ -413,7 +421,7 @@ def main() -> None:
                 if record.was_updated:
                     num_records_updated += 1
 
-                    # add record to records_updated spreadsheet
+                    # Add record to records_updated spreadsheet
                     if records_updated.tell() == 0:
                         # write header row
                         records_updated_writer.writerow([ 'MMS ID',
@@ -422,9 +430,9 @@ def main() -> None:
                     records_updated_writer.writerow([ row['MMS ID'],
                         record.orig_oclc_nums, row['OCLC Number'] ])
                 elif record.error_msg is None:
-                    # add record to records_with_no_update_needed spreadsheet
+                    # Add record to records_with_no_update_needed spreadsheet
                     if records_with_no_update_needed.tell() == 0:
-                        # write header row
+                        # Write header row
                         records_with_no_update_needed_writer.writerow(
                             [ 'MMS ID', 'OCLC Number' ])
 
@@ -447,9 +455,9 @@ def main() -> None:
                 error_msg = err
             finally:
                 if error_occurred:
-                    # add record to records_with_errors spreadsheet
+                    # Add record to records_with_errors spreadsheet
                     if records_with_errors.tell() == 0:
-                        # write header row
+                        # Write header row
                         records_with_errors_writer.writerow([ 'MMS ID',
                             "OCLC Number(s) from Alma Record's 035 $a",
                             'Current OCLC Number', 'Error' ])
