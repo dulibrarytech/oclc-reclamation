@@ -423,7 +423,7 @@ def main() -> None:
 
                     # Add record to records_updated spreadsheet
                     if records_updated.tell() == 0:
-                        # write header row
+                        # Write header row
                         records_updated_writer.writerow([ 'MMS ID',
                             'Original OCLC Number(s)', 'New OCLC Number' ])
 
