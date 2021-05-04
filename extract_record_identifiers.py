@@ -5,6 +5,7 @@ import os
 import re
 import xml.etree.ElementTree as ET
 from csv import reader, writer
+from datetime import datetime
 
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ def main() -> None:
     from each Alma record are extracted and appended to the appropriate
     master_list_records CSV file.
     """
+    start_time = datetime.now()
 
     # Initialize parser and parse command-line args
     parser = init_argparse()
@@ -242,6 +244,9 @@ def main() -> None:
                         else ', '.join(all_oclc_nums_from_record) ])
 
     logger.debug(f'\n{mms_ids_already_processed=}')
+
+    print(f'\nEnd of script. Completed in: {datetime.now() - start_time} ' \
+        f'(hours:minutes:seconds.microseconds)')
 
 
 if __name__ == "__main__":
