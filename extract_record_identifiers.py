@@ -57,8 +57,8 @@ def main() -> None:
 
     # Create sets
     mms_ids_already_processed = set()
-    print(f'\n{mms_ids_already_processed=}')
-    print(f'{type(mms_ids_already_processed)=}')
+    logger.debug(f'\n{mms_ids_already_processed=}')
+    logger.debug(f'{type(mms_ids_already_processed)=}')
 
     alma_records_with_current_oclc_num = set()
     if args.Alma_records_with_current_oclc_num is not None:
@@ -68,8 +68,8 @@ def main() -> None:
             for mms_id in file_reader:
                 alma_records_with_current_oclc_num.add(mms_id[0])
 
-    print(f'\n{alma_records_with_current_oclc_num=}')
-    print(f'{type(alma_records_with_current_oclc_num)=}\n')
+    logger.debug(f'\n{alma_records_with_current_oclc_num=}')
+    logger.debug(f'{type(alma_records_with_current_oclc_num)=}\n')
 
     oclc_org_code_prefix = '(OCoLC)'
     oclc_org_code_prefix_len = len(oclc_org_code_prefix)
@@ -90,10 +90,10 @@ def main() -> None:
         # Check every XML file in directory
         for file in os.listdir(args.Directory_with_xml_files):
             if not file.endswith('.xml'):
-                print(f'\n{file} is not an XML file')
+                logger.debug(f'\n{file} is not an XML file')
                 continue
 
-            print(f'\n{file} is an XML file')
+            logger.debug(f'\n{file} is an XML file')
             logger.debug(f'Parsing {file} ...')
 
             # Get root element of XML file
@@ -103,7 +103,7 @@ def main() -> None:
             for record_element in root.findall('record'):
                 # Extract MMS ID from 001 field
                 mms_id = record_element.find('./controlfield[@tag="001"]').text
-                print(f'\n{mms_id=}')
+                logger.debug(f'\n{mms_id=}')
 
                 # Check if MMS ID is a member of mms_ids_already_processed set
                 if mms_id in mms_ids_already_processed:
@@ -241,7 +241,7 @@ def main() -> None:
                         '<none>' if len(all_oclc_nums_from_record) == 0
                         else ', '.join(all_oclc_nums_from_record) ])
 
-    print(f'\n{mms_ids_already_processed=}')
+    logger.debug(f'\n{mms_ids_already_processed=}')
 
 
 if __name__ == "__main__":
