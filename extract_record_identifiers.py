@@ -51,8 +51,8 @@ def remove_leading_zeros(string: str) -> str:
     ----------
     string: str
         The string to remove leading zeros from. This string must represent an
-        integer value (i.e. it cannot contain a decimal point or other non-digit
-        characters).
+        integer value (i.e. it cannot contain a decimal point or any other
+        non-digit character).
 
     Returns
     -------
@@ -217,8 +217,20 @@ def main() -> None:
 
                     # Remove leading zeros if extracted OCLC number is valid
                     if found_valid_oclc_prefix and found_valid_oclc_num:
-                        extracted_oclc_num_from_record = \
-                            remove_leading_zeros(extracted_oclc_num_from_record)
+                        try:
+                            extracted_oclc_num_from_record = \
+                                remove_leading_zeros(
+                                    extracted_oclc_num_from_record)
+                        except ValueError as value_err:
+                            logger.exception(f"A ValueError occurred when " \
+                                f"trying to remove leading zeros from " \
+                                f"'{extracted_oclc_num_from_record}', which " \
+                                f"was extracted from an 035 $a field of " \
+                                f"MMS ID '{mms_id}'. To remove leading " \
+                                f"zeros, the extracted OCLC number cannot " \
+                                f"contain a decimal point or any other " \
+                                f"non-digit character. Error message: " \
+                                f"{value_err}")
                     else:
                         if found_valid_oclc_num:
                             logger.debug(f"'{extracted_oclc_num_from_record}'" \
