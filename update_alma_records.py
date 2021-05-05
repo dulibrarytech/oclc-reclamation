@@ -163,7 +163,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     oclc_nums_from_record = list()
     oclc_nums_for_019_field = set()
     found_035_field_with_current_oclc_num = False
-    found_potentially_valid_OCLC_number_with_invalid_OCLC_prefix = False
+    found_potentially_valid_oclc_number_with_invalid_oclc_prefix = False
     error_msg = None
 
     # Iterate over each 035 field
@@ -205,7 +205,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             # Check for invalid prefix attached to potentially valid number
             if (extracted_oclc_num_prefix not in valid_oclc_number_prefixes and
                 extracted_oclc_num_from_record.isdigit()):
-                found_potentially_valid_OCLC_number_with_invalid_OCLC_prefix = \
+                found_potentially_valid_oclc_number_with_invalid_oclc_prefix = \
                     True
 
                 logger.debug(f"'{extracted_oclc_num_prefix}' is an invalid " \
@@ -224,7 +224,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             if extracted_oclc_num_from_record != ''
             else f'<nothing after {oclc_org_code_prefix}>')
 
-        if not found_potentially_valid_OCLC_number_with_invalid_OCLC_prefix:
+        if not found_potentially_valid_oclc_number_with_invalid_oclc_prefix:
             # Compare the extracted OCLC number to the current OCLC number
             extracted_oclc_num_matches_current_oclc_num = \
                 extracted_oclc_num_from_record == oclc_num.strip()
@@ -266,7 +266,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
 
     # Don't update the record if it contains a potentially valid OCLC number
     # with an invalid prefix.
-    if found_potentially_valid_OCLC_number_with_invalid_OCLC_prefix:
+    if found_potentially_valid_oclc_number_with_invalid_oclc_prefix:
         logger.debug(f"Did not update MMS ID '{mms_id} because it contains " \
             f"at least one potentially valid OCLC number with an invalid " \
             f"prefix.")
