@@ -190,7 +190,8 @@ def main() -> None:
                     logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
                         f'number: {extracted_oclc_num_from_record}')
 
-                    found_invalid_OCLC_prefix = False
+                    found_valid_oclc_prefix = True
+                    found_valid_oclc_num = True
 
                     # Check for invalid prefix
                     if len(extracted_oclc_num_prefix) > 0:
@@ -199,8 +200,7 @@ def main() -> None:
 
                         if (extracted_oclc_num_prefix not in
                             valid_oclc_number_prefixes):
-                            found_invalid_OCLC_prefix = True
-                            error_found = True
+                            found_valid_oclc_prefix = False
 
                             logger.debug(f"'{extracted_oclc_num_prefix}' is " \
                                 f"an invalid OCLC number prefix. " \
@@ -211,11 +211,20 @@ def main() -> None:
                                 extracted_oclc_num_prefix
                                 + extracted_oclc_num_from_record)
 
+                    # Check for invalid number
+                    found_valid_oclc_num = \
+                        extracted_oclc_num_from_record.isdigit()
+
                     # Remove leading zeros if extracted OCLC number is valid
-                    if (not found_invalid_OCLC_prefix and
-                        extracted_oclc_num_from_record.isdigit()):
+                    if found_valid_oclc_prefix and found_valid_oclc_num:
                         extracted_oclc_num_from_record = \
                             remove_leading_zeros(extracted_oclc_num_from_record)
+                    else:
+                        if found_valid_oclc_num:
+                            logger.debug(f"'{extracted_oclc_num_from_record}'" \
+                                f" is an invalid OCLC number (because it " \
+                                f"contains at least one non-digit character).")
+                        error_found = True
 
                     all_oclc_nums_from_record.append(
                         oclc_num_without_org_code_prefix)
@@ -237,11 +246,9 @@ def main() -> None:
                 elif unique_oclc_nums_from_record_len == 1:
                     unique_oclc_nums_from_record_str = \
                         next(iter(unique_oclc_nums_from_record))
-                    if not unique_oclc_nums_from_record_str.isdigit():
-                        logger.debug(f'{mms_id} has an OCLC number with at ' \
-                            f'least one non-digit character: ' \
-                            f'{unique_oclc_nums_from_record_str}')
-                        error_found = True
+                    if error_found:
+                        logger.debug(f'{mms_id} has at least one invalid ' \
+                            f'OCLC number: {unique_oclc_nums_from_record_str}')
                 else:
                     # unique_oclc_nums_from_record_len > 1
                     unique_oclc_nums_from_record_str = \
