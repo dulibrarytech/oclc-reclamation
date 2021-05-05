@@ -44,6 +44,24 @@ def init_argparse() -> argparse.ArgumentParser:
     return parser
 
 
+def remove_leading_zeros(string: str) -> str:
+    """Removes leading zeros from the given string.
+
+    Parameters
+    ----------
+    string: str
+        The string to remove leading zeros from. This string must represent an
+        integer value (i.e. it cannot contain a decimal point or other non-digit
+        characters).
+
+    Returns
+    -------
+    str
+        The string without leading zeros
+    """
+    return str(int(string))
+
+
 def main() -> None:
     """Extracts the MMS IDs and OCLC Numbers from each record in the XML files.
 
@@ -75,6 +93,9 @@ def main() -> None:
 
     oclc_org_code_prefix = '(OCoLC)'
     oclc_org_code_prefix_len = len(oclc_org_code_prefix)
+    valid_oclc_number_prefixes = {'ocm', 'ocn', 'on'}
+    valid_oclc_number_prefixes_str = f"If present, the OCLC number prefix " \
+        f"must be one of the following: {', '.join(valid_oclc_number_prefixes)}"
 
     with open('csv/master_list_records_with_current_oclc_num.csv', mode='a',
             newline='') as records_with_current_oclc_num, \
@@ -121,6 +142,7 @@ def main() -> None:
                 # and set
                 all_oclc_nums_from_record = list()
                 unique_oclc_nums_from_record = set()
+                error_found = False
 
                 for i, field_035_element in enumerate(
                     record_element.findall('./datafield[@tag="035"]')):
@@ -152,6 +174,7 @@ def main() -> None:
 
                     extracted_oclc_num_from_record = \
                         oclc_num_without_org_code_prefix
+                    extracted_oclc_num_prefix = ''
 
                     if match_on_first_digit is None:
                         logger.debug(f'This OCLC number has no digits: ' \
@@ -160,9 +183,39 @@ def main() -> None:
                         extracted_oclc_num_from_record = \
                             oclc_num_without_org_code_prefix[
                                 match_on_first_digit.start():].strip()
+                        extracted_oclc_num_prefix = \
+                            subfield_a[oclc_org_code_prefix_len:
+                                match_on_first_digit.start()]
 
                     logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
                         f'number: {extracted_oclc_num_from_record}')
+
+                    found_invalid_OCLC_prefix = False
+
+                    # Check for invalid prefix
+                    if len(extracted_oclc_num_prefix) > 0:
+                        logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
+                            f'number prefix: {extracted_oclc_num_prefix}')
+
+                        if (extracted_oclc_num_prefix not in
+                            valid_oclc_number_prefixes):
+                            found_invalid_OCLC_prefix = True
+                            error_found = True
+
+                            logger.debug(f"'{extracted_oclc_num_prefix}' is " \
+                                f"an invalid OCLC number prefix. " \
+                                f"{valid_oclc_number_prefixes_str}")
+
+                            # Include invalid prefix with OCLC number
+                            extracted_oclc_num_from_record = (
+                                extracted_oclc_num_prefix
+                                + extracted_oclc_num_from_record)
+
+                    # Remove leading zeros if extracted OCLC number is valid
+                    if (not found_invalid_OCLC_prefix and
+                        extracted_oclc_num_from_record.isdigit()):
+                        extracted_oclc_num_from_record = \
+                            remove_leading_zeros(extracted_oclc_num_from_record)
 
                     all_oclc_nums_from_record.append(
                         oclc_num_without_org_code_prefix)
@@ -173,7 +226,6 @@ def main() -> None:
                 logger.debug(f'{unique_oclc_nums_from_record=}')
                 logger.debug(f'{all_oclc_nums_from_record=}')
 
-                error_found = False
                 unique_oclc_nums_from_record_len = \
                     len(unique_oclc_nums_from_record)
                 unique_oclc_nums_from_record_str = None
