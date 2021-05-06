@@ -77,8 +77,8 @@ def main() -> None:
 
     # Create sets
     mms_ids_already_processed = set()
-    logger.debug(f'\n{mms_ids_already_processed=}')
-    logger.debug(f'{type(mms_ids_already_processed)=}')
+    logger.debug(f'{mms_ids_already_processed=}')
+    logger.debug(f'{type(mms_ids_already_processed)=}\n')
 
     alma_records_with_current_oclc_num = set()
     if args.Alma_records_with_current_oclc_num is not None:
@@ -88,7 +88,7 @@ def main() -> None:
             for mms_id in file_reader:
                 alma_records_with_current_oclc_num.add(mms_id[0])
 
-    logger.debug(f'\n{alma_records_with_current_oclc_num=}')
+    logger.debug(f'{alma_records_with_current_oclc_num=}')
     logger.debug(f'{type(alma_records_with_current_oclc_num)=}\n')
 
     oclc_org_code_prefix = '(OCoLC)'
@@ -113,11 +113,10 @@ def main() -> None:
         # Check every XML file in directory
         for file in os.listdir(args.Directory_with_xml_files):
             if not file.endswith('.xml'):
-                logger.debug(f'\n{file} is not an XML file')
+                logger.debug(f'Not an XML file: {file}\n')
                 continue
 
-            logger.debug(f'\n{file} is an XML file')
-            logger.debug(f'Parsing {file} ...')
+            logger.debug(f'Started processing file: {file}\n')
 
             # Get root element of XML file
             root = ET.parse(f'{args.Directory_with_xml_files}/{file}').getroot()
@@ -126,14 +125,13 @@ def main() -> None:
             for record_element in root.findall('record'):
                 # Extract MMS ID from 001 field
                 mms_id = record_element.find('./controlfield[@tag="001"]').text
-                logger.debug(f'\n{mms_id=}')
 
                 # Check if MMS ID is a member of mms_ids_already_processed set
                 if mms_id in mms_ids_already_processed:
-                    logger.debug(f'{mms_id} has already been processed')
+                    logger.debug(f'{mms_id} has already been processed\n')
                     continue
 
-                logger.debug(f'Processing {mms_id}...')
+                logger.debug(f'Started processing MMS ID {mms_id}')
 
                 # Add MMS ID to mms_ids_already_processed set
                 mms_ids_already_processed.add(mms_id)
@@ -184,11 +182,8 @@ def main() -> None:
                             oclc_num_without_org_code_prefix[
                                 match_on_first_digit.start():].strip()
                         extracted_oclc_num_prefix = \
-                            subfield_a[oclc_org_code_prefix_len:
-                                match_on_first_digit.start()]
-
-                    logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
-                        f'number: {extracted_oclc_num_from_record}')
+                            oclc_num_without_org_code_prefix[
+                                :match_on_first_digit.start()]
 
                     found_valid_oclc_prefix = True
                     found_valid_oclc_num = True
@@ -238,6 +233,9 @@ def main() -> None:
                                 f"contains at least one non-digit character).")
                         error_found = True
 
+                    logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
+                        f'number: {extracted_oclc_num_from_record}')
+
                     all_oclc_nums_from_record.append(
                         oclc_num_without_org_code_prefix)
 
@@ -253,7 +251,8 @@ def main() -> None:
 
                 if unique_oclc_nums_from_record_len == 0:
                     unique_oclc_nums_from_record_str = '<none>'
-                    logger.debug(f'{mms_id} has no OCLC numbers in 035 $a')
+                    logger.debug(f'{mms_id} has no OCLC number in an 035 $a ' \
+                        f'field')
                     error_found = True
                 elif unique_oclc_nums_from_record_len == 1:
                     unique_oclc_nums_from_record_str = \
@@ -281,13 +280,7 @@ def main() -> None:
                         unique_oclc_nums_from_record_str,
                         '<none>' if len(all_oclc_nums_from_record) == 0
                         else ', '.join(all_oclc_nums_from_record) ])
-
-                    # Go to next record
-                    continue
-
-                # Check if MMS ID is a member of
-                # alma_records_with_current_oclc_num set
-                if mms_id in alma_records_with_current_oclc_num:
+                elif mms_id in alma_records_with_current_oclc_num:
                     logger.debug(f'{mms_id} has current OCLC number')
 
                     # Add record to records_with_current_oclc_num spreadsheet
@@ -314,9 +307,13 @@ def main() -> None:
                         '<none>' if len(all_oclc_nums_from_record) == 0
                         else ', '.join(all_oclc_nums_from_record) ])
 
-    logger.debug(f'\n{mms_ids_already_processed=}')
+                logger.debug(f'Finished processing MMS ID {mms_id}\n')
 
-    print(f'\nEnd of script. Completed in: {datetime.now() - start_time} ' \
+            logger.debug(f'Finished processing file: {file}\n')
+
+    logger.debug(f'{mms_ids_already_processed=}\n')
+
+    print(f'End of script. Completed in: {datetime.now() - start_time} ' \
         f'(hours:minutes:seconds.microseconds)')
 
 
