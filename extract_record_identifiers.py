@@ -161,7 +161,7 @@ def main() -> None:
 
                     # Extract the OCLC number itself
                     oclc_num_without_org_code_prefix = \
-                        subfield_a[oclc_org_code_prefix_len:].strip()
+                        subfield_a[oclc_org_code_prefix_len:].rstrip()
 
                     match_on_first_digit = re.search(r'\d',
                         oclc_num_without_org_code_prefix)
@@ -180,7 +180,7 @@ def main() -> None:
                     else:
                         extracted_oclc_num_from_record = \
                             oclc_num_without_org_code_prefix[
-                                match_on_first_digit.start():].strip()
+                                match_on_first_digit.start():]
                         extracted_oclc_num_prefix = \
                             oclc_num_without_org_code_prefix[
                                 :match_on_first_digit.start()]
@@ -226,8 +226,9 @@ def main() -> None:
                                 f"contain a decimal point or any other " \
                                 f"non-digit character. Error message: " \
                                 f"{value_err}")
+                            error_found = True
                     else:
-                        if found_valid_oclc_num:
+                        if not found_valid_oclc_num:
                             logger.debug(f"'{extracted_oclc_num_from_record}'" \
                                 f" is an invalid OCLC number (because it " \
                                 f"contains at least one non-digit character).")
