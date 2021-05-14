@@ -1,4 +1,5 @@
 import argparse
+import libraries.api
 import logging
 import logging.config
 import os
@@ -65,11 +66,7 @@ def get_alma_record(mms_id: str) -> ET.Element:
 
     response = requests.get(f'{API_URL}{mms_id}', params=params,
         headers=headers, timeout=45)
-    logger.debug(f'GET reponse: {response}')
-    logger.debug(f'Request URL: {response.url}')
-    logger.debug(f'Status: {response.status_code}')
-    logger.debug(f'Encoding: {response.encoding}')
-    response.raise_for_status()
+    libraries.api.log_response_and_raise_for_status(response)
 
     # Pretty-print XML response
     xml_as_pretty_printed_str = \
@@ -323,11 +320,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
 
         put_response = requests.put(f'{API_URL}{mms_id}', headers=headers,
             data=payload, timeout=45)
-        logger.debug(f'PUT reponse: {put_response}')
-        logger.debug(f'Request URL: {put_response.url}')
-        logger.debug(f'Status: {put_response.status_code}')
-        logger.debug(f'Encoding: {put_response.encoding}')
-        put_response.raise_for_status()
+        libraries.api.log_response_and_raise_for_status(put_response)
 
         # Pretty-print XML response
         xml_as_pretty_printed_str = \
