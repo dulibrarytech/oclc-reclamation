@@ -1,5 +1,6 @@
 import argparse
 import libraries.api
+import libraries.xml
 import logging
 import logging.config
 import os
@@ -11,7 +12,6 @@ from csv import writer
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
 from typing import NamedTuple
-from xml.dom import minidom
 
 load_dotenv()
 
@@ -68,16 +68,12 @@ def get_alma_record(mms_id: str) -> ET.Element:
         headers=headers, timeout=45)
     libraries.api.log_response_and_raise_for_status(response)
 
-    # Pretty-print XML response
-    xml_as_pretty_printed_str = \
-        minidom.parseString(response.text).toprettyxml(indent='  ',
-        encoding='UTF-8')
-    logger.debug(f'Original record:\n' \
-        f'{xml_as_pretty_printed_str.decode("UTF-8")}')
+    xml_as_pretty_printed_bytes_obj = libraries.xml.prettify_and_log_xml(response,
+        'Original record')
 
     # Create XML file
     with open(f'xml/{mms_id}_original.xml', 'wb') as file:
-        file.write(xml_as_pretty_printed_str)
+        file.write(xml_as_pretty_printed_bytes_obj)
 
     # Return root element of XML tree
     return ET.fromstring(response.text)
@@ -322,16 +318,12 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             data=payload, timeout=45)
         libraries.api.log_response_and_raise_for_status(put_response)
 
-        # Pretty-print XML response
-        xml_as_pretty_printed_str = \
-            minidom.parseString(put_response.text).toprettyxml(indent='  ',
-            encoding='UTF-8')
-        logger.debug(f'Modified record:\n' \
-            f'{xml_as_pretty_printed_str.decode("UTF-8")}')
+        xml_as_pretty_printed_bytes_obj = libraries.xml.prettify_and_log_xml(
+            put_response, 'Modified record')
 
         # Create XML file
         with open(f'xml/{mms_id}_modified.xml', 'wb') as file:
-            file.write(xml_as_pretty_printed_str)
+            file.write(xml_as_pretty_printed_bytes_obj)
 
         logger.debug(f"MMS ID '{mms_id}' has been updated.")
         return Record_confirmation(True, oclc_nums_from_record_str, None)
