@@ -1,8 +1,8 @@
 import argparse
+import libraries.record
 import logging
 import logging.config
 import os
-import re
 import xml.etree.ElementTree as ET
 from csv import reader, writer
 from datetime import datetime
@@ -44,24 +44,6 @@ def init_argparse() -> argparse.ArgumentParser:
     return parser
 
 
-def remove_leading_zeros(string: str) -> str:
-    """Removes leading zeros from the given string.
-
-    Parameters
-    ----------
-    string: str
-        The string to remove leading zeros from. This string must represent an
-        integer value (i.e. it cannot contain a decimal point or any other
-        non-digit character).
-
-    Returns
-    -------
-    str
-        The string without leading zeros
-    """
-    return str(int(string))
-
-
 def main() -> None:
     """Extracts the MMS IDs and OCLC Numbers from each record in the XML files.
 
@@ -90,12 +72,6 @@ def main() -> None:
 
     logger.debug(f'{alma_records_with_current_oclc_num=}')
     logger.debug(f'{type(alma_records_with_current_oclc_num)=}\n')
-
-    oclc_org_code_prefix = '(OCoLC)'
-    oclc_org_code_prefix_len = len(oclc_org_code_prefix)
-    valid_oclc_number_prefixes = {'ocm', 'ocn', 'on'}
-    valid_oclc_number_prefixes_str = f"If present, the OCLC number prefix " \
-        f"must be one of the following: {', '.join(valid_oclc_number_prefixes)}"
 
     with open('csv/master_list_records_with_current_oclc_num.csv', mode='a',
             newline='') as records_with_current_oclc_num, \
@@ -140,108 +116,34 @@ def main() -> None:
                 # and set
                 all_oclc_nums_from_record = list()
                 unique_oclc_nums_from_record = set()
-                error_found = False
+                found_error_in_record = False
 
-                for i, field_035_element in enumerate(
+                for field_035_element_index, field_035_element in enumerate(
                     record_element.findall('./datafield[@tag="035"]')):
                     # Extract subfield a (which would contain the OCLC number
                     # if present)
-                    subfield_a_element = \
-                        field_035_element.find('./subfield[@code="a"]')
-                    if subfield_a_element is None:
+                    subfield_a_with_oclc_num = \
+                        libraries.record.get_subfield_a_with_oclc_num(
+                            field_035_element,
+                            field_035_element_index)
+
+                    if subfield_a_with_oclc_num is None:
                         continue
 
-                    subfield_a = subfield_a_element.text
-                    logger.debug(f'035 field #{i + 1}, subfield a: ' \
-                        f'{subfield_a}')
-
-                    # Skip this 035 field if it's not an OCLC number
-                    if not subfield_a.startswith(oclc_org_code_prefix):
-                        continue
-
-                    # Extract the OCLC number itself
-                    oclc_num_without_org_code_prefix = \
-                        subfield_a[oclc_org_code_prefix_len:].rstrip()
-
-                    match_on_first_digit = re.search(r'\d',
-                        oclc_num_without_org_code_prefix)
-
-                    if oclc_num_without_org_code_prefix == '':
-                        oclc_num_without_org_code_prefix = \
-                            f'<nothing after {oclc_org_code_prefix}>'
-
-                    extracted_oclc_num_from_record = \
-                        oclc_num_without_org_code_prefix
-                    extracted_oclc_num_prefix = ''
-
-                    if match_on_first_digit is None:
-                        logger.debug(f'This OCLC number has no digits: ' \
-                            f'{subfield_a}')
-                    else:
-                        extracted_oclc_num_from_record = \
-                            oclc_num_without_org_code_prefix[
-                                match_on_first_digit.start():]
-                        extracted_oclc_num_prefix = \
-                            oclc_num_without_org_code_prefix[
-                                :match_on_first_digit.start()]
-
-                    found_valid_oclc_prefix = True
-                    found_valid_oclc_num = True
-
-                    # Check for invalid prefix
-                    if len(extracted_oclc_num_prefix) > 0:
-                        logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
-                            f'number prefix: {extracted_oclc_num_prefix}')
-
-                        if (extracted_oclc_num_prefix not in
-                            valid_oclc_number_prefixes):
-                            found_valid_oclc_prefix = False
-
-                            logger.debug(f"'{extracted_oclc_num_prefix}' is " \
-                                f"an invalid OCLC number prefix. " \
-                                f"{valid_oclc_number_prefixes_str}")
-
-                            # Include invalid prefix with OCLC number
-                            extracted_oclc_num_from_record = (
-                                extracted_oclc_num_prefix
-                                + extracted_oclc_num_from_record)
-
-                    # Check for invalid number
-                    found_valid_oclc_num = \
-                        extracted_oclc_num_from_record.isdigit()
-
-                    # Remove leading zeros if extracted OCLC number is valid
-                    if found_valid_oclc_prefix and found_valid_oclc_num:
-                        try:
-                            extracted_oclc_num_from_record = \
-                                remove_leading_zeros(
-                                    extracted_oclc_num_from_record)
-                        except ValueError as value_err:
-                            logger.exception(f"A ValueError occurred when " \
-                                f"trying to remove leading zeros from " \
-                                f"'{extracted_oclc_num_from_record}', which " \
-                                f"was extracted from an 035 $a field of " \
-                                f"MMS ID '{mms_id}'. To remove leading " \
-                                f"zeros, the extracted OCLC number cannot " \
-                                f"contain a decimal point or any other " \
-                                f"non-digit character. Error message: " \
-                                f"{value_err}")
-                            error_found = True
-                    else:
-                        if not found_valid_oclc_num:
-                            logger.debug(f"'{extracted_oclc_num_from_record}'" \
-                                f" is an invalid OCLC number (because it " \
-                                f"contains at least one non-digit character).")
-                        error_found = True
-
-                    logger.debug(f'035 field #{i + 1}, extracted OCLC ' \
-                        f'number: {extracted_oclc_num_from_record}')
+                    (subfield_a_without_oclc_org_code_prefix,
+                            extracted_oclc_num,
+                            found_valid_oclc_prefix,
+                            found_valid_oclc_num,
+                            found_error_in_record) = \
+                        libraries.record.extract_oclc_num_from_subfield_a(
+                            subfield_a_with_oclc_num,
+                            field_035_element_index,
+                            found_error_in_record)
 
                     all_oclc_nums_from_record.append(
-                        oclc_num_without_org_code_prefix)
+                        subfield_a_without_oclc_org_code_prefix)
 
-                    unique_oclc_nums_from_record.add(
-                        extracted_oclc_num_from_record)
+                    unique_oclc_nums_from_record.add(extracted_oclc_num)
 
                 logger.debug(f'{unique_oclc_nums_from_record=}')
                 logger.debug(f'{all_oclc_nums_from_record=}')
@@ -254,11 +156,11 @@ def main() -> None:
                     unique_oclc_nums_from_record_str = '<none>'
                     logger.debug(f'{mms_id} has no OCLC number in an 035 $a ' \
                         f'field')
-                    error_found = True
+                    found_error_in_record = True
                 elif unique_oclc_nums_from_record_len == 1:
                     unique_oclc_nums_from_record_str = \
                         next(iter(unique_oclc_nums_from_record))
-                    if error_found:
+                    if found_error_in_record:
                         logger.debug(f'{mms_id} has at least one invalid ' \
                             f'OCLC number: {unique_oclc_nums_from_record_str}')
                 else:
@@ -267,9 +169,9 @@ def main() -> None:
                         ', '.join(unique_oclc_nums_from_record)
                     logger.debug(f'{mms_id} has multiple OCLC numbers: ' \
                         f'{unique_oclc_nums_from_record_str}')
-                    error_found = True
+                    found_error_in_record = True
 
-                if error_found:
+                if found_error_in_record:
                     # Add record to records_with_errors spreadsheet
                     if records_with_errors.tell() == 0:
                         # Write header row
