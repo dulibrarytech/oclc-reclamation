@@ -214,7 +214,8 @@ def main() -> None:
 
             logger.debug(f'Finished processing file: {file}\n')
 
-    logger.debug(f'{mms_ids_already_processed=}\n')
+    # logger.debug(f'{mms_ids_already_processed=}\n')
+    logger.debug(f'{len(mms_ids_already_processed)=}\n')
 
     print(f'End of script. Completed in: {datetime.now() - start_time} ' \
         f'(hours:minutes:seconds.microseconds)')
