@@ -1,5 +1,6 @@
 import argparse
 import libraries.api
+import libraries.record
 import libraries.xml
 import logging
 import logging.config
@@ -108,36 +109,31 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
 
     logger.debug(f"Attempting to update MMS ID '{mms_id}'...")
 
-    assert mms_id is not None and len(mms_id) > 0, f"Invalid MMS ID: " \
-        f"'{mms_id}'. It cannot be empty."
+    # Make sure that mms_id and oclc_num are not empty and remove any leading
+    # and trailing whitespace.
+    empty_mms_id_error_msg = f"Invalid MMS ID: '{mms_id}'. It cannot be empty."
+    empty_oclc_num_error_msg = f"Invalid OCLC number: '{oclc_num}'. " \
+        f"It cannot be empty."
 
-    assert oclc_num is not None and len(oclc_num) > 0, f"Invalid OCLC " \
-        f"number: '{oclc_num}'. It cannot be empty."
+    assert mms_id is not None, empty_mms_id_error_msg
+    assert oclc_num is not None, empty_oclc_num_error_msg
 
-    # Make sure MMS ID contains numbers only.
-    # Don't validate the length because "The MMS ID can be 8 to 19 digits long
-    # (with the first two digits referring to the record type and the last four
-    # digits referring to a unique identifier for the institution)".
-    # Source: https://knowledge.exlibrisgroup.com/Alma/Product_Documentation/010Alma_Online_Help_(English)/120Alma_Glossary
+    mms_id = mms_id.strip()
+    oclc_num = oclc_num.strip()
+
+    assert len(mms_id) > 0, empty_mms_id_error_msg
+    assert len(oclc_num) > 0, empty_oclc_num_error_msg
+
+    # Make sure that mms_id and oclc_num contain numbers only.
     assert mms_id.isdigit(), f"Invalid MMS ID: '{mms_id}' must " \
         f"contain only digits."
 
-    # Make sure OCLC number contains numbers only and has at least 8 digits
     assert oclc_num.isdigit(), f"Invalid OCLC number: '{oclc_num}' must " \
         f"contain only digits."
 
-    oclc_num_len = len(oclc_num)
-    assert oclc_num_len >= 8, f"Invalid OCLC number: '{oclc_num}' contains " \
-        f"{oclc_num_len} digits. To be valid, it must contain 8 or more digits."
-
-    # Create full OCLC number string based on length of oclc_num
-    full_oclc_num = '(OCoLC)'
-    if oclc_num_len == 8:
-        full_oclc_num += f'ocm{oclc_num} '
-    elif oclc_num_len == 9:
-        full_oclc_num += f'ocn{oclc_num}'
-    else:
-        full_oclc_num += f'on{oclc_num}'
+    # Remove leading zeros and create full OCLC number string
+    oclc_num = libraries.record.remove_leading_zeros(oclc_num)
+    full_oclc_num = f'{libraries.record.oclc_org_code_prefix}{oclc_num}'
 
     logger.debug(f'Full OCLC number: {full_oclc_num}')
 
@@ -145,84 +141,53 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     root = get_alma_record(mms_id)
     record_element = root.find('./record')
 
-    # Define the OCLC prefixes
-    oclc_org_code_prefix = '(OCoLC)'
-    oclc_org_code_prefix_len = len(oclc_org_code_prefix)
-    valid_oclc_number_prefixes = {'ocm', 'ocn', 'on'}
-    valid_oclc_number_prefixes_str = f"If present, the OCLC number prefix " \
-        f"must be one of the following: {', '.join(valid_oclc_number_prefixes)}"
-
     need_to_update_record = False
     oclc_nums_from_record = list()
     oclc_nums_for_019_field = set()
     found_035_field_with_current_oclc_num = False
     found_potentially_valid_oclc_number_with_invalid_oclc_prefix = False
     error_msg = None
+    found_error_in_record = False
 
     # Iterate over each 035 field
-    for i, element in enumerate(
+    for field_035_element_index, field_035_element in enumerate(
         record_element.findall('./datafield[@tag="035"]')):
         # Extract subfield a (which would contain the OCLC number if present)
-        subfield_a = element.find('./subfield[@code="a"]').text
-        logger.debug(f'035 field #{i + 1}, subfield $a: {subfield_a}')
+        subfield_a_with_oclc_num = \
+            libraries.record.get_subfield_a_with_oclc_num(
+                field_035_element,
+                field_035_element_index)
 
-        # Skip this 035 field if it's not an OCLC number
-        if not subfield_a.startswith(oclc_org_code_prefix):
+        if subfield_a_with_oclc_num is None:
             continue
 
-        # Extract the OCLC number itself
-        match_on_first_digit = re.search(r'\d', subfield_a)
+        (subfield_a_without_oclc_org_code_prefix,
+                extracted_oclc_num,
+                found_valid_oclc_prefix,
+                found_valid_oclc_num,
+                found_error_in_record) = \
+            libraries.record.extract_oclc_num_from_subfield_a(
+                subfield_a_with_oclc_num,
+                field_035_element_index,
+                found_error_in_record)
 
-        extracted_oclc_num_from_record = ''
-        extracted_oclc_num_prefix = ''
+        oclc_nums_from_record.append(subfield_a_without_oclc_org_code_prefix)
 
-        if match_on_first_digit is None:
-            logger.debug(f'This OCLC number has no digits: {subfield_a}')
-            if len(subfield_a) > oclc_org_code_prefix_len:
-                extracted_oclc_num_from_record = \
-                    subfield_a[oclc_org_code_prefix_len:].strip()
+        # Check for potentially-valid OCLC number with invalid prefix
+        found_potentially_valid_oclc_number_with_invalid_oclc_prefix = \
+            found_valid_oclc_num and not found_valid_oclc_prefix
+
+        if found_potentially_valid_oclc_number_with_invalid_oclc_prefix:
+            if error_msg is None:
+                error_msg = f'Record contains at least one OCLC number ' \
+                    f'with an invalid prefix. ' \
+                    f'{libraries.record.valid_oclc_number_prefixes_str}'
         else:
-            extracted_oclc_num_from_record = \
-                subfield_a[match_on_first_digit.start():].strip()
-            extracted_oclc_num_prefix = \
-                subfield_a[
-                    oclc_org_code_prefix_len:match_on_first_digit.start()]
-
-        logger.debug(f'035 field #{i + 1}, extracted OCLC number: ' \
-            f'{extracted_oclc_num_from_record}')
-
-        if len(extracted_oclc_num_prefix) > 0:
-            logger.debug(f'035 field #{i + 1}, extracted OCLC number prefix: ' \
-                f'{extracted_oclc_num_prefix}')
-
-            # Check for invalid prefix attached to potentially valid number
-            if (extracted_oclc_num_prefix not in valid_oclc_number_prefixes and
-                extracted_oclc_num_from_record.isdigit()):
-                found_potentially_valid_oclc_number_with_invalid_oclc_prefix = \
-                    True
-
-                logger.debug(f"'{extracted_oclc_num_prefix}' is an invalid " \
-                    f"OCLC number prefix. {valid_oclc_number_prefixes_str}")
-
-                if error_msg is None:
-                    error_msg = f"Record contains at least one OCLC number " \
-                        f"with an invalid prefix. " \
-                        f"{valid_oclc_number_prefixes_str}"
-
-                # Include invalid prefix with OCLC number for clarity
-                extracted_oclc_num_from_record = \
-                    extracted_oclc_num_prefix + extracted_oclc_num_from_record
-
-        oclc_nums_from_record.append(extracted_oclc_num_from_record
-            if extracted_oclc_num_from_record != ''
-            else f'<nothing after {oclc_org_code_prefix}>')
-
-        if not found_potentially_valid_oclc_number_with_invalid_oclc_prefix:
             # Compare the extracted OCLC number to the current OCLC number
             extracted_oclc_num_matches_current_oclc_num = \
-                extracted_oclc_num_from_record == oclc_num.strip()
+                extracted_oclc_num == oclc_num.strip()
             logger.debug(f'Does the extracted OCLC number ' \
-                f'({extracted_oclc_num_from_record}) match the current OCLC ' \
+                f'({extracted_oclc_num}) match the current OCLC ' \
                 f'number ({oclc_num})? ' \
                 f'{extracted_oclc_num_matches_current_oclc_num}')
 
@@ -232,14 +197,14 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
                 # OCLC number or (2) is a duplicate of another 035 field with
                 # the current OCLC number. In either case, remove this 035
                 # field.
-                record_element.remove(element)
-                logger.debug(f'Removed 035 field #{i + 1}, whose subfield $a '
-                    f'is: {subfield_a}')
+                record_element.remove(field_035_element)
+                logger.debug(f'Removed 035 field #{field_035_element_index + 1}'
+                    f', whose subfield $a is: {subfield_a_with_oclc_num}')
 
                 if (not extracted_oclc_num_matches_current_oclc_num and
-                    len(extracted_oclc_num_from_record) > 0 and
-                    extracted_oclc_num_from_record.isdigit()):
-                    oclc_nums_for_019_field.add(extracted_oclc_num_from_record)
+                    len(extracted_oclc_num) > 0 and
+                    found_valid_oclc_num):
+                    oclc_nums_for_019_field.add(extracted_oclc_num)
 
                 need_to_update_record = True
             else:
