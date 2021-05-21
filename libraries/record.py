@@ -48,6 +48,9 @@ def extract_oclc_num_from_subfield_a(
     found_valid_oclc_prefix = True
     found_valid_oclc_num = True
 
+    # Check for invalid number
+    found_valid_oclc_num = extracted_oclc_num.isdigit()
+
     # Check for invalid prefix
     if len(extracted_oclc_num_prefix) > 0:
         logger.debug(f'035 field #{field_035_element_index + 1}, extracted ' \
@@ -65,10 +68,6 @@ def extract_oclc_num_from_subfield_a(
             extracted_oclc_num = (
                 extracted_oclc_num_prefix
                 + extracted_oclc_num)
-
-    # Check for invalid number
-    found_valid_oclc_num = \
-        extracted_oclc_num.isdigit()
 
     # Remove leading zeros if extracted OCLC number is valid
     if found_valid_oclc_prefix and found_valid_oclc_num:
