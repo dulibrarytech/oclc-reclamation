@@ -6,7 +6,6 @@ import logging
 import logging.config
 import os
 import pandas as pd
-import re
 import requests
 import xml.etree.ElementTree as ET
 from csv import writer
@@ -69,8 +68,8 @@ def get_alma_record(mms_id: str) -> ET.Element:
         headers=headers, timeout=45)
     libraries.api.log_response_and_raise_for_status(response)
 
-    xml_as_pretty_printed_bytes_obj = libraries.xml.prettify_and_log_xml(response,
-        'Original record')
+    xml_as_pretty_printed_bytes_obj = \
+        libraries.xml.prettify_and_log_xml(response, 'Original record')
 
     # Create XML file
     with open(f'xml/{mms_id}_original.xml', 'wb') as file:
@@ -112,8 +111,8 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     # Make sure that mms_id and oclc_num are not empty and remove any leading
     # and trailing whitespace.
     empty_mms_id_error_msg = f"Invalid MMS ID: '{mms_id}'. It cannot be empty."
-    empty_oclc_num_error_msg = f"Invalid OCLC number: '{oclc_num}'. " \
-        f"It cannot be empty."
+    empty_oclc_num_error_msg = (f"Invalid OCLC number: '{oclc_num}'. It "
+        f"cannot be empty.")
 
     assert mms_id is not None, empty_mms_id_error_msg
     assert oclc_num is not None, empty_oclc_num_error_msg
@@ -125,11 +124,11 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     assert len(oclc_num) > 0, empty_oclc_num_error_msg
 
     # Make sure that mms_id and oclc_num contain numbers only.
-    assert mms_id.isdigit(), f"Invalid MMS ID: '{mms_id}' must " \
-        f"contain only digits."
+    assert mms_id.isdigit(), (f"Invalid MMS ID: '{mms_id}' must contain only "
+        f"digits.")
 
-    assert oclc_num.isdigit(), f"Invalid OCLC number: '{oclc_num}' must " \
-        f"contain only digits."
+    assert oclc_num.isdigit(), (f"Invalid OCLC number: '{oclc_num}' must "
+        f"contain only digits.")
 
     # Remove leading zeros and create full OCLC number string
     oclc_num = libraries.record.remove_leading_zeros(oclc_num)
@@ -151,7 +150,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
 
     # Iterate over each 035 field
     for field_035_element_index, field_035_element in enumerate(
-        record_element.findall('./datafield[@tag="035"]')):
+            record_element.findall('./datafield[@tag="035"]')):
         # Extract subfield a (which would contain the OCLC number if present)
         subfield_a_with_oclc_num = \
             libraries.record.get_subfield_a_with_oclc_num(
@@ -179,31 +178,30 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
 
         if found_potentially_valid_oclc_number_with_invalid_oclc_prefix:
             if error_msg is None:
-                error_msg = f'Record contains at least one OCLC number ' \
-                    f'with an invalid prefix. ' \
-                    f'{libraries.record.valid_oclc_number_prefixes_str}'
+                error_msg = (f'Record contains at least one OCLC number '
+                    f'with an invalid prefix. '
+                    f'{libraries.record.valid_oclc_number_prefixes_str}')
         else:
             # Compare the extracted OCLC number to the current OCLC number
             extracted_oclc_num_matches_current_oclc_num = \
-                extracted_oclc_num == oclc_num.strip()
-            logger.debug(f'Does the extracted OCLC number ' \
-                f'({extracted_oclc_num}) match the current OCLC ' \
-                f'number ({oclc_num})? ' \
-                f'{extracted_oclc_num_matches_current_oclc_num}')
+                extracted_oclc_num == oclc_num
+            logger.debug(f'Does the extracted OCLC number '
+                f'({extracted_oclc_num}) match the current OCLC number '
+                f'({oclc_num})? {extracted_oclc_num_matches_current_oclc_num}')
 
             if (not extracted_oclc_num_matches_current_oclc_num or
-                found_035_field_with_current_oclc_num):
+                    found_035_field_with_current_oclc_num):
                 # This 035 field either (1) contains an old, empty or invalid
                 # OCLC number or (2) is a duplicate of another 035 field with
                 # the current OCLC number. In either case, remove this 035
                 # field.
                 record_element.remove(field_035_element)
                 logger.debug(f'Removed 035 field #{field_035_element_index + 1}'
-                    f', whose subfield $a is: {subfield_a_with_oclc_num}')
+                    f', whose subfield a is: {subfield_a_with_oclc_num}')
 
                 if (not extracted_oclc_num_matches_current_oclc_num and
-                    len(extracted_oclc_num) > 0 and
-                    found_valid_oclc_num):
+                        len(extracted_oclc_num) > 0 and
+                        found_valid_oclc_num):
                     oclc_nums_for_019_field.add(extracted_oclc_num)
 
                 need_to_update_record = True
@@ -222,12 +220,12 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     logger.debug(f'{oclc_nums_from_record_list_length=}')
     logger.debug(f'{oclc_nums_from_record_str=}')
 
-    # Don't update the record if it contains a potentially valid OCLC number
+    # Don't update the record if it contains a potentially-valid OCLC number
     # with an invalid prefix.
     if found_potentially_valid_oclc_number_with_invalid_oclc_prefix:
-        logger.debug(f"Did not update MMS ID '{mms_id} because it contains " \
-            f"at least one potentially valid OCLC number with an invalid " \
-            f"prefix.")
+        logger.debug(f"Did not update MMS ID '{mms_id}' because it contains at "
+            f"least one potentially-valid OCLC number with an invalid prefix.")
+
         return Record_confirmation(False, oclc_nums_from_record_str, error_msg)
 
     # Only add or edit the 019 field if oclc_nums_for_019_field set is non-empty
@@ -255,7 +253,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
 
             first_019_element_as_str = \
                 ET.tostring(first_019_element, encoding="unicode")
-            logger.debug(f'First 019 element after adding {old_oclc_num}:\n' \
+            logger.debug(f'First 019 element after adding {old_oclc_num}:\n'
                 f'{first_019_element_as_str}')
 
     if not found_035_field_with_current_oclc_num:
@@ -302,9 +300,9 @@ def init_argparse() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         usage='%(prog)s [option] excel_file',
-        description=f'For each row in the Excel file, add the corresponding ' \
-            f'OCLC Number to the specified Alma record (indicated by the MMS ' \
-            f'ID).',
+        description=(f'For each row in the Excel file, add the corresponding '
+            f'OCLC Number to the specified Alma record (indicated by the MMS '
+            f'ID).')
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -314,8 +312,8 @@ def init_argparse() -> argparse.ArgumentParser:
         'Excel_file',
         metavar='excel_file',
         type=str,
-        help=f'the name and path of the input file, which must be in Excel ' \
-            f'format (e.g. xlsx/filename.xlsx)'
+        help=(f'the name and path of the input file, which must be in Excel '
+            f'format (e.g. xlsx/filename.xlsx)')
     )
     return parser
 
@@ -374,33 +372,43 @@ def main() -> None:
                     # Add record to records_updated spreadsheet
                     if records_updated.tell() == 0:
                         # Write header row
-                        records_updated_writer.writerow([ 'MMS ID',
-                            'Original OCLC Number(s)', 'New OCLC Number' ])
+                        records_updated_writer.writerow([
+                            'MMS ID',
+                            'Original OCLC Number(s)',
+                            'New OCLC Number'
+                        ])
 
-                    records_updated_writer.writerow([ row['MMS ID'],
-                        record.orig_oclc_nums, row['OCLC Number'] ])
+                    records_updated_writer.writerow([
+                        row['MMS ID'],
+                        record.orig_oclc_nums,
+                        row['OCLC Number']
+                    ])
                 elif record.error_msg is None:
                     # Add record to records_with_no_update_needed spreadsheet
                     if records_with_no_update_needed.tell() == 0:
                         # Write header row
-                        records_with_no_update_needed_writer.writerow(
-                            [ 'MMS ID', 'OCLC Number' ])
+                        records_with_no_update_needed_writer.writerow([
+                            'MMS ID',
+                            'OCLC Number'
+                        ])
 
-                    records_with_no_update_needed_writer.writerow(
-                        [ row['MMS ID'], row['OCLC Number'] ])
+                    records_with_no_update_needed_writer.writerow([
+                        row['MMS ID'],
+                        row['OCLC Number']
+                    ])
             except AssertionError as assert_err:
-                logger.exception(f"An assertion error occurred when " \
-                    f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}" \
+                logger.exception(f"An assertion error occurred when "
+                    f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}"
                     f" of input file): {assert_err}")
                 error_msg = f"Assertion Error: {assert_err}"
             except HTTPError as http_err:
-                logger.exception(f"An HTTP error occurred when processing " \
-                    f"MMS ID '{row['MMS ID']}' (at row {index + 2} of input " \
+                logger.exception(f"An HTTP error occurred when processing "
+                    f"MMS ID '{row['MMS ID']}' (at row {index + 2} of input "
                     f"file): {http_err}")
                 error_msg = f"HTTP Error: {http_err}"
             except Exception as err:
-                logger.exception(f"An error occurred when processing MMS ID " \
-                    f"'{row['MMS ID']}' (at row {index + 2} of input file): " \
+                logger.exception(f"An error occurred when processing MMS ID "
+                    f"'{row['MMS ID']}' (at row {index + 2} of input file): "
                     f"{err}")
                 error_msg = err
             finally:
@@ -408,16 +416,22 @@ def main() -> None:
                     # Add record to records_with_errors spreadsheet
                     if records_with_errors.tell() == 0:
                         # Write header row
-                        records_with_errors_writer.writerow([ 'MMS ID',
+                        records_with_errors_writer.writerow([
+                            'MMS ID',
                             "OCLC Number(s) from Alma Record's 035 $a",
-                            'Current OCLC Number', 'Error' ])
+                            'Current OCLC Number',
+                            'Error'
+                        ])
 
-                    records_with_errors_writer.writerow([ row['MMS ID'],
+                    records_with_errors_writer.writerow([
+                        row['MMS ID'],
                         record.orig_oclc_nums if record is not None
-                        else '<record not checked>',
-                        row['OCLC Number'], error_msg ])
+                            else '<record not checked>',
+                        row['OCLC Number'],
+                        error_msg
+                    ])
 
-    print(f'\nEnd of script. {num_records_updated} of {len(data.index)} ' \
+    print(f'\nEnd of script. {num_records_updated} of {len(data.index)} '
         f'records updated.')
 
 
