@@ -144,7 +144,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     oclc_nums_from_record = list()
     oclc_nums_for_019_field = set()
     found_035_field_with_current_oclc_num = False
-    found_potentially_valid_oclc_number_with_invalid_oclc_prefix = False
+    record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix = False
     error_msg = None
     found_error_in_record = False
 
@@ -173,10 +173,14 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         oclc_nums_from_record.append(subfield_a_without_oclc_org_code_prefix)
 
         # Check for potentially-valid OCLC number with invalid prefix
-        found_potentially_valid_oclc_number_with_invalid_oclc_prefix = \
+        found_potentially_valid_oclc_num_with_invalid_oclc_prefix = \
             found_valid_oclc_num and not found_valid_oclc_prefix
 
-        if found_potentially_valid_oclc_number_with_invalid_oclc_prefix:
+        record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix = \
+            (record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix
+             or found_potentially_valid_oclc_num_with_invalid_oclc_prefix)
+
+        if record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
             if error_msg is None:
                 error_msg = (f'Record contains at least one OCLC number '
                     f'with an invalid prefix. '
@@ -222,7 +226,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
 
     # Don't update the record if it contains a potentially-valid OCLC number
     # with an invalid prefix.
-    if found_potentially_valid_oclc_number_with_invalid_oclc_prefix:
+    if record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
         logger.debug(f"Did not update MMS ID '{mms_id}' because it contains at "
             f"least one potentially-valid OCLC number with an invalid prefix.")
 
