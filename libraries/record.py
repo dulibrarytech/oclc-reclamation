@@ -91,23 +91,49 @@ def extract_oclc_num_from_subfield_a(
 def get_subfield_a_with_oclc_num(
         field_035_element: ET.Element,
         field_035_element_index: int
-        ) -> Optional[str]:
-    subfield_a_element = field_035_element.find('./subfield[@code="a"]')
+        ) -> Optional[Tuple[Optional[str], bool, Optional[str]]]:
+    subfield_a_elements = field_035_element.findall('./subfield[@code="a"]')
 
-    if subfield_a_element is None:
+    # TO DO: Change type hint to the correct return type after testing
+    logger.debug(f'{subfield_a_elements=}')
+    logger.debug(f'{type(subfield_a_elements)=}')
+    subfield_a_elements_len = len(subfield_a_elements)
+    logger.debug(f'{subfield_a_elements_len=}')
+
+    if subfield_a_elements is None or subfield_a_elements_len == 0:
         logger.debug(f'035 field #{field_035_element_index + 1} has no '
             f'subfield a.')
         return None
 
-    subfield_a = subfield_a_element.text
-    logger.debug(f'035 field #{field_035_element_index + 1}, subfield a: '
-        f'{subfield_a}')
+    subfield_a_strings = list()
+    for subfield_a_element_index, subfield_a_element in enumerate(
+            subfield_a_elements, start=1):
+        subfield_a_strings.append(subfield_a_element.text)
+        logger.debug(f'035 field #{field_035_element_index + 1}, subfield a '
+            f'#{subfield_a_element_index}: {subfield_a_element.text}')
 
-    # Skip this 035 field if it's not an OCLC number
-    if not subfield_a.startswith(oclc_org_code_prefix):
-        return None
+    # TO DO: Remove subfield_a_strings_len and assertion after testing
+    subfield_a_strings_len = len(subfield_a_strings)
+    assert subfield_a_elements_len == subfield_a_strings_len
 
-    return subfield_a
+    single_subfield_a_with_oclc_num = None
+    found_multiple_subfield_a_values = False
+    error_msg = None
+
+    if subfield_a_strings_len == 1:
+        # Check whether subfield a value is an OCLC number
+        if subfield_a_strings[0].startswith(oclc_org_code_prefix):
+            single_subfield_a_with_oclc_num = subfield_a_strings[0]
+    else:
+        # subfield_a_strings_len > 1
+        found_multiple_subfield_a_values = True
+        error_msg = (f'Record contains at least one 035 field with multiple '
+            f'$a values: {", ".join(subfield_a_strings)}')
+        logger.debug(error_msg)
+
+    return (single_subfield_a_with_oclc_num,
+        found_multiple_subfield_a_values,
+        error_msg)
 
 
 def remove_leading_zeros(string: str) -> str:
