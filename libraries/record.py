@@ -141,9 +141,6 @@ def get_subfield_a_with_oclc_num(
     subfield_a_count = len(subfield_a_strings)
     error_msg = None
 
-    # TO DO: Remove assertion after testing
-    assert len(subfield_a_elements) == subfield_a_count
-
     if subfield_a_count == 0:
         error_msg = (f'Record contains at least one 035 field (i.e. 035 field '
             f'#{field_035_element_index + 1}) with no $a value')
