@@ -2,7 +2,7 @@ import logging
 import logging.config
 import re
 import xml.etree.ElementTree as ET
-from typing import Optional, Tuple
+from typing import NamedTuple, Optional, Tuple
 
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
@@ -12,6 +12,25 @@ oclc_org_code_prefix_len = len(oclc_org_code_prefix)
 valid_oclc_number_prefixes = {'ocm', 'ocn', 'on'}
 valid_oclc_number_prefixes_str = (f"If present, the OCLC number prefix must "
     f"be one of the following: {', '.join(valid_oclc_number_prefixes)}")
+
+
+class Subfield_a(NamedTuple):
+    """Data returned by the get_subfield_a_with_oclc_num function.
+
+    Fields
+    ------
+    string_with_oclc_num: Optional[str]
+        The subfield a string, provided that the 035 field contains only one
+        subfield a and that it is an OCLC number; otherwise, None
+    subfield_a_count: int
+        Number of subfield a values in the 035 field
+    error_msg: Optional[str]
+        Message explaining the error found in the 035 field, if applicable;
+        otherwise, None
+    """
+    string_with_oclc_num: Optional[str]
+    subfield_a_count: int
+    error_msg: Optional[str]
 
 
 def extract_oclc_num_from_subfield_a(
@@ -91,19 +110,31 @@ def extract_oclc_num_from_subfield_a(
 def get_subfield_a_with_oclc_num(
         field_035_element: ET.Element,
         field_035_element_index: int
-        ) -> Optional[Tuple[Optional[str], bool, Optional[str]]]:
+        ) -> Subfield_a:
+    """Checks the given 035 field for a subfield $a containing an OCLC number.
+
+    Parameters
+    ----------
+    field_035_element: ET.Element
+        The 035 field to check
+    field_035_element_index: int
+        The 035 field's index
+
+    Returns
+    -------
+    Subfield_a
+        NamedTuple with data about the subfield a value(s). Includes the
+        following fields: string_with_oclc_num, subfield_a_count,
+        error_msg
+    """
+
     subfield_a_elements = field_035_element.findall('./subfield[@code="a"]')
 
-    # TO DO: Change type hint to the correct return type after testing
+    # TO DO: Remove subfield_a_elements_len after testing
     logger.debug(f'{subfield_a_elements=}')
     logger.debug(f'{type(subfield_a_elements)=}')
     subfield_a_elements_len = len(subfield_a_elements)
     logger.debug(f'{subfield_a_elements_len=}')
-
-    if subfield_a_elements is None or subfield_a_elements_len == 0:
-        logger.debug(f'035 field #{field_035_element_index + 1} has no '
-            f'subfield a.')
-        return None
 
     subfield_a_strings = list()
     for subfield_a_element_index, subfield_a_element in enumerate(
@@ -112,27 +143,31 @@ def get_subfield_a_with_oclc_num(
         logger.debug(f'035 field #{field_035_element_index + 1}, subfield a '
             f'#{subfield_a_element_index}: {subfield_a_element.text}')
 
-    # TO DO: Remove subfield_a_strings_len and assertion after testing
-    subfield_a_strings_len = len(subfield_a_strings)
-    assert subfield_a_elements_len == subfield_a_strings_len
+    subfield_a_count = len(subfield_a_strings)
+    # TO DO: Remove assertion after testing
+    assert subfield_a_elements_len == subfield_a_count
 
     single_subfield_a_with_oclc_num = None
-    found_multiple_subfield_a_values = False
     error_msg = None
 
-    if subfield_a_strings_len == 1:
+    if subfield_a_count == 0:
+        error_msg = (f'Record contains at least one 035 field (i.e. 035 field '
+            f'#{field_035_element_index + 1}) with no $a value')
+    elif subfield_a_count == 1:
         # Check whether subfield a value is an OCLC number
         if subfield_a_strings[0].startswith(oclc_org_code_prefix):
             single_subfield_a_with_oclc_num = subfield_a_strings[0]
     else:
-        # subfield_a_strings_len > 1
-        found_multiple_subfield_a_values = True
-        error_msg = (f'Record contains at least one 035 field with multiple '
-            f'$a values: {", ".join(subfield_a_strings)}')
+        # subfield_a_count > 1
+        error_msg = (f'Record contains at least one 035 field (i.e. 035 field '
+            f'#{field_035_element_index + 1}) with multiple $a values: '
+            f'{", ".join(subfield_a_strings)}')
+
+    if error_msg is not None:
         logger.debug(error_msg)
 
-    return (single_subfield_a_with_oclc_num,
-        found_multiple_subfield_a_values,
+    return Subfield_a(single_subfield_a_with_oclc_num,
+        subfield_a_count,
         error_msg)
 
 

@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 from csv import writer
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 load_dotenv()
 
@@ -35,16 +35,17 @@ class Record_confirmation(NamedTuple):
     was_updated: bool
         True if the update_alma_record function call resulted in the record
         actually being updated; otherwise, False
-    orig_oclc_nums: str
+    orig_oclc_nums: Optional[str]
         A comma-separated listing of the original OCLC Number(s) from the Alma
-        record's 035 $a field(s)
-    error_msg: str
+        record's 035 $a field(s), provided that no errors caused the process to
+        abort; otherwise, None
+    error_msg: Optional[str]
         Message explaining the error encountered by the update_alma_record
-        function call
+        function call, if applicable; otherwise, None
     """
     was_updated: bool
-    orig_oclc_nums: str
-    error_msg: str
+    orig_oclc_nums: Optional[str]
+    error_msg: Optional[str]
 
 
 def get_alma_record(mms_id: str) -> ET.Element:
@@ -152,12 +153,23 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     for field_035_element_index, field_035_element in enumerate(
             record_element.findall('./datafield[@tag="035"]')):
         # Extract subfield a (which would contain the OCLC number if present)
-        subfield_a_with_oclc_num = \
-            libraries.record.get_subfield_a_with_oclc_num(
-                field_035_element,
-                field_035_element_index)
+        subfield_a_data = libraries.record.get_subfield_a_with_oclc_num(
+            field_035_element,
+            field_035_element_index)
 
-        if subfield_a_with_oclc_num is None:
+        # Make sure this 035 field contains a single subfield $a
+        if subfield_a_data.subfield_a_count != 1:
+            # Do not update this record, but pass along the error message
+            logger.debug(f"Did not update MMS ID '{mms_id}' because 035 field "
+                f"#{field_035_element_index + 1} contains "
+                f"{subfield_a_data.subfield_a_count} subfield a values (and "
+                f"each 035 field must contain one single subfield a).")
+
+            return Record_confirmation(False, None, subfield_a_data.error_msg)
+
+        if (subfield_a_data.subfield_a_count == 1
+                and subfield_a_data.string_with_oclc_num is None):
+            # This 035 field does not contain an OCLC number, so skip it
             continue
 
         (subfield_a_without_oclc_org_code_prefix,
@@ -166,7 +178,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
                 found_valid_oclc_num,
                 found_error_in_record) = \
             libraries.record.extract_oclc_num_from_subfield_a(
-                subfield_a_with_oclc_num,
+                subfield_a_data.string_with_oclc_num,
                 field_035_element_index,
                 found_error_in_record)
 
@@ -200,8 +212,9 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
                 # the current OCLC number. In either case, remove this 035
                 # field.
                 record_element.remove(field_035_element)
-                logger.debug(f'Removed 035 field #{field_035_element_index + 1}'
-                    f', whose subfield a is: {subfield_a_with_oclc_num}')
+                logger.debug(f'Removed 035 field #'
+                    f'{field_035_element_index + 1}, whose subfield a is: '
+                    f'{subfield_a_data.string_with_oclc_num}')
 
                 if (not extracted_oclc_num_matches_current_oclc_num and
                         len(extracted_oclc_num) > 0 and
@@ -430,7 +443,8 @@ def main() -> None:
                     records_with_errors_writer.writerow([
                         row['MMS ID'],
                         record.orig_oclc_nums if record is not None
-                            else '<record not checked>',
+                            and record.orig_oclc_nums is not None
+                            else '<record not fully checked>',
                         row['OCLC Number'],
                         error_msg
                     ])
