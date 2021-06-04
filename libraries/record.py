@@ -129,26 +129,20 @@ def get_subfield_a_with_oclc_num(
     """
 
     subfield_a_elements = field_035_element.findall('./subfield[@code="a"]')
-
-    # TO DO: Remove subfield_a_elements_len after testing
-    logger.debug(f'{subfield_a_elements=}')
-    logger.debug(f'{type(subfield_a_elements)=}')
-    subfield_a_elements_len = len(subfield_a_elements)
-    logger.debug(f'{subfield_a_elements_len=}')
-
     subfield_a_strings = list()
+
     for subfield_a_element_index, subfield_a_element in enumerate(
             subfield_a_elements, start=1):
         subfield_a_strings.append(subfield_a_element.text)
         logger.debug(f'035 field #{field_035_element_index + 1}, subfield a '
             f'#{subfield_a_element_index}: {subfield_a_element.text}')
 
-    subfield_a_count = len(subfield_a_strings)
-    # TO DO: Remove assertion after testing
-    assert subfield_a_elements_len == subfield_a_count
-
     single_subfield_a_with_oclc_num = None
+    subfield_a_count = len(subfield_a_strings)
     error_msg = None
+
+    # TO DO: Remove assertion after testing
+    assert len(subfield_a_elements) == subfield_a_count
 
     if subfield_a_count == 0:
         error_msg = (f'Record contains at least one 035 field (i.e. 035 field '
