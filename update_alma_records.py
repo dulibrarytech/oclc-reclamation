@@ -157,7 +157,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             field_035_element,
             field_035_element_index)
 
-        # Make sure this 035 field contains a single subfield $a
+        # Handle case where 035 field does not contain a single subfield $a
         if subfield_a_data.subfield_a_count != 1:
             # Do not update this record, but pass along the error message
             logger.debug(f"Did not update MMS ID '{mms_id}' because 035 field "
