@@ -34,13 +34,31 @@ class Subfield_a(NamedTuple):
 
 
 def extract_oclc_num_from_subfield_a(
-        subfield_a: str,
+        subfield_a_str: str,
         field_035_element_index: int,
         found_error_in_record: bool
-        ) -> Optional[Tuple[str, str, bool, bool, bool]]:
+        ) -> Tuple[str, str, bool, bool, bool]:
+    """Checks the given 035 field for a subfield $a containing an OCLC number.
+
+    Parameters
+    ----------
+    subfield_a_str: str
+        The subfield a to extract from
+    field_035_element_index: int
+        The index of the 035 field containing this subfield a
+    found_error_in_record: bool
+        True if an error has been found in this record; otherwise, False
+
+    Returns
+    -------
+    Tuple[str, str, bool, bool, bool]
+        Tuple with data about the subfield a extraction. Includes the
+        following fields: oclc_num_without_org_code_prefix, extracted_oclc_num,
+        found_valid_oclc_prefix, found_valid_oclc_num, found_error_in_record
+    """
     # Extract the OCLC number itself
     oclc_num_without_org_code_prefix = \
-        subfield_a[oclc_org_code_prefix_len:].rstrip()
+        subfield_a_str[oclc_org_code_prefix_len:].rstrip()
 
     match_on_first_digit = re.search(r'\d', oclc_num_without_org_code_prefix)
 
@@ -52,7 +70,7 @@ def extract_oclc_num_from_subfield_a(
     extracted_oclc_num_prefix = ''
 
     if match_on_first_digit is None:
-        logger.debug(f'This OCLC number has no digits: {subfield_a}')
+        logger.debug(f'This OCLC number has no digits: {subfield_a_str}')
     else:
         extracted_oclc_num = \
             oclc_num_without_org_code_prefix[match_on_first_digit.start():]
