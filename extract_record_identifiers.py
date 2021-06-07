@@ -163,6 +163,9 @@ def main() -> None:
                 unique_oclc_nums_from_record_len = \
                     len(unique_oclc_nums_from_record)
                 unique_oclc_nums_from_record_str = None
+                all_oclc_nums_from_record_str = (
+                    '<none>' if len(all_oclc_nums_from_record) == 0
+                    else ', '.join(all_oclc_nums_from_record))
 
                 if contains_invalid_number_of_subfield_a_values_in_035:
                     found_error_in_record = True
@@ -212,8 +215,7 @@ def main() -> None:
                         records_with_errors_writer.writerow([
                             mms_id,
                             unique_oclc_nums_from_record_str,
-                            '<none>' if len(all_oclc_nums_from_record) == 0
-                                else ', '.join(all_oclc_nums_from_record),
+                            all_oclc_nums_from_record_str,
                             error_msg
                         ])
                 elif mms_id in alma_records_with_current_oclc_num:
@@ -224,15 +226,18 @@ def main() -> None:
                         # Write header row
                         records_with_current_oclc_num_writer.writerow([
                             'MMS ID',
-                            'Current OCLC Number'
+                            ("Current OCLC Number (Unique OCLC Number from "
+                                "Alma Record's 035 $a)"),
+                            "All OCLC Numbers from Alma Record's 035 $a"
                         ])
 
                     records_with_current_oclc_num_writer.writerow([
                         mms_id,
-                        unique_oclc_nums_from_record_str
+                        unique_oclc_nums_from_record_str,
+                        all_oclc_nums_from_record_str
                     ])
                 else:
-                    logger.debug(f'{mms_id} has a potentially old OCLC number')
+                    logger.debug(f'{mms_id} has a potentially-old OCLC number')
 
                     # Add record to records_with_current_oclc_num spreadsheet
                     if records_with_potentially_old_oclc_num.tell() == 0:
@@ -246,8 +251,7 @@ def main() -> None:
                     records_with_potentially_old_oclc_num_writer.writerow([
                         mms_id,
                         unique_oclc_nums_from_record_str,
-                        '<none>' if len(all_oclc_nums_from_record) == 0
-                            else ', '.join(all_oclc_nums_from_record)
+                        all_oclc_nums_from_record_str
                     ])
 
                 logger.debug(f'Finished processing MMS ID {mms_id}\n')
