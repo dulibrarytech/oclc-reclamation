@@ -81,7 +81,14 @@ def extract_oclc_num_from_subfield_a(
     found_valid_oclc_num = True
 
     # Check for invalid number
-    found_valid_oclc_num = extracted_oclc_num.isdigit()
+    if not extracted_oclc_num.isdigit():
+        found_valid_oclc_num = False
+        # Consider as valid any number with a single trailing # character
+        if extracted_oclc_num.endswith('#'):
+            extracted_oclc_num_without_final_char = extracted_oclc_num[:-1]
+            if extracted_oclc_num_without_final_char.isdigit():
+                found_valid_oclc_num = True
+                extracted_oclc_num = extracted_oclc_num_without_final_char
 
     # Check for invalid prefix
     if len(extracted_oclc_num_prefix) > 0:
