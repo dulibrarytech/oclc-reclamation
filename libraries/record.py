@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 oclc_org_code_prefix = '(OCoLC)'
 oclc_org_code_prefix_len = len(oclc_org_code_prefix)
 valid_oclc_number_prefixes = {'ocm', 'ocn', 'on'}
+# Also accept '|a' as an OCLC number prefix
+accepted_oclc_number_prefixes = {'|a'} | valid_oclc_number_prefixes
 valid_oclc_number_prefixes_str = (f"If present, the OCLC number prefix must "
     f"be one of the following: {', '.join(valid_oclc_number_prefixes)}")
 
