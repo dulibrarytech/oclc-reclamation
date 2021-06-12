@@ -8,11 +8,11 @@ logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 oclc_org_code_prefix = '(OCoLC)'
-oclc_org_code_prefix_len = len(oclc_org_code_prefix)
+traditional_oclc_number_prefixes = ('ocm', 'ocn', 'on')
 # Include '|a' as a valid OCLC number prefix (in addition to the traditional
-# prefixes: ocm, ocn, on). Doing so will prevent certain Alma records from
-# appearing in the records_with_errors CSV files.
-valid_oclc_number_prefixes = {'ocm', 'ocn', 'on', '|a'}
+# prefixes). Doing so will prevent certain Alma records from appearing in the
+# records_with_errors CSV files.
+valid_oclc_number_prefixes = {'|a'}.union(traditional_oclc_number_prefixes)
 valid_oclc_number_prefixes_str = (f"If present, the OCLC number prefix must "
     f"be one of the following: {', '.join(valid_oclc_number_prefixes)}")
 
@@ -60,8 +60,10 @@ def extract_oclc_num_from_subfield_a(
         found_valid_oclc_prefix, found_valid_oclc_num, found_error_in_record
     """
     # Extract the OCLC number itself
-    oclc_num_without_org_code_prefix = \
-        subfield_a_str[oclc_org_code_prefix_len:].rstrip()
+    oclc_num_without_org_code_prefix = (
+        subfield_a_str[len(oclc_org_code_prefix):].rstrip()
+        if subfield_a_str.startswith(oclc_org_code_prefix)
+        else subfield_a_str.rstrip())
 
     match_on_first_digit = re.search(r'\d', oclc_num_without_org_code_prefix)
 
@@ -174,7 +176,9 @@ def get_subfield_a_with_oclc_num(
             f'#{field_035_element_index + 1}) with no $a value')
     elif subfield_a_count == 1:
         # Check whether subfield a value is an OCLC number
-        if subfield_a_strings[0].startswith(oclc_org_code_prefix):
+        accepted_prefixes = tuple(
+            {oclc_org_code_prefix}.union(traditional_oclc_number_prefixes))
+        if subfield_a_strings[0].startswith(accepted_prefixes):
             single_subfield_a_with_oclc_num = subfield_a_strings[0]
     else:
         # subfield_a_count > 1
