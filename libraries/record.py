@@ -163,9 +163,11 @@ def get_subfield_a_with_oclc_num(
 
     for subfield_a_element_index, subfield_a_element in enumerate(
             subfield_a_elements, start=1):
-        subfield_a_strings.append(subfield_a_element.text)
+        subfield_a_text = ('<empty>' if subfield_a_element.text is None
+            else subfield_a_element.text)
+        subfield_a_strings.append(subfield_a_text)
         logger.debug(f'035 field #{field_035_element_index + 1}, subfield a '
-            f'#{subfield_a_element_index}: {subfield_a_element.text}')
+            f'#{subfield_a_element_index}: {subfield_a_text}')
 
     single_subfield_a_with_oclc_num = None
     subfield_a_count = len(subfield_a_strings)
