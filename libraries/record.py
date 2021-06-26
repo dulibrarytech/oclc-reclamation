@@ -143,6 +143,10 @@ def get_subfield_a_with_oclc_num(
         ) -> Subfield_a:
     """Checks the given 035 field for a subfield $a containing an OCLC number.
 
+    If there are multiple subfield $a values, then only the first $a value is
+    returned (provided it is an OCLC number) as part of the Subfield_a
+    NamedTuple.
+
     Parameters
     ----------
     field_035_element: ET.Element
@@ -169,29 +173,29 @@ def get_subfield_a_with_oclc_num(
         logger.debug(f'035 field #{field_035_element_index + 1}, subfield a '
             f'#{subfield_a_element_index}: {subfield_a_text}')
 
-    single_subfield_a_with_oclc_num = None
+    subfield_a_with_oclc_num = None
     subfield_a_count = len(subfield_a_strings)
     error_msg = None
 
     if subfield_a_count == 0:
         error_msg = (f'Record contains at least one 035 field (i.e. 035 field '
             f'#{field_035_element_index + 1}) with no $a value')
-    elif subfield_a_count == 1:
-        # Check whether subfield a value is an OCLC number
+    else:
+        # Check whether first subfield a value is an OCLC number
         accepted_prefixes = tuple(
             {oclc_org_code_prefix}.union(traditional_oclc_number_prefixes))
         if subfield_a_strings[0].startswith(accepted_prefixes):
-            single_subfield_a_with_oclc_num = subfield_a_strings[0]
-    else:
-        # subfield_a_count > 1
-        error_msg = (f'Record contains at least one 035 field (i.e. 035 field '
-            f'#{field_035_element_index + 1}) with multiple $a values: '
-            f'{", ".join(subfield_a_strings)}')
+            subfield_a_with_oclc_num = subfield_a_strings[0]
+
+        if subfield_a_count > 1:
+            error_msg = (f'Record contains at least one 035 field (i.e. 035 '
+                f'field #{field_035_element_index + 1}) with multiple $a '
+                f'values: {", ".join(subfield_a_strings)}')
 
     if error_msg is not None:
         logger.debug(error_msg)
 
-    return Subfield_a(single_subfield_a_with_oclc_num,
+    return Subfield_a(subfield_a_with_oclc_num,
         subfield_a_count,
         error_msg)
 
