@@ -23,10 +23,12 @@ class Subfield_a(NamedTuple):
     Fields
     ------
     string_with_oclc_num: Optional[str]
-        The subfield a string, provided that the 035 field contains only one
-        subfield a and that it is an OCLC number; otherwise, None
+        The subfield $a string (provided that the 035 field contains at least
+        one subfield $a value and that it is an OCLC number); otherwise, None.
+        If there are multiple subfield $a values, then only the first $a value
+        is included (provided it is an OCLC number).
     subfield_a_count: int
-        Number of subfield a values in the 035 field
+        Number of subfield $a values in the 035 field
     error_msg: Optional[str]
         Message explaining the error found in the 035 field, if applicable;
         otherwise, None
