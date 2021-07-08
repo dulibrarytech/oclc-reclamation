@@ -40,8 +40,8 @@ class Record_confirmation(NamedTuple):
         record's 035 $a field(s), provided that no errors caused the process to
         abort; otherwise, None
     error_msg: Optional[str]
-        Message explaining the error encountered by the update_alma_record
-        function call, if applicable; otherwise, None
+        Message explaining the error(s) and/or warning(s) encountered by the
+        update_alma_record function call, if applicable; otherwise, None
     """
     was_updated: bool
     orig_oclc_nums: Optional[str]
@@ -157,18 +157,14 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             field_035_element,
             field_035_element_index)
 
-        # Handle case where 035 field does not contain a single subfield $a
-        if subfield_a_data.subfield_a_count != 1:
-            # Do not update this record, but pass along the error message
-            logger.debug(f"Did not update MMS ID '{mms_id}' because 035 field "
-                f"#{field_035_element_index + 1} contains "
-                f"{subfield_a_data.subfield_a_count} subfield a values (and "
-                f"each 035 field must contain one single subfield a).")
+        # Add or append to error message
+        if subfield_a_data.error_msg is not None:
+            if error_msg is None:
+                error_msg = subfield_a_data.error_msg
+            else:
+                error_msg += '. ' + subfield_a_data.error_msg
 
-            return Record_confirmation(False, None, subfield_a_data.error_msg)
-
-        if (subfield_a_data.subfield_a_count == 1
-                and subfield_a_data.string_with_oclc_num is None):
+        if subfield_a_data.string_with_oclc_num is None:
             # This 035 field does not contain an OCLC number, so skip it
             continue
 
@@ -188,16 +184,21 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         found_potentially_valid_oclc_num_with_invalid_oclc_prefix = \
             found_valid_oclc_num and not found_valid_oclc_prefix
 
+        if found_potentially_valid_oclc_num_with_invalid_oclc_prefix:
+            invalid_prefix_msg = (f'035 field #{field_035_element_index + 1} '
+                f'contains an OCLC number with an invalid prefix: '
+                f'{extracted_oclc_num}. '
+                f'{libraries.record.valid_oclc_number_prefixes_str}')
+            if error_msg is None:
+                error_msg = invalid_prefix_msg
+            else:
+                error_msg += '. ' + invalid_prefix_msg
+
         record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix = \
             (record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix
              or found_potentially_valid_oclc_num_with_invalid_oclc_prefix)
 
-        if record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
-            if error_msg is None:
-                error_msg = (f'Record contains at least one OCLC number '
-                    f'with an invalid prefix. '
-                    f'{libraries.record.valid_oclc_number_prefixes_str}')
-        else:
+        if not record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
             # Compare the extracted OCLC number to the current OCLC number
             extracted_oclc_num_matches_current_oclc_num = \
                 extracted_oclc_num == oclc_num
@@ -213,8 +214,8 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
                 # field.
                 record_element.remove(field_035_element)
                 logger.debug(f'Removed 035 field #'
-                    f'{field_035_element_index + 1}, whose subfield a is: '
-                    f'{subfield_a_data.string_with_oclc_num}')
+                    f'{field_035_element_index + 1}, whose (first) subfield a '
+                    f'is: {subfield_a_data.string_with_oclc_num}')
 
                 if (not extracted_oclc_num_matches_current_oclc_num and
                         len(extracted_oclc_num) > 0 and
@@ -367,6 +368,9 @@ def main() -> None:
             writer(records_with_no_update_needed)
         records_with_errors_writer = writer(records_with_errors)
 
+        subfield_a_disclaimer = ('[if an 035 field contains multiple $a '
+            'values, then only its first $a value is listed here]')
+
         for index, row in data.iterrows():
             error_occurred = True
             error_msg = None
@@ -391,7 +395,7 @@ def main() -> None:
                         # Write header row
                         records_updated_writer.writerow([
                             'MMS ID',
-                            'Original OCLC Number(s)',
+                            'Original OCLC Number(s) ' + subfield_a_disclaimer,
                             'New OCLC Number'
                         ])
 
@@ -435,7 +439,8 @@ def main() -> None:
                         # Write header row
                         records_with_errors_writer.writerow([
                             'MMS ID',
-                            "OCLC Number(s) from Alma Record's 035 $a",
+                            'OCLC Number(s) from Alma Record '
+                                + subfield_a_disclaimer,
                             'Current OCLC Number',
                             'Error'
                         ])
