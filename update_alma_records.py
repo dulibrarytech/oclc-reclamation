@@ -207,8 +207,8 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
                 f'({extracted_oclc_num}) match the current OCLC number '
                 f'({oclc_num})? {extracted_oclc_num_matches_current_oclc_num}')
 
-            if (not extracted_oclc_num_matches_current_oclc_num or
-                    found_035_field_with_current_oclc_num):
+            if (not extracted_oclc_num_matches_current_oclc_num
+                    or found_035_field_with_current_oclc_num):
                 # This 035 field either (1) contains an old, empty or invalid
                 # OCLC number or (2) is a duplicate of another 035 field with
                 # the current OCLC number. In either case, remove this 035
@@ -218,9 +218,9 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
                     f'{field_035_element_index + 1}, whose (first) subfield a '
                     f'is: {subfield_a_data.string_with_oclc_num}')
 
-                if (not extracted_oclc_num_matches_current_oclc_num and
-                        len(extracted_oclc_num) > 0 and
-                        found_valid_oclc_num):
+                if (not extracted_oclc_num_matches_current_oclc_num
+                        and len(extracted_oclc_num) > 0
+                        and found_valid_oclc_num):
                     oclc_nums_for_019_field.add(extracted_oclc_num)
 
                 need_to_update_record = True
