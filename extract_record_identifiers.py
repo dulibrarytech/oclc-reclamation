@@ -117,8 +117,6 @@ def main() -> None:
                 all_oclc_nums_from_record = list()
                 unique_oclc_nums_from_record = set()
                 found_error_in_record = False
-                # contains_invalid_number_of_subfield_a_values_in_035 = False
-                # <-- Delete this comment after testing
                 error_msg = None
 
                 for field_035_element_index, field_035_element in enumerate(
@@ -165,10 +163,6 @@ def main() -> None:
                     '<none>' if len(all_oclc_nums_from_record) == 0
                     else ', '.join(all_oclc_nums_from_record))
 
-                # if contains_invalid_number_of_subfield_a_values_in_035:
-                #     found_error_in_record = True
-                # else:
-                # <-- Delete this comment after testing
                 logger.debug(f'{unique_oclc_nums_from_record=}')
                 logger.debug(f'{all_oclc_nums_from_record=}')
 
@@ -203,15 +197,6 @@ def main() -> None:
                             'Error'
                         ])
 
-                    # if contains_invalid_number_of_subfield_a_values_in_035:
-                    #     records_with_errors_writer.writerow([
-                    #         mms_id,
-                    #         '<record not fully checked>',
-                    #         '<record not fully checked>',
-                    #         error_msg
-                    #     ])
-                    # else:
-                    # <-- Delete this comment after testing
                     records_with_errors_writer.writerow([
                         mms_id,
                         unique_oclc_nums_from_record_str,
