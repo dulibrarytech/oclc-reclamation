@@ -180,8 +180,8 @@ def get_subfield_a_with_oclc_num(
     error_msg = None
 
     if subfield_a_count == 0:
-        error_msg = (f'Record contains at least one 035 field (i.e. 035 field '
-            f'#{field_035_element_index + 1}) with no $a value')
+        error_msg = (f'035 field #{field_035_element_index + 1} has no $a '
+            f'value')
     else:
         # Check whether first subfield a value is an OCLC number
         accepted_prefixes = tuple(
@@ -190,9 +190,8 @@ def get_subfield_a_with_oclc_num(
             subfield_a_with_oclc_num = subfield_a_strings[0]
 
         if subfield_a_count > 1:
-            error_msg = (f'Record contains at least one 035 field (i.e. 035 '
-                f'field #{field_035_element_index + 1}) with multiple $a '
-                f'values: {", ".join(subfield_a_strings)}')
+            error_msg = (f'035 field #{field_035_element_index + 1} has '
+                f'multiple $a values: {", ".join(subfield_a_strings)}')
 
     if error_msg is not None:
         logger.debug(error_msg)

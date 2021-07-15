@@ -130,15 +130,12 @@ def main() -> None:
                             field_035_element,
                             field_035_element_index)
 
-                    # Handle case where 035 field does not contain a single
-                    # subfield $a
-                    if (subfield_a_data.subfield_a_count != 1
-                            and error_msg is None):
-                        # Stop checking this record's 035 fields, but store
-                        # the error message <-- Delete this comment after testing
-                        # contains_invalid_number_of_subfield_a_values_in_035 = \
-                        #     True
-                        error_msg = subfield_a_data.error_msg
+                    # Add or append to error message
+                    if subfield_a_data.error_msg is not None:
+                        if error_msg is None:
+                            error_msg = subfield_a_data.error_msg
+                        else:
+                            error_msg += '. ' + subfield_a_data.error_msg
 
                     if subfield_a_data.string_with_oclc_num is None:
                         # This 035 field either has no subfield $a or its first
