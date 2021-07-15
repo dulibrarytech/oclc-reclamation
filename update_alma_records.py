@@ -165,7 +165,8 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
                 error_msg += '. ' + subfield_a_data.error_msg
 
         if subfield_a_data.string_with_oclc_num is None:
-            # This 035 field does not contain an OCLC number, so skip it
+            # This 035 field either has no subfield $a or its first subfield $a
+            # does not contain an OCLC number. So skip it.
             continue
 
         (subfield_a_without_oclc_org_code_prefix,
