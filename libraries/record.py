@@ -15,6 +15,8 @@ traditional_oclc_number_prefixes = ('ocm', 'ocn', 'on')
 valid_oclc_number_prefixes = {'|a'}.union(traditional_oclc_number_prefixes)
 valid_oclc_number_prefixes_str = (f"If present, the OCLC number prefix must "
     f"be one of the following: {', '.join(valid_oclc_number_prefixes)}")
+subfield_a_disclaimer = ('if an 035 field contains multiple $a values, then '
+    'only its first $a value is listed here')
 
 
 class Subfield_a(NamedTuple):

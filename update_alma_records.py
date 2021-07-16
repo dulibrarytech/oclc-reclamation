@@ -369,9 +369,6 @@ def main() -> None:
             writer(records_with_no_update_needed)
         records_with_errors_writer = writer(records_with_errors)
 
-        subfield_a_disclaimer = ('[if an 035 field contains multiple $a '
-            'values, then only its first $a value is listed here]')
-
         for index, row in data.iterrows():
             error_occurred = True
             error_msg = None
@@ -396,7 +393,8 @@ def main() -> None:
                         # Write header row
                         records_updated_writer.writerow([
                             'MMS ID',
-                            'Original OCLC Number(s) ' + subfield_a_disclaimer,
+                            (f'Original OCLC Number(s) '
+                                f'[{libraries.record.subfield_a_disclaimer}]'),
                             'New OCLC Number'
                         ])
 
@@ -440,8 +438,8 @@ def main() -> None:
                         # Write header row
                         records_with_errors_writer.writerow([
                             'MMS ID',
-                            'OCLC Number(s) from Alma Record '
-                                + subfield_a_disclaimer,
+                            (f'OCLC Number(s) from Alma Record '
+                                f'[{libraries.record.subfield_a_disclaimer}]'),
                             'Current OCLC Number',
                             'Error'
                         ])

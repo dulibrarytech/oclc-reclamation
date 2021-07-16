@@ -86,6 +86,10 @@ def main() -> None:
             writer(records_with_potentially_old_oclc_num)
         records_with_errors_writer = writer(records_with_errors)
 
+        all_oclc_nums_col_heading = (f"All OCLC Numbers from Alma Record's "
+            f"035 $a [for this column and the previous one, "
+            f"{libraries.record.subfield_a_disclaimer}]")
+
         # Check every XML file in directory
         for file in os.listdir(args.Directory_with_xml_files):
             if not file.endswith('.xml'):
@@ -193,7 +197,7 @@ def main() -> None:
                         records_with_errors_writer.writerow([
                             'MMS ID',
                             "Unique OCLC Number(s) from Alma Record's 035 $a",
-                            "All OCLC Numbers from Alma Record's 035 $a",
+                            all_oclc_nums_col_heading,
                             'Error'
                         ])
 
@@ -213,7 +217,7 @@ def main() -> None:
                             'MMS ID',
                             ("Current OCLC Number (Unique OCLC Number from "
                                 "Alma Record's 035 $a)"),
-                            "All OCLC Numbers from Alma Record's 035 $a",
+                            all_oclc_nums_col_heading,
                             'Warning'
                         ])
 
@@ -232,7 +236,7 @@ def main() -> None:
                         records_with_potentially_old_oclc_num_writer.writerow([
                             'MMS ID',
                             "Unique OCLC Number from Alma Record's 035 $a",
-                            "All OCLC Numbers from Alma Record's 035 $a",
+                            all_oclc_nums_col_heading,
                             'Warning'
                         ])
 
