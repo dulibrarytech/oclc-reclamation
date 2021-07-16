@@ -177,6 +177,7 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             libraries.record.extract_oclc_num_from_subfield_a(
                 subfield_a_data.string_with_oclc_num,
                 field_035_element_index,
+                mms_id,
                 found_error_in_record)
 
         oclc_nums_from_record.append(subfield_a_without_oclc_org_code_prefix)

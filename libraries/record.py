@@ -43,6 +43,7 @@ class Subfield_a(NamedTuple):
 def extract_oclc_num_from_subfield_a(
         subfield_a_str: str,
         field_035_element_index: int,
+        mms_id: str,
         found_error_in_record: bool
         ) -> Tuple[str, str, bool, bool, bool]:
     """Checks the given 035 field for a subfield $a containing an OCLC number.
@@ -50,16 +51,18 @@ def extract_oclc_num_from_subfield_a(
     Parameters
     ----------
     subfield_a_str: str
-        The subfield a to extract from
+        The subfield $a to extract from
     field_035_element_index: int
-        The index of the 035 field containing this subfield a
+        The index of the 035 field containing this subfield $a
+    mms_id: str
+        The MMS ID of the record
     found_error_in_record: bool
         True if an error has been found in this record; otherwise, False
 
     Returns
     -------
     Tuple[str, str, bool, bool, bool]
-        Tuple with data about the subfield a extraction. Includes the
+        Tuple with data about the subfield $a extraction. Includes the
         following fields: oclc_num_without_org_code_prefix, extracted_oclc_num,
         found_valid_oclc_prefix, found_valid_oclc_num, found_error_in_record
     """
@@ -113,17 +116,22 @@ def extract_oclc_num_from_subfield_a(
             # Include invalid prefix with OCLC number
             extracted_oclc_num = extracted_oclc_num_prefix + extracted_oclc_num
 
+    # Delete after testing
+    logger.debug(f'{mms_id=}')
+    logger.debug(f'{type(mms_id)=}')
+    
     # Remove leading zeros if extracted OCLC number is valid
     if found_valid_oclc_prefix and found_valid_oclc_num:
         try:
-            extracted_oclc_num = remove_leading_zeros(extracted_oclc_num)
+            extracted_oclc_num = remove_leading_zeros(extracted_oclc_num + '%')
         except ValueError as value_err:
             logger.exception(f"A ValueError occurred when trying to remove "
                 f"leading zeros from '{extracted_oclc_num}', which was "
-                f"extracted from an 035 $a field of MMS ID '{mms_id}'. To "
-                f"remove leading zeros, the extracted OCLC number cannot "
-                f"contain a decimal point or any other non-digit character. "
-                f"Error message: {value_err}")
+                f"extracted from the first subfield $a of MMS ID '{mms_id}', "
+                f"035 field #{field_035_element_index + 1}. To remove leading "
+                f"zeros, the extracted OCLC number cannot contain a decimal "
+                f"point or any other non-digit character. Error message: "
+                f"{value_err}")
             found_error_in_record = True
     else:
         if not found_valid_oclc_num:
