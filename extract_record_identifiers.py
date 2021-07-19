@@ -153,7 +153,6 @@ def main() -> None:
                         libraries.record.extract_oclc_num_from_subfield_a(
                             subfield_a_data.string_with_oclc_num,
                             field_035_element_index,
-                            mms_id,
                             found_error_in_record)
 
                     all_oclc_nums_from_record.append(

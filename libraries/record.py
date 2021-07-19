@@ -43,7 +43,6 @@ class Subfield_a(NamedTuple):
 def extract_oclc_num_from_subfield_a(
         subfield_a_str: str,
         field_035_element_index: int,
-        mms_id: str,
         found_error_in_record: bool
         ) -> Tuple[str, str, bool, bool, bool]:
     """Checks the given 035 field for a subfield $a containing an OCLC number.
@@ -54,8 +53,6 @@ def extract_oclc_num_from_subfield_a(
         The subfield $a to extract from
     field_035_element_index: int
         The index of the 035 field containing this subfield $a
-    mms_id: str
-        The MMS ID of the record
     found_error_in_record: bool
         True if an error has been found in this record; otherwise, False
 
@@ -115,10 +112,6 @@ def extract_oclc_num_from_subfield_a(
 
             # Include invalid prefix with OCLC number
             extracted_oclc_num = extracted_oclc_num_prefix + extracted_oclc_num
-
-    # Delete after testing
-    logger.debug(f'{mms_id=}')
-    logger.debug(f'{type(mms_id)=}')
 
     # Remove leading zeros if extracted OCLC number is valid
     if found_valid_oclc_prefix and found_valid_oclc_num:
