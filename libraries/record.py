@@ -119,24 +119,15 @@ def extract_oclc_num_from_subfield_a(
     # Delete after testing
     logger.debug(f'{mms_id=}')
     logger.debug(f'{type(mms_id)=}')
-    
+
     # Remove leading zeros if extracted OCLC number is valid
     if found_valid_oclc_prefix and found_valid_oclc_num:
-        try:
-            extracted_oclc_num = remove_leading_zeros(extracted_oclc_num + '%')
-        except ValueError as value_err:
-            logger.exception(f"A ValueError occurred when trying to remove "
-                f"leading zeros from '{extracted_oclc_num}', which was "
-                f"extracted from the first subfield $a of MMS ID '{mms_id}', "
-                f"035 field #{field_035_element_index + 1}. To remove leading "
-                f"zeros, the extracted OCLC number cannot contain a decimal "
-                f"point or any other non-digit character. Error message: "
-                f"{value_err}")
-            found_error_in_record = True
+        extracted_oclc_num = remove_leading_zeros(extracted_oclc_num)
     else:
         if not found_valid_oclc_num:
             logger.debug(f"'{extracted_oclc_num}' is an invalid OCLC number "
-                f"(because it contains at least one non-digit character).")
+                f"(because it contains at least one non-digit character that "
+                f"is not a single trailing '#' character).")
         found_error_in_record = True
 
     logger.debug(f'035 field #{field_035_element_index + 1}, extracted OCLC '
@@ -193,7 +184,7 @@ def get_subfield_a_with_oclc_num(
         error_msg = (f'035 field #{field_035_element_index + 1} has no $a '
             f'value')
     else:
-        # Check whether first subfield a value is an OCLC number
+        # Check whether first subfield $a value is an OCLC number
         accepted_prefixes = tuple(
             {oclc_org_code_prefix}.union(traditional_oclc_number_prefixes))
         if subfield_a_strings[0].startswith(accepted_prefixes):
