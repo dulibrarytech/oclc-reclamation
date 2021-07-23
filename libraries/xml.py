@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def prettify_and_log_xml(response: requests.models.Response,
-    heading: str) -> bytes:
+        heading: str) -> bytes:
     xml_as_pretty_printed_bytes_obj = prettify(response)
     log_xml_string(xml_as_pretty_printed_bytes_obj, heading)
     return xml_as_pretty_printed_bytes_obj
