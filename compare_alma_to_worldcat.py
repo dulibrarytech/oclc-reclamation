@@ -12,14 +12,8 @@ def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
-        usage=('%(prog)s [option] alma_records worldcat_records'),
-        description=('Compare the alma_records and worldcat_records CSV files. '
-            'Add the OCLC numbers found in both files to '
-            'records_with_no_action_needed.csv. Add the OCLC numbers found in '
-            'alma_records but not worldcat_records to '
-            'records_to_set_in_worldcat.csv. Add the OCLC numbers found in '
-            'worldcat_records but not alma_records to '
-            'records_to_unset_in_worldcat.csv.'),
+        usage='%(prog)s [option] alma_records worldcat_records',
+        description='Compare the alma_records and worldcat_records CSV files.',
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -29,16 +23,16 @@ def init_argparse() -> argparse.ArgumentParser:
         'Alma_records',
         metavar='alma_records',
         type=str,
-        help=('the name and path of the CSV file containing the Alma records '
-            'whose holdings **should be set** in WorldCat (e.g. '
-            'csv/alma_master_list.csv); this file should consist of a single '
-            'column named "OCLC Number"')
+        help=('the name and path of the CSV file containing the OCLC numbers '
+            'of all Alma records whose holdings **should be set** in WorldCat '
+            '(e.g. csv/alma_master_list.csv); this file should consist of a '
+            'single column named "OCLC Number"')
     )
     parser.add_argument(
         'Worldcat_records',
         metavar='worldcat_records',
         type=str,
-        help=('the name and path of the CSV file containing the OCLC number '
+        help=('the name and path of the CSV file containing the OCLC numbers '
             'of all records whose holdings **are currently set** in WorldCat '
             'for your institution (e.g. csv/worldcat_holdings_list.csv); this '
             'file should consist of a single column named "OCLC Number"')
