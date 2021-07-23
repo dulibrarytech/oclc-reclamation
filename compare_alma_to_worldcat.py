@@ -25,8 +25,8 @@ def init_argparse() -> argparse.ArgumentParser:
         type=str,
         help=('the name and path of the CSV file containing the records in '
             'Alma whose holdings **should be set** in WorldCat (e.g. '
-            'csv/alma_master_list.csv); this file should consist of a '
-            'single column named "OCLC Number" with one OCLC number per record')
+            'csv/alma_master_list.csv); this file should consist of a single '
+            'column with one OCLC number per row')
     )
     parser.add_argument(
         'Worldcat_records',
@@ -34,9 +34,8 @@ def init_argparse() -> argparse.ArgumentParser:
         type=str,
         help=('the name and path of the CSV file containing the records whose '
             'holdings **are currently set** in WorldCat for your institution '
-            '(e.g. csv/worldcat_holdings_list.csv); this '
-            'file should consist of a single column named "OCLC Number" with '
-            'one OCLC number per record')
+            '(e.g. csv/worldcat_holdings_list.csv); this file should consist '
+            'of a single column with one OCLC number per row')
     )
     return parser
 
