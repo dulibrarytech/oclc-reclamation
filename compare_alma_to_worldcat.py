@@ -1,7 +1,8 @@
 import argparse
+import libraries.handle_file
 import logging
 import logging.config
-from csv import reader, writer
+from csv import writer
 from datetime import datetime
 
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
@@ -60,7 +61,16 @@ def main() -> None:
     args = parser.parse_args()
 
     # Create sets from each input file
-    # If you don't use the reader function from the csv module, don't import it
+    alma_records = set()
+    libraries.handle_file.csv_column_to_set(args.Alma_records, alma_records, 0)
+    logger.debug(f'{alma_records=}')
+    logger.debug(f'{type(alma_records)=}\n')
+
+    worldcat_records = set()
+    libraries.handle_file.csv_column_to_set(args.Worldcat_records,
+        worldcat_records, 0)
+    logger.debug(f'{worldcat_records=}')
+    logger.debug(f'{type(worldcat_records)=}\n')
 
     # Perform set comparisons and add results to appropriate output file
     with open('csv/records_with_no_action_needed.csv', mode='a',
