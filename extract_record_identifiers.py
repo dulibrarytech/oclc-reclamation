@@ -1,10 +1,11 @@
 import argparse
+import libraries.handle_file
 import libraries.record
 import logging
 import logging.config
 import os
 import xml.etree.ElementTree as ET
-from csv import reader, writer
+from csv import writer
 from datetime import datetime
 
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
@@ -63,12 +64,10 @@ def main() -> None:
     logger.debug(f'{type(mms_ids_already_processed)=}\n')
 
     alma_records_with_current_oclc_num = set()
-    if args.Alma_records_with_current_oclc_num is not None:
-        with open(args.Alma_records_with_current_oclc_num, mode='r',
-                newline='') as file:
-            file_reader = reader(file)
-            for mms_id in file_reader:
-                alma_records_with_current_oclc_num.add(mms_id[0])
+    libraries.handle_file.csv_column_to_set(
+        args.Alma_records_with_current_oclc_num,
+        alma_records_with_current_oclc_num,
+        0)
 
     logger.debug(f'{alma_records_with_current_oclc_num=}')
     logger.debug(f'{type(alma_records_with_current_oclc_num)=}\n')
