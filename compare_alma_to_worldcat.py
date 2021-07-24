@@ -87,10 +87,19 @@ def main() -> None:
             writer(records_in_worldcat_not_alma)
 
         # Perform intersection of sets
+        intersection = alma_records & worldcat_records
+        logger.debug(f'{intersection=}')
+        logger.debug(f'{type(intersection)=}\n')
 
-        # Perform set difference (alma_records - worldcat_records)
+        # Perform set difference: alma_records - worldcat_records
+        alma_not_worldcat = alma_records - worldcat_records
+        logger.debug(f'{alma_not_worldcat=}')
+        logger.debug(f'{type(alma_not_worldcat)=}\n')
 
-        # Perform set difference (worldcat_records - alma_records)
+        # Perform set difference: worldcat_records - alma_records
+        worldcat_not_alma = worldcat_records - alma_records
+        logger.debug(f'{worldcat_not_alma=}')
+        logger.debug(f'{type(worldcat_not_alma)=}\n')
 
     print(f'End of script. Completed in: {datetime.now() - start_time} ' \
         f'(hours:minutes:seconds.microseconds)')
