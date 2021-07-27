@@ -62,13 +62,14 @@ def main() -> None:
 
     # Create sets from each input file
     alma_records = set()
-    libraries.handle_file.csv_column_to_set(args.Alma_records, alma_records, 0)
+    libraries.handle_file.csv_column_to_set(args.Alma_records, alma_records, 0,
+        False)
     logger.debug(f'{alma_records=}')
     logger.debug(f'{type(alma_records)=}\n')
 
     worldcat_records = set()
     libraries.handle_file.csv_column_to_set(args.Worldcat_records,
-        worldcat_records, 0)
+        worldcat_records, 0, False)
     logger.debug(f'{worldcat_records=}')
     logger.debug(f'{type(worldcat_records)=}\n')
 

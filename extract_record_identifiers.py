@@ -67,7 +67,8 @@ def main() -> None:
     libraries.handle_file.csv_column_to_set(
         args.Alma_records_with_current_oclc_num,
         alma_records_with_current_oclc_num,
-        0)
+        0,
+        True)
 
     logger.debug(f'{alma_records_with_current_oclc_num=}')
     logger.debug(f'{type(alma_records_with_current_oclc_num)=}\n')
