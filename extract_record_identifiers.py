@@ -46,7 +46,7 @@ def init_argparse() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Extracts the MMS IDs and OCLC Numbers from each record in the XML files.
+    """Extracts the MMS ID and OCLC Number(s) from each record of each XML file.
 
     For each XML file in the specified directory, the MMS ID and OCLC Number(s)
     from each Alma record are extracted and appended to the appropriate
