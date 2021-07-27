@@ -65,13 +65,15 @@ def main() -> None:
     libraries.handle_file.csv_column_to_set(args.Alma_records, alma_records, 0,
         False)
     logger.debug(f'{alma_records=}')
-    logger.debug(f'{type(alma_records)=}\n')
+    logger.debug(f'{type(alma_records)=}')
+    logger.debug(f'{len(alma_records)=}\n')
 
     worldcat_records = set()
     libraries.handle_file.csv_column_to_set(args.Worldcat_records,
         worldcat_records, 0, False)
     logger.debug(f'{worldcat_records=}')
-    logger.debug(f'{type(worldcat_records)=}\n')
+    logger.debug(f'{type(worldcat_records)=}')
+    logger.debug(f'{len(worldcat_records)=}\n')
 
     # Perform set comparisons and add results to appropriate output file
     with open('csv/records_with_no_action_needed.csv', mode='a',
@@ -90,17 +92,20 @@ def main() -> None:
         # Perform intersection of sets
         intersection = alma_records & worldcat_records
         logger.debug(f'{intersection=}')
-        logger.debug(f'{type(intersection)=}\n')
+        logger.debug(f'{type(intersection)=}')
+        logger.debug(f'{len(intersection)=}\n')
 
         # Perform set difference: alma_records - worldcat_records
         alma_not_worldcat = alma_records - worldcat_records
         logger.debug(f'{alma_not_worldcat=}')
-        logger.debug(f'{type(alma_not_worldcat)=}\n')
+        logger.debug(f'{type(alma_not_worldcat)=}')
+        logger.debug(f'{len(alma_not_worldcat)=}\n')
 
         # Perform set difference: worldcat_records - alma_records
         worldcat_not_alma = worldcat_records - alma_records
         logger.debug(f'{worldcat_not_alma=}')
-        logger.debug(f'{type(worldcat_not_alma)=}\n')
+        logger.debug(f'{type(worldcat_not_alma)=}')
+        logger.debug(f'{len(worldcat_not_alma)=}\n')
 
     print(f'End of script. Completed in: {datetime.now() - start_time} ' \
         f'(hours:minutes:seconds.microseconds)')
