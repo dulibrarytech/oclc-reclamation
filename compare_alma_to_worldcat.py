@@ -76,11 +76,11 @@ def main() -> None:
     logger.debug(f'{len(worldcat_records)=}\n')
 
     # Perform set comparisons and add results to appropriate output file
-    with open('csv/records_with_no_action_needed.csv', mode='a',
+    with open('csv/records_with_no_action_needed.csv', mode='w',
             newline='') as records_in_both_sets, \
-        open('csv/records_to_set_in_worldcat.csv',
-            mode='a', newline='') as records_in_alma_not_worldcat, \
-        open('csv/records_to_unset_in_worldcat.csv', mode='a',
+        open('csv/records_to_set_in_worldcat.csv', mode='w',
+            newline='') as records_in_alma_not_worldcat, \
+        open('csv/records_to_unset_in_worldcat.csv', mode='w',
             newline='') as records_in_worldcat_not_alma:
 
         records_in_both_sets_writer = writer(records_in_both_sets)
@@ -90,22 +90,25 @@ def main() -> None:
             writer(records_in_worldcat_not_alma)
 
         # Perform intersection of sets
-        intersection = alma_records & worldcat_records
-        logger.debug(f'{intersection=}')
-        logger.debug(f'{type(intersection)=}')
-        logger.debug(f'{len(intersection)=}\n')
+        alma_worldcat_intersection = alma_records & worldcat_records
+        libraries.handle_file.set_to_csv(alma_worldcat_intersection,
+            'records_in_both_sets',
+            records_in_both_sets_writer,
+            'OCLC Number')
 
         # Perform set difference: alma_records - worldcat_records
         alma_not_worldcat = alma_records - worldcat_records
-        logger.debug(f'{alma_not_worldcat=}')
-        logger.debug(f'{type(alma_not_worldcat)=}')
-        logger.debug(f'{len(alma_not_worldcat)=}\n')
+        libraries.handle_file.set_to_csv(alma_not_worldcat,
+            'records_in_alma_not_worldcat',
+            records_in_alma_not_worldcat_writer,
+            'OCLC Number')
 
         # Perform set difference: worldcat_records - alma_records
         worldcat_not_alma = worldcat_records - alma_records
-        logger.debug(f'{worldcat_not_alma=}')
-        logger.debug(f'{type(worldcat_not_alma)=}')
-        logger.debug(f'{len(worldcat_not_alma)=}\n')
+        libraries.handle_file.set_to_csv(worldcat_not_alma,
+            'records_in_worldcat_not_alma',
+            records_in_worldcat_not_alma_writer,
+            'OCLC Number')
 
     print(f'End of script. Completed in: {datetime.now() - start_time} ' \
         f'(hours:minutes:seconds.microseconds)')
