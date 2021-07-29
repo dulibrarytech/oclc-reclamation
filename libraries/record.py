@@ -231,25 +231,3 @@ def remove_oclc_org_code_prefix(full_oclc_string: str) -> str:
     return (full_oclc_string[len(oclc_org_code_prefix):].rstrip()
         if full_oclc_string.startswith(oclc_org_code_prefix)
         else full_oclc_string.rstrip())
-
-
-def remove_surrounding_quotes(string: str) -> str:
-    """Removes opening/closing quote char from the given string, if applicable.
-
-    Only removes one quote character from each end of the string.
-
-    Parameters
-    ----------
-    string: str
-        The string to remove surrounding quotes from
-
-    Returns
-    -------
-    str
-        The string without surrounding quotes
-    """
-    if len(string) > 1:
-        if ((string.startswith('"') and string.endswith('"'))
-                or (string.startswith("'") and string.endswith("'"))):
-            string = string[1:-1]
-    return string

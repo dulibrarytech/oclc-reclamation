@@ -32,9 +32,7 @@ def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
                     value = row[col_num]
 
                     if isinstance(value, str):
-                        value = value.strip()
-                        value = \
-                            libraries.record.remove_surrounding_quotes(value)
+                        value = value.strip().strip("\"'")
                         value = \
                             libraries.record.remove_oclc_org_code_prefix(value)
                         if value.isdigit():
