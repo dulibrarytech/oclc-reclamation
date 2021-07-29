@@ -64,10 +64,8 @@ def extract_oclc_num_from_subfield_a(
         found_valid_oclc_prefix, found_valid_oclc_num, found_error_in_record
     """
     # Extract the OCLC number itself
-    oclc_num_without_org_code_prefix = (
-        subfield_a_str[len(oclc_org_code_prefix):].rstrip()
-        if subfield_a_str.startswith(oclc_org_code_prefix)
-        else subfield_a_str.rstrip())
+    oclc_num_without_org_code_prefix = \
+        remove_oclc_org_code_prefix(subfield_a_str)
 
     match_on_first_digit = re.search(r'\d', oclc_num_without_org_code_prefix)
 
@@ -216,7 +214,7 @@ def remove_leading_zeros(string: str) -> str:
 def remove_oclc_org_code_prefix(full_oclc_string: str) -> str:
     """Removes the OCLC org code prefix from the given string, if applicable.
 
-    Also strips whitespace from the end of the string, if applicable.
+    Also strips trailing whitespace from the end of the string, if applicable.
 
     Parameters
     ----------
