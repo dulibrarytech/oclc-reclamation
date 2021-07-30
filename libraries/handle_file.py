@@ -7,6 +7,8 @@ from typing import Set
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
+col_headings = {'MMS ID', 'OCLC Number', '035$a'}
+
 
 def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
         keep_leading_zeros: bool) -> None:
@@ -30,6 +32,10 @@ def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
             for row_index, row in enumerate(file_reader, start=1):
                 if col_num < len(row):
                     value = row[col_num]
+
+                    # Skip column heading, if applicable
+                    if row_index == 1 and value in col_headings:
+                        continue
 
                     if isinstance(value, str):
                         value = value.strip().strip("\"'")
@@ -66,8 +72,7 @@ def set_to_csv(source_set: Set[str], set_name: str, csv_writer: csv.writer,
     col_heading: str
         The desired column heading for the CSV file
     """
-    logger.debug(f'{set_name} = {source_set}')
-    logger.debug(f'type({set_name}) = {type(source_set)}')
+    # logger.debug(f'{set_name} = {source_set}')
     logger.debug(f'len({set_name}) = {len(source_set)}\n')
 
     if csv_writer is not None and len(source_set) > 0:
