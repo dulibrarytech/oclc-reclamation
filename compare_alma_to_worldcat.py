@@ -2,6 +2,7 @@ import argparse
 import libraries.handle_file
 import logging
 import logging.config
+import os
 from csv import writer
 from datetime import datetime
 
@@ -30,13 +31,13 @@ def init_argparse() -> argparse.ArgumentParser:
             'column with one OCLC number per row')
     )
     parser.add_argument(
-        'Worldcat_records',
-        metavar='worldcat_records',
+        'Directory_with_worldcat_records',
+        metavar='directory_with_worldcat_records',
         type=str,
-        help=('the name and path of the CSV file containing the records whose '
-            'holdings **are currently set** in WorldCat for your institution '
-            '(e.g. csv/worldcat_holdings_list.csv); this file should consist '
-            'of a single column with one OCLC number per row')
+        help=('the path to the directory of files containing the records whose '
+            'holdings **are currently set** in WorldCat for your institution; '
+            'each file should consist of a single column with one OCLC number '
+            'per row')
     )
     return parser
 
@@ -61,19 +62,34 @@ def main() -> None:
     args = parser.parse_args()
 
     # Create sets from each input file
-    alma_records = set()
-    libraries.handle_file.csv_column_to_set(args.Alma_records, alma_records, 0,
+    alma_records_set = set()
+    libraries.handle_file.csv_column_to_set(args.Alma_records,
+        alma_records_set,
+        0,
         False)
-    logger.debug(f'{alma_records=}')
-    logger.debug(f'{type(alma_records)=}')
-    logger.debug(f'{len(alma_records)=}\n')
+    # logger.debug(f'{alma_records_set=}')
+    logger.debug(f'{len(alma_records_set)=}\n')
 
-    worldcat_records = set()
-    libraries.handle_file.csv_column_to_set(args.Worldcat_records,
-        worldcat_records, 0, False)
-    logger.debug(f'{worldcat_records=}')
-    logger.debug(f'{type(worldcat_records)=}')
-    logger.debug(f'{len(worldcat_records)=}\n')
+    worldcat_records_set = set()
+
+    # Check every file in directory
+    for file in os.listdir(args.Directory_with_worldcat_records):
+        if not file.endswith('.txt'):
+            logger.debug(f'Not a text (.txt) file: {file}\n')
+            continue
+
+        logger.debug(f'Started processing file: {file}\n')
+
+        libraries.handle_file.csv_column_to_set(
+            f'{args.Directory_with_worldcat_records}/{file}',
+            worldcat_records_set,
+            0,
+            False)
+
+        logger.debug(f'Finished processing file: {file}\n')
+
+    # logger.debug(f'{worldcat_records_set=}')
+    logger.debug(f'{len(worldcat_records_set)=}\n')
 
     # Perform set comparisons and add results to appropriate output file
     with open('csv/records_with_no_action_needed.csv', mode='w',
@@ -90,21 +106,21 @@ def main() -> None:
             writer(records_in_worldcat_not_alma)
 
         # Perform intersection of sets
-        alma_worldcat_intersection = alma_records & worldcat_records
+        alma_worldcat_intersection = alma_records_set & worldcat_records_set
         libraries.handle_file.set_to_csv(alma_worldcat_intersection,
             'records_in_both_sets',
             records_in_both_sets_writer,
             'OCLC Number')
 
-        # Perform set difference: alma_records - worldcat_records
-        alma_not_worldcat = alma_records - worldcat_records
+        # Perform set difference: alma_records_set - worldcat_records_set
+        alma_not_worldcat = alma_records_set - worldcat_records_set
         libraries.handle_file.set_to_csv(alma_not_worldcat,
             'records_in_alma_not_worldcat',
             records_in_alma_not_worldcat_writer,
             'OCLC Number')
 
-        # Perform set difference: worldcat_records - alma_records
-        worldcat_not_alma = worldcat_records - alma_records
+        # Perform set difference: worldcat_records_set - alma_records_set
+        worldcat_not_alma = worldcat_records_set - alma_records_set
         libraries.handle_file.set_to_csv(worldcat_not_alma,
             'records_in_worldcat_not_alma',
             records_in_worldcat_not_alma_writer,
