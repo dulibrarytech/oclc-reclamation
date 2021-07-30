@@ -14,16 +14,17 @@ def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
-        usage='%(prog)s [option] alma_records worldcat_records',
-        description='Compare the alma_records and worldcat_records CSV files.',
+        usage='%(prog)s [option] alma_records_file worldcat_records_directory',
+        description=('Compare the Alma records (which **should be** set in '
+            'WorldCat) to the current WorldCat holdings'),
     )
     parser.add_argument(
         '-v', '--version', action='version',
         version=f'{parser.prog} version 1.0.0'
     )
     parser.add_argument(
-        'Alma_records',
-        metavar='alma_records',
+        'Alma_records_file',
+        metavar='alma_records_file',
         type=str,
         help=('the name and path of the CSV file containing the records in '
             'Alma whose holdings **should be set** in WorldCat (e.g. '
@@ -31,8 +32,8 @@ def init_argparse() -> argparse.ArgumentParser:
             'column with one OCLC number per row')
     )
     parser.add_argument(
-        'Directory_with_worldcat_records',
-        metavar='directory_with_worldcat_records',
+        'Worldcat_records_directory',
+        metavar='worldcat_records_directory',
         type=str,
         help=('the path to the directory of files containing the records whose '
             'holdings **are currently set** in WorldCat for your institution; '
@@ -47,13 +48,14 @@ def main() -> None:
 
     Outputs the following files:
     - records_with_no_action_needed.csv
-        The OCLC numbers found in both input files
+        The OCLC numbers found in both the alma_records_file and the
+        worldcat_records_directory
     - records_to_set_in_worldcat.csv
-        The OCLC numbers found in the alma_records input file but not the
-        worldcat_records input file
+        The OCLC numbers found in the alma_records_file but not the
+        worldcat_records_directory
     - records_to_unset_in_worldcat.csv
-        The OCLC numbers found in the worldcat_records input file but not the
-        alma_records input file
+        The OCLC numbers found in the worldcat_records_directory but not the
+        alma_records_file
     """
     start_time = datetime.now()
 
@@ -63,7 +65,7 @@ def main() -> None:
 
     # Create sets from each input file
     alma_records_set = set()
-    libraries.handle_file.csv_column_to_set(args.Alma_records,
+    libraries.handle_file.csv_column_to_set(args.Alma_records_file,
         alma_records_set,
         0,
         False)
@@ -73,7 +75,7 @@ def main() -> None:
     worldcat_records_set = set()
 
     # Check every file in directory
-    for file in os.listdir(args.Directory_with_worldcat_records):
+    for file in os.listdir(args.Worldcat_records_directory):
         if not file.endswith('.txt'):
             logger.debug(f'Not a text (.txt) file: {file}\n')
             continue
@@ -81,7 +83,7 @@ def main() -> None:
         logger.debug(f'Started processing file: {file}\n')
 
         libraries.handle_file.csv_column_to_set(
-            f'{args.Directory_with_worldcat_records}/{file}',
+            f'{args.Worldcat_records_directory}/{file}',
             worldcat_records_set,
             0,
             False)
