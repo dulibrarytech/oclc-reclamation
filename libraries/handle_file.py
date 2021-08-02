@@ -59,7 +59,7 @@ def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
 
 def set_to_csv(source_set: Set[str], set_name: str, csv_writer: csv.writer,
         col_heading: str) -> None:
-    """Add all values from the source set to the specified CSV file.
+    """Add all values from the source set to the specified CSV writer object.
 
     Parameters
     ----------
