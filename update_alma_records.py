@@ -318,8 +318,8 @@ def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
-        usage='%(prog)s [option] excel_file',
-        description=(f'For each row in the Excel file, add the corresponding '
+        usage='%(prog)s [option] input_file',
+        description=(f'For each row in the input file, add the corresponding '
             f'OCLC Number to the specified Alma record (indicated by the MMS '
             f'ID).')
     )
@@ -328,11 +328,11 @@ def init_argparse() -> argparse.ArgumentParser:
         version=f'{parser.prog} version 1.0.0'
     )
     parser.add_argument(
-        'Excel_file',
-        metavar='excel_file',
+        'Input_file',
+        metavar='input_file',
         type=str,
-        help=(f'the name and path of the input file, which must be in Excel '
-            f'format (e.g. xlsx/filename.xlsx)')
+        help=(f'the name and path of the input file, which must be in either '
+            f'CSV or Excel format (e.g. xlsx/filename.xlsx)')
     )
     return parser
 
@@ -351,9 +351,26 @@ def main() -> None:
     parser = init_argparse()
     args = parser.parse_args()
 
-    # Convert excel file into pandas DataFrame
-    data = pd.read_excel(args.Excel_file, 'Sheet1', engine='openpyxl',
-        dtype={'MMS ID': 'str', 'OCLC Number': 'str'}, keep_default_na=False)
+    # Convert input file into pandas DataFrame
+    data = None
+    if args.Input_file.endswith('.csv'):
+        data = pd.read_csv(args.Input_file,
+            dtype={'MMS ID': 'str', 'OCLC Number': 'str'},
+            keep_default_na=False)
+    elif args.Input_file.endswith('.xlsx'):
+        data = pd.read_excel(args.Input_file, 'Sheet1', engine='openpyxl',
+            dtype={'MMS ID': 'str', 'OCLC Number': 'str'},
+            keep_default_na=False)
+    elif args.Input_file.endswith('.xls'):
+        data = pd.read_excel(args.Input_file, 'Sheet1', engine='xlrd',
+            dtype={'MMS ID': 'str', 'OCLC Number': 'str'},
+            keep_default_na=False)
+    else:
+        logger.exception(f'Invalid format for input file ({args.Input_file}). '
+            f'Input file must be one of the following file formats (as '
+            f'indicated by its file extension): CSV file (.csv) or Excel file '
+            f'(.xlsx or .xls)')
+        return
 
     # Loop over rows in DataFrame and update the corresponding Alma record
     num_records_updated = 0
