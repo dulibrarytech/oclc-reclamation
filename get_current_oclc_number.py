@@ -121,11 +121,15 @@ def main() -> None:
             error_msg = None
             result = None
             try:
-                # TO DO: Add assertions to check validity of MMS ID and OCLC
-                # Number
                 mms_id = row['MMS ID']
                 orig_oclc_num = \
                     row["Unique OCLC Number from Alma Record's 035 $a"]
+
+                # Make sure that mms_id and orig_oclc_num are valid
+                mms_id = libraries.record.get_valid_record_identifier(mms_id,
+                    'MMS ID')
+                orig_oclc_num = libraries.record.get_valid_record_identifier(
+                    orig_oclc_num, 'OCLC number')
 
                 result = get_current_oclc_numbers(mms_id, orig_oclc_num)
                 logger.debug(f'{type(result)=}')
