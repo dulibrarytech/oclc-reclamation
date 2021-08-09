@@ -193,6 +193,41 @@ def get_subfield_a_with_oclc_num(
         error_msg)
 
 
+def get_valid_record_identifier(record_identifier: str,
+        identifier_name: str) -> str:
+    """Checks the validity of the given record identifier.
+
+    If valid, returns the record identifier with leading and trailing whitespace
+    removed (if applicable).
+    If invalid, raises AssertionError.
+
+    Parameters
+    ----------
+    record_identifier: str
+        The record identifier to check
+    identifier_name: str
+        The name of the record identifier (e.g. 'OCLC number')
+
+    Returns
+    -------
+    str
+        The record identifier with whitespace removed from the beginning and end
+        of the string
+    """
+    empty_identifier_error_msg = (f"Invalid {identifier_name}: "
+        f"'{record_identifier}'. It cannot be empty.")
+
+    assert record_identifier is not None, empty_identifier_error_msg
+
+    record_identifier = record_identifier.strip()
+
+    assert len(record_identifier) > 0, empty_identifier_error_msg
+    assert record_identifier.isdigit(), (f"Invalid {identifier_name}: "
+        f"'{record_identifier}' must contain only digits.")
+
+    return record_identifier
+
+
 def remove_leading_zeros(string: str) -> str:
     """Removes leading zeros from the given string, if applicable.
 

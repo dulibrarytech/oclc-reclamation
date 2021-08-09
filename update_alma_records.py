@@ -109,27 +109,10 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
 
     logger.debug(f"Attempting to update MMS ID '{mms_id}'...")
 
-    # Make sure that mms_id and oclc_num are not empty and remove any leading
-    # and trailing whitespace.
-    empty_mms_id_error_msg = f"Invalid MMS ID: '{mms_id}'. It cannot be empty."
-    empty_oclc_num_error_msg = (f"Invalid OCLC number: '{oclc_num}'. It "
-        f"cannot be empty.")
-
-    assert mms_id is not None, empty_mms_id_error_msg
-    assert oclc_num is not None, empty_oclc_num_error_msg
-
-    mms_id = mms_id.strip()
-    oclc_num = oclc_num.strip()
-
-    assert len(mms_id) > 0, empty_mms_id_error_msg
-    assert len(oclc_num) > 0, empty_oclc_num_error_msg
-
-    # Make sure that mms_id and oclc_num contain numbers only.
-    assert mms_id.isdigit(), (f"Invalid MMS ID: '{mms_id}' must contain only "
-        f"digits.")
-
-    assert oclc_num.isdigit(), (f"Invalid OCLC number: '{oclc_num}' must "
-        f"contain only digits.")
+    # Make sure that mms_id and oclc_num are valid
+    mms_id = libraries.record.get_valid_record_identifier(mms_id, 'MMS ID')
+    oclc_num = libraries.record.get_valid_record_identifier(oclc_num,
+        'OCLC number')
 
     # Remove leading zeros and create full OCLC number string
     oclc_num = libraries.record.remove_leading_zeros(oclc_num)
