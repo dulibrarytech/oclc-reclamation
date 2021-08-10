@@ -92,9 +92,7 @@ def main() -> None:
     # Convert input file into pandas DataFrame
     data = None
     if args.Input_file.endswith('.csv'):
-        data = pd.read_csv(args.Input_file,
-            dtype={'MMS ID': 'str', 'OCLC Number': 'str'},
-            keep_default_na=False)
+        data = pd.read_csv(args.Input_file, dtype='str', keep_default_na=False)
     else:
         logger.exception(f'Invalid format for input file ({args.Input_file}). '
             f'Input file must a CSV file (.csv)')
@@ -133,12 +131,12 @@ def main() -> None:
                 orig_oclc_num = libraries.record.get_valid_record_identifier(
                     orig_oclc_num, 'OCLC number')
 
-                # Remove leading zeros from orig_oclc_num
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
 
                 result = get_current_oclc_numbers(mms_id, orig_oclc_num)
                 logger.debug(f'{type(result)=}')
+
                 api_response_error_msg = (f"Problem with Get Current OCLC "
                     f"Number API request for OCLC Number '{orig_oclc_num}' "
                     f"(MMS ID '{mms_id}') at row {index + 2} of input file: ")
