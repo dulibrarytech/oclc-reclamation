@@ -19,18 +19,17 @@ logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
-def get_current_oclc_numbers(mms_id: str, oclc_num: str):
-    """GETs the current OCLC number for the given record.
+def get_current_oclc_numbers(oclc_nums: str):
+    """GETs the current OCLC number for each number in oclc_nums.
 
     Sends a GET request to the WorldCat Metadata API:
     https://worldcat.org/bib/checkcontrolnumbers?oclcNumbers={oclcNumbers}
 
     Parameters
     ----------
-    mms_id: str
-        The MMS ID of the Alma record
-    oclc_num: str
-        The OCLC number of the record
+    oclc_nums: str
+        The OCLC numbers to be checked. Each OCLC number should be separated by
+        a comma and contain no spaces, leading zeros, or non-digit characters.
 
     Returns
     -------
@@ -44,10 +43,9 @@ def get_current_oclc_numbers(mms_id: str, oclc_num: str):
     transactionID = f"DVP_{timestamp}_{os.getenv('WORLDCAT_PRINCIPAL_ID')}"
 
     response = requests.get(f"{os.getenv('WORLDCAT_METADATA_SERVICE_URL')}"
-        f"/bib/checkcontrolnumbers?oclcNumbers={oclc_num}&transactionID="
+        f"/bib/checkcontrolnumbers?oclcNumbers={oclc_nums}&transactionID="
         f"{transactionID}", headers=headers, timeout=45)
     libraries.api.log_response_and_raise_for_status(response)
-    logger.debug(f'{response.text=}')
 
     return response.json()
 
@@ -134,7 +132,7 @@ def main() -> None:
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
 
-                result = get_current_oclc_numbers(mms_id, orig_oclc_num)
+                result = get_current_oclc_numbers(orig_oclc_num)
                 logger.debug(f'{type(result)=}')
 
                 api_response_error_msg = (f"Problem with Get Current OCLC "
