@@ -100,7 +100,6 @@ def main() -> None:
             f'Input file must a CSV file (.csv)')
         return
 
-    num_records_processed = 0
     num_records_with_current_oclc_num = 0
     num_records_with_old_oclc_num = 0
     num_records_with_errors = 0
@@ -148,7 +147,6 @@ def main() -> None:
                     error_msg = 'No JSON response'
                     logger.debug(api_response_error_msg + error_msg)
                 else:
-                    num_records_processed += 1
                     logger.debug(f'Result of Get Current OCLC Number request:\n'
                         f'{json.dumps(result, indent=2)}')
 
@@ -231,9 +229,8 @@ def main() -> None:
                         error_msg
                     ])
 
-    print(f'\nEnd of script. Processed {num_records_processed} records out of '
-        f'{len(data.index)} rows from input file:\n'
-        f'- {num_records_with_current_oclc_num} record(s) with current OCLC '
+    print(f'\nEnd of script. Processed {len(data.index)} rows from input file:'
+        f'\n- {num_records_with_current_oclc_num} record(s) with current OCLC '
         f'number\n- {num_records_with_old_oclc_num} record(s) with old OCLC '
         f'number\n- {num_records_with_errors} record(s) with errors')
 
