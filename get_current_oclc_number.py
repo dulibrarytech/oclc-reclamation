@@ -100,10 +100,11 @@ def main() -> None:
             f'Input file must a CSV file (.csv)')
         return
 
-    # Loop over rows in DataFrame and check with OCLC number is the current one
     num_records_processed = 0
     num_records_with_current_oclc_num = 0
     num_records_with_old_oclc_num = 0
+    num_records_with_errors = 0
+
     with open('csv/needs_current_oclc_number.csv', mode='a',
             newline='') as records_with_old_oclc_num, \
         open('csv/already_has_current_oclc_number.csv', mode='a',
@@ -116,6 +117,8 @@ def main() -> None:
             writer(records_with_current_oclc_num)
         records_with_errors_writer = writer(records_with_errors)
 
+        # Loop over each row in DataFrame and check whether OCLC number is the
+        # current one
         for index, row in data.iterrows():
             error_occurred = True
             error_msg = None
@@ -130,6 +133,10 @@ def main() -> None:
                     'MMS ID')
                 orig_oclc_num = libraries.record.get_valid_record_identifier(
                     orig_oclc_num, 'OCLC number')
+
+                # Remove leading zeros from orig_oclc_num
+                orig_oclc_num = \
+                    libraries.record.remove_leading_zeros(orig_oclc_num)
 
                 result = get_current_oclc_numbers(mms_id, orig_oclc_num)
                 logger.debug(f'{type(result)=}')
@@ -207,6 +214,8 @@ def main() -> None:
                 error_msg = err
             finally:
                 if error_occurred:
+                    num_records_with_errors += 1
+
                     # Add record to records_with_errors spreadsheet
                     if records_with_errors.tell() == 0:
                         # Write header row
@@ -226,7 +235,7 @@ def main() -> None:
         f'{len(data.index)} rows from input file:\n'
         f'- {num_records_with_current_oclc_num} record(s) with current OCLC '
         f'number\n- {num_records_with_old_oclc_num} record(s) with old OCLC '
-        f'number')
+        f'number\n- {num_records_with_errors} record(s) with errors')
 
 
 if __name__ == "__main__":
