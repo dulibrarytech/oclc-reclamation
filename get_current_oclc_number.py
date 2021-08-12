@@ -50,6 +50,88 @@ def get_current_oclc_numbers(oclc_nums: str):
     return response.json()
 
 
+def process_json_response(json_response, records_buffer):
+    """Processes the JSON response from the get_current_oclc_numbers function.
+
+    Parameters
+    ----------
+    json_response: Dict
+        The JSON response returned by the get_current_oclc_numbers function
+    records_buffer: Dict
+        The initial dictionary, which will be populated with data from the
+        json_response.
+
+    Returns
+    -------
+    Dict
+        A dictionary with the OCLC number of each record as the key, and a
+        nested dictionary containing the remaining record data.
+    """
+    api_response_error_msg = (f"Problem with Get Current OCLC "
+        f"Number API request for OCLC Number '{orig_oclc_num}' "
+        f"(MMS ID '{mms_id}') at row {index + 2} of input file: ")
+
+    if json_response is None:
+        error_msg = 'No JSON response'
+        logger.debug(api_response_error_msg + error_msg)
+    else:
+        logger.debug(f'Result of Get Current OCLC Number request:\n'
+            f'{json.dumps(json_response, indent=2)}')
+
+        for record_index, record in enumerate(json_response['entry'],
+                start=1):
+            found_requested_oclc_num = record['found']
+            is_current_oclc_num = not record['merged']
+
+            logger.debug(f'Started processing record #'
+                f'{record_index} (OCLC number '
+                f'{record["requestedOclcNumber"]})...')
+            logger.debug(f'{is_current_oclc_num=}')
+            logger.debug(f'{type(is_current_oclc_num)=}')
+
+            if not found_requested_oclc_num:
+                error_msg = 'OCLC number not found'
+                logger.debug(api_response_error_msg + error_msg)
+            elif is_current_oclc_num:
+                error_occurred = False
+                num_records_with_current_oclc_num += 1
+
+                # Add record to already_has_current_oclc_number.csv
+                if records_with_current_oclc_num.tell() == 0:
+                    # Write header row
+                    records_with_current_oclc_num_writer.writerow([
+                        'MMS ID',
+                        'Current OCLC Number'
+                    ])
+
+                records_with_current_oclc_num_writer.writerow([
+                    mms_id,
+                    orig_oclc_num
+                ])
+            else:
+                error_occurred = False
+                num_records_with_old_oclc_num += 1
+
+                current_oclc_num = record['currentOclcNumber']
+
+                # Add record to needs_current_oclc_number.csv
+                if records_with_old_oclc_num.tell() == 0:
+                    # Write header row
+                    records_with_old_oclc_num_writer.writerow([
+                        'MMS ID',
+                        'Current OCLC Number',
+                        'Original OCLC Number'
+                    ])
+
+                records_with_old_oclc_num_writer.writerow([
+                    mms_id,
+                    current_oclc_num,
+                    orig_oclc_num
+                ])
+            logger.debug(f'Finished processing record #'
+                f'{record_index}.\n')
+
+
 def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
@@ -112,12 +194,16 @@ def main() -> None:
             writer(records_with_current_oclc_num)
         records_with_errors_writer = writer(records_with_errors)
 
+        records_buffer = {}
+
         # Loop over each row in DataFrame and check whether OCLC number is the
         # current one
         for index, row in data.iterrows():
+            logger.debug(f'Started processing row {index + 2} of input file...')
             error_occurred = True
             error_msg = None
             result = None
+
             try:
                 mms_id = row['MMS ID']
                 orig_oclc_num = \
@@ -132,65 +218,11 @@ def main() -> None:
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
 
-                result = get_current_oclc_numbers(orig_oclc_num)
-                logger.debug(f'{type(result)=}')
-
-                api_response_error_msg = (f"Problem with Get Current OCLC "
-                    f"Number API request for OCLC Number '{orig_oclc_num}' "
-                    f"(MMS ID '{mms_id}') at row {index + 2} of input file: ")
-
-                if result is None:
-                    error_msg = 'No JSON response'
-                    logger.debug(api_response_error_msg + error_msg)
-                else:
-                    logger.debug(f'Result of Get Current OCLC Number request:\n'
-                        f'{json.dumps(result, indent=2)}')
-
-                    found_requested_oclc_num = result['entry'][0]['found']
-                    is_current_oclc_num = not result['entry'][0]['merged']
-                    logger.debug(f'{is_current_oclc_num=}')
-                    logger.debug(f'{type(is_current_oclc_num)=}')
-
-                    if not found_requested_oclc_num:
-                        error_msg = 'OCLC number not found'
-                        logger.debug(api_response_error_msg + error_msg)
-                    elif is_current_oclc_num:
-                        error_occurred = False
-                        num_records_with_current_oclc_num += 1
-
-                        # Add record to already_has_current_oclc_number.csv
-                        if records_with_current_oclc_num.tell() == 0:
-                            # Write header row
-                            records_with_current_oclc_num_writer.writerow([
-                                'MMS ID',
-                                'Current OCLC Number'
-                            ])
-
-                        records_with_current_oclc_num_writer.writerow([
-                            mms_id,
-                            orig_oclc_num
-                        ])
-                    else:
-                        error_occurred = False
-                        num_records_with_old_oclc_num += 1
-
-                        current_oclc_num = \
-                            result['entry'][0]['currentOclcNumber']
-
-                        # Add record to needs_current_oclc_number.csv
-                        if records_with_old_oclc_num.tell() == 0:
-                            # Write header row
-                            records_with_old_oclc_num_writer.writerow([
-                                'MMS ID',
-                                'Current OCLC Number',
-                                'Original OCLC Number'
-                            ])
-
-                        records_with_old_oclc_num_writer.writerow([
-                            mms_id,
-                            current_oclc_num,
-                            orig_oclc_num
-                        ])
+                # If len(records_buffer) < 50, add to records_buffer
+                # Else:
+                # json_response = get_current_oclc_numbers(','.join(records_buffer.keys()))
+                # logger.debug(f'{type(json_response)=}')
+                # records_buffer = process_json_response(json_response, records_buffer)
             except AssertionError as assert_err:
                 logger.exception(f"An assertion error occurred when "
                     f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}"
@@ -224,6 +256,10 @@ def main() -> None:
                         orig_oclc_num,
                         error_msg
                     ])
+                logger.debug(f'Finished processing row {index + 2} of input '
+                    f'file.\n')
+
+        # If records_buffer is not empty, process remaining records
 
     print(f'\nEnd of script. Processed {len(data.index)} rows from input file:'
         f'\n- {num_records_with_current_oclc_num} record(s) with current OCLC '
