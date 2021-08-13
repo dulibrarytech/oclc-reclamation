@@ -58,14 +58,14 @@ def process_json_response(json_response, records_buffer):
     json_response: Dict
         The JSON response returned by the get_current_oclc_numbers function
     records_buffer: Dict
-        The initial dictionary, which will be populated with data from the
-        json_response.
+        The initial dictionary, which will be updated with data from the
+        json_response
 
     Returns
     -------
     Dict
-        A dictionary with the OCLC number of each record as the key, and a
-        nested dictionary containing the remaining record data.
+        A dictionary with the MMS ID of each record as the key, and a nested
+        dictionary (containing the remaining record data) as the value
     """
     api_response_error_msg = (f"Problem with Get Current OCLC "
         f"Number API request for OCLC Number '{orig_oclc_num}' "
@@ -132,6 +132,28 @@ def process_json_response(json_response, records_buffer):
                 f'{record_index}.\n')
 
 
+def process_records_buffer(records_buffer: Dict[str, str]):
+    """Updates the given records_buffer with each record's current OCLC number.
+
+    Parameters
+    ----------
+    records_buffer: Dict[str, str]
+        The initial dictionary with the MMS ID of each record as the key, and
+        the original OCLC number as the value
+
+    Returns
+    -------
+    Dict
+        The updated dictionary with the MMS ID of each record as the key, and a
+        nested dictionary (containing record data such as the current OCLC
+        number) as the value
+    """
+
+    json_response = get_current_oclc_numbers(','.join(records_buffer.values()))
+    logger.debug(f'{type(json_response)=}')
+    return process_json_response(json_response, records_buffer)
+
+
 def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
@@ -162,7 +184,7 @@ def main() -> None:
     - If so, then add the record to already_has_current_oclc_number.csv
     - If not, then add the record to needs_current_oclc_number.csv
 
-    Gathers up to 50 OCLC numbers before sending a GET request.
+    Gathers the maximum OCLC numbers possible before sending a GET request.
     """
 
     # Initialize parser and parse command-line args
@@ -218,11 +240,19 @@ def main() -> None:
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
 
-                # If len(records_buffer) < 50, add to records_buffer
-                # Else:
-                # json_response = get_current_oclc_numbers(','.join(records_buffer.keys()))
-                # logger.debug(f'{type(json_response)=}')
-                # records_buffer = process_json_response(json_response, records_buffer)
+                if len(records_buffer) < os.getenv(
+                        'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST'):
+                    assert mms_id not in records_buffer, (f'MMS ID already '
+                        f'found earlier in input file. The OCLC number for '
+                        f'this row is {orig_oclc_num}')
+                    records_buffer[mms_id] = orig_oclc_num
+                else:
+                    # records_buffer has the maximum records possible per API
+                    # request
+                    process_records_buffer(records_buffer)
+
+                    # Now that its records have been processed, clear buffer
+                    records_buffer.clear()
             except AssertionError as assert_err:
                 logger.exception(f"An assertion error occurred when "
                     f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}"
@@ -260,6 +290,8 @@ def main() -> None:
                     f'file.\n')
 
         # If records_buffer is not empty, process remaining records
+        if len(records_buffer) > 0:
+            process_records_buffer(records_buffer)
 
     print(f'\nEnd of script. Processed {len(data.index)} rows from input file:'
         f'\n- {num_records_with_current_oclc_num} record(s) with current OCLC '
