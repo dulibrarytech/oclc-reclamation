@@ -83,6 +83,8 @@ def process_json_response(json_response, records_buffer, results,
                 start=1):
             found_requested_oclc_num = record['found']
             is_current_oclc_num = not record['merged']
+
+            # Look up MMS ID based on OCLC number
             mms_id = records_buffer[record['requestedOclcNumber']]
 
             logger.debug(f'Started processing record #{record_index} (OCLC '
@@ -112,8 +114,6 @@ def process_json_response(json_response, records_buffer, results,
             else:
                 error_occurred = False
                 results['num_records_with_old_oclc_num'] += 1
-
-                current_oclc_num = record['currentOclcNumber']
 
                 # Add record to needs_current_oclc_number.csv
                 if records_with_old_oclc_num.tell() == 0:
@@ -249,16 +249,13 @@ def main() -> None:
                     'MMS ID')
                 orig_oclc_num = libraries.record.get_valid_record_identifier(
                     orig_oclc_num, 'OCLC number')
-
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
 
                 if len(records_buffer) < int(os.getenv(
                         'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST')):
-                    assert mms_id not in records_buffer, (f'MMS ID already '
-                        f'found earlier in input file. The OCLC number for '
-                        f'this row is {orig_oclc_num}')
-                    # TO DO: Consider checking to see if orig_oclc_num is already in dict
+                    assert orig_oclc_num not in records_buffer, (f'OCLC number '
+                        f'{orig_oclc_num} already found earlier in input file.')
                     records_buffer[orig_oclc_num] = mms_id
                     logger.debug(f'Added {orig_oclc_num} to records_buffer')
                     logger.debug(f'{records_buffer=}')
@@ -278,7 +275,6 @@ def main() -> None:
                     records_buffer.clear()
 
                     # Add current row's data to the empty records_buffer
-                    # TO DO: Consider checking to see if orig_oclc_num is already in dict
                     records_buffer[orig_oclc_num] = mms_id
                     logger.debug(f'Added {orig_oclc_num} to records_buffer')
                     logger.debug(f'{records_buffer=}')
