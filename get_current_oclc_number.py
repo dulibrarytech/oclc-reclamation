@@ -11,12 +11,50 @@ import time
 from csv import writer
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
-from typing import Dict
+from typing import Dict, TextIO
 
 load_dotenv()
 
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
+
+
+class RecordsBuffer:
+    """
+    A buffer of records, each of whose OCLC number needs to be checked.
+
+    Attributes
+    ----------
+    lookup_table: Dict[str, str]
+        A dictionary containing each record's original OCLC number (key) and its
+        MMS ID (value)
+    records_with_current_oclc_num: TextIO
+        The CSV file object where records with a current OCLC number are added
+    records_with_old_oclc_num: TextIO
+        The CSV file object where records with an old OCLC number are added
+    records_with_errors: TextIO
+        The CSV file object where records are added if an error is encountered
+
+    Methods
+    -------
+    process_json_response(json_response)
+        Processes the JSON response from the get_current_oclc_numbers function
+    """
+
+    def __init__(self,
+            records_with_current_oclc_num: TextIO,
+            records_with_old_oclc_num: TextIO,
+            records_with_errors: TextIO) -> None:
+        records_buffer = {}
+        logger.debug('Inside RecordsBuffer constructor')
+        logger.debug(f'{type(records_buffer)=}')
+        logger.debug(f'{type(records_with_current_oclc_num)=}')
+        logger.debug(f'{type(records_with_old_oclc_num)=}')
+        logger.debug(f'{type(records_with_errors)=}')
+        # records_with_old_oclc_num_writer = writer(records_with_old_oclc_num)
+        # records_with_current_oclc_num_writer = \
+        #     writer(records_with_current_oclc_num)
+        # records_with_errors_writer = writer(records_with_errors)
 
 
 def get_current_oclc_numbers(oclc_nums: str):
@@ -152,6 +190,8 @@ def process_records_buffer(records_buffer: Dict[str, str],
         number) as the value
     """
 
+    logger.debug(f'{type(records_with_current_oclc_num)=}')
+    logger.debug(f'{type(records_with_current_oclc_num_writer)=}')
     json_response = get_current_oclc_numbers(','.join(records_buffer.keys()))
     logger.debug(f'{type(json_response)=}')
     return process_json_response(
@@ -230,6 +270,9 @@ def main() -> None:
         records_with_errors_writer = writer(records_with_errors)
 
         records_buffer = {}
+        test = RecordsBuffer(records_with_current_oclc_num,
+            records_with_old_oclc_num, records_with_errors)
+        logger.debug(f'{type(test)=}')
 
         # Loop over each row in DataFrame and check whether OCLC number is the
         # current one
