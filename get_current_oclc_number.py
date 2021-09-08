@@ -45,16 +45,25 @@ class RecordsBuffer:
             records_with_current_oclc_num: TextIO,
             records_with_old_oclc_num: TextIO,
             records_with_errors: TextIO) -> None:
-        records_buffer = {}
-        logger.debug('Inside RecordsBuffer constructor')
-        logger.debug(f'{type(records_buffer)=}')
-        logger.debug(f'{type(records_with_current_oclc_num)=}')
-        logger.debug(f'{type(records_with_old_oclc_num)=}')
-        logger.debug(f'{type(records_with_errors)=}')
-        # records_with_old_oclc_num_writer = writer(records_with_old_oclc_num)
-        # records_with_current_oclc_num_writer = \
-        #     writer(records_with_current_oclc_num)
-        # records_with_errors_writer = writer(records_with_errors)
+        logger.debug('Started RecordsBuffer constructor...')
+
+        self.records_buffer = {}
+        logger.debug(f'{type(self.records_buffer)=}')
+
+        self.records_with_current_oclc_num = records_with_current_oclc_num
+        self.records_with_current_oclc_num_writer = \
+            writer(records_with_current_oclc_num)
+        logger.debug(f'{type(self.records_with_current_oclc_num)=}')
+        logger.debug(f'{type(self.records_with_current_oclc_num_writer)=}')
+
+        self.records_with_old_oclc_num = records_with_old_oclc_num
+        self.records_with_old_oclc_num_writer = \
+            writer(records_with_old_oclc_num)
+
+        self.records_with_errors = records_with_errors
+        self.records_with_errors_writer = writer(records_with_errors)
+
+        logger.debug('Completed RecordsBuffer constructor.')
 
 
 def get_current_oclc_numbers(oclc_nums: str):
@@ -190,8 +199,6 @@ def process_records_buffer(records_buffer: Dict[str, str],
         number) as the value
     """
 
-    logger.debug(f'{type(records_with_current_oclc_num)=}')
-    logger.debug(f'{type(records_with_current_oclc_num_writer)=}')
     json_response = get_current_oclc_numbers(','.join(records_buffer.keys()))
     logger.debug(f'{type(json_response)=}')
     return process_json_response(
@@ -321,6 +328,8 @@ def main() -> None:
                     records_buffer[orig_oclc_num] = mms_id
                     logger.debug(f'Added {orig_oclc_num} to records_buffer')
                     logger.debug(f'{records_buffer=}')
+
+                error_occurred = False
             except AssertionError as assert_err:
                 logger.exception(f"An assertion error occurred when "
                     f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}"
