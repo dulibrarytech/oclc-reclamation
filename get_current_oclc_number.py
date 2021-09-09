@@ -223,7 +223,7 @@ class RecordsBuffer:
         logger.debug(self.__str__())
 
 
-def get_current_oclc_numbers(oclc_nums: str):
+def get_current_oclc_numbers(oclc_nums: str) -> Dict:
     """GETs the current OCLC number for each number in oclc_nums.
 
     Sends a GET request to the WorldCat Metadata API:
