@@ -10,7 +10,6 @@ import requests
 import time
 from csv import writer
 from dotenv import load_dotenv
-from requests.exceptions import HTTPError
 from typing import Dict, TextIO
 
 load_dotenv()
@@ -345,7 +344,7 @@ def main() -> None:
         # current one
         for index, row in data.iterrows():
             logger.debug(f'Started processing row {index + 2} of input file...')
-            error_occurred = True
+            error_occurred = False
             error_msg = None
 
             try:
@@ -375,29 +374,12 @@ def main() -> None:
 
                     # Add current row's data to the empty buffer
                     records_buffer.add(orig_oclc_num, mms_id)
-
-                error_occurred = False
             except AssertionError as assert_err:
                 logger.exception(f"An assertion error occurred when "
                     f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}"
                     f" of input file): {assert_err}")
                 error_msg = f"Assertion Error: {assert_err}"
-            except HTTPError:
-                logger.exception("An HTTP error occurred when processing "
-                    "records buffer")
-
-                # This HTTP error does not pertain to the current row in the
-                # input file
-                error_occurred = False
-
-                # Re-raise exception so that the script is halted (since future
-                # API requests will likely result in the same error)
-                raise
-            except Exception as err:
-                logger.exception(f"An error occurred when processing MMS ID "
-                    f"'{row['MMS ID']}' (at row {index + 2} of input file): "
-                    f"{err}")
-                error_msg = err
+                error_occurred = True
             finally:
                 if error_occurred:
                     results['num_records_with_errors'] += 1
