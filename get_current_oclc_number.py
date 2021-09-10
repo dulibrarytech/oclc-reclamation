@@ -210,17 +210,19 @@ class RecordsBuffer:
             old OCLC number, records with errors
         """
 
+        logger.debug('Started processing records buffer...')
         json_response = get_current_oclc_numbers(
             ','.join(self.oclc_num_dict.keys()))
         logger.debug(f'{type(json_response)=}')
         self.process_json_response(json_response, results)
+        logger.debug('Finished processing records buffer.\n')
 
     def remove_all_records(self) -> None:
         """Removes all records from this buffer (i.e. clears oclc_num_dict)."""
 
         self.oclc_num_dict.clear()
         logger.debug(f'Cleared records buffer.')
-        logger.debug(self.__str__())
+        logger.debug(self.__str__() + '\n')
 
 
 def get_current_oclc_numbers(oclc_nums: str) -> Dict:
@@ -348,6 +350,7 @@ def main() -> None:
                 else:
                     # records_buffer has the maximum records possible per API
                     # request, so process these records
+                    logger.debug('Records buffer is full.\n')
                     records_buffer.process_records(results)
 
                     # Now that its records have been processed, clear buffer
@@ -362,11 +365,17 @@ def main() -> None:
                     f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}"
                     f" of input file): {assert_err}")
                 error_msg = f"Assertion Error: {assert_err}"
-            except HTTPError as http_err:
-                logger.exception(f"An HTTP error occurred when processing "
-                    f"MMS ID '{row['MMS ID']}' (at row {index + 2} of input "
-                    f"file): {http_err}")
-                error_msg = f"HTTP Error: {http_err}"
+            except HTTPError:
+                logger.exception("An HTTP error occurred when processing "
+                    "records buffer")
+
+                # This HTTP error does not pertain to the current row in the
+                # input file
+                error_occurred = False
+
+                # Re-raise exception so that the script is halted (since future
+                # API requests will likely result in the same error)
+                raise
             except Exception as err:
                 logger.exception(f"An error occurred when processing MMS ID "
                     f"'{row['MMS ID']}' (at row {index + 2} of input file): "
