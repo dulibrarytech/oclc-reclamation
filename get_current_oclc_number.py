@@ -314,9 +314,6 @@ def main() -> None:
         open('csv/records_with_errors_when_getting_current_oclc_number.csv',
             mode='a', newline='') as records_with_errors:
 
-        records_with_old_oclc_num_writer = writer(records_with_old_oclc_num)
-        records_with_current_oclc_num_writer = \
-            writer(records_with_current_oclc_num)
         records_with_errors_writer = writer(records_with_errors)
 
         records_buffer = RecordsBuffer(records_with_current_oclc_num,
@@ -331,7 +328,6 @@ def main() -> None:
             logger.debug(f'Started processing row {index + 2} of input file...')
             error_occurred = True
             error_msg = None
-            result = None
 
             try:
                 mms_id = row['MMS ID']
