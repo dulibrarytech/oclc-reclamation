@@ -342,19 +342,25 @@ def main() -> None:
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
 
+                # Add record to records buffer if there is space
                 if len(records_buffer.oclc_num_dict) < int(os.getenv(
                         'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST')):
                     records_buffer.add(orig_oclc_num, mms_id)
                 else:
-                    # records_buffer has the maximum records possible per API
-                    # request, so process these records
+                    # Not sure how to handle the case where this record was not
+                    # added to the records buffer because the buffer was full.
+                    # This case should generate an ERROR entry (via
+                    # logger.exception) in the log, as well as a row in
+                    # records_with_errors_when_getting_current_oclc_number.csv,
+                    # but I'm not sure how best to output this error to the CSV
+                    # file without 1) halting the script and/or 2) preventing
+                    # the remainder of this code block from executing.
+
+                # If records buffer is full, process records and clear buffer
+                if len(records_buffer.oclc_num_dict) == int(os.getenv(
+                        'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST')):
                     records_buffer.process_records(results)
-
-                    # Now that its records have been processed, clear buffer
                     records_buffer.remove_all_records()
-
-                    # Add current row's data to the empty buffer
-                    records_buffer.add(orig_oclc_num, mms_id)
 
                 error_occurred = False
             except AssertionError as assert_err:
