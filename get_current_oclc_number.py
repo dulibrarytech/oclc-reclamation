@@ -165,6 +165,23 @@ class RecordsBuffer:
                 if not found_requested_oclc_num:
                     logger.exception(f'{api_response_error_msg}: OCLC number '
                         f'{record["requestedOclcNumber"]} not found')
+
+                    results['num_records_with_errors'] += 1
+
+                    # Add record to records_with_errors spreadsheet
+                    if self.records_with_errors.tell() == 0:
+                        # Write header row
+                        self.records_with_errors_writer.writerow([
+                            'MMS ID',
+                            'OCLC Number',
+                            'Error'
+                        ])
+
+                    self.records_with_errors_writer.writerow([
+                        mms_id,
+                        record['requestedOclcNumber'],
+                        f'{api_response_error_msg}: OCLC number not found'
+                    ])
                 elif is_current_oclc_num:
                     results['num_records_with_current_oclc_num'] += 1
 
