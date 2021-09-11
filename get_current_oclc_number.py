@@ -44,8 +44,8 @@ class RecordsBuffer:
     -------
     add(orig_oclc_num, mms_id)
         Adds the given record to this buffer (i.e. to oclc_num_dict)
-    process_json_response(json_response, results)
-        Processes the JSON response from the get_current_oclc_numbers function
+    process_api_response(api_response, results)
+        Processes the API response from the check_oclc_numbers function
     process_records(results)
         Checks each record in oclc_num_dict for the current OCLC number
     remove_all_records()
@@ -125,14 +125,14 @@ class RecordsBuffer:
         logger.debug(f'Added {orig_oclc_num} to records buffer.')
         logger.debug(self.__str__())
 
-    def process_json_response(self, json_response: Dict,
+    def process_api_response(self, api_response: requests.models.Response,
             results: Dict[str, int]) -> None:
-        """Processes the JSON response from get_current_oclc_numbers function.
+        """Processes the API response from the check_oclc_numbers function.
 
         Parameters
         ----------
-        json_response: Dict
-            The JSON response returned by the get_current_oclc_numbers function
+        api_response: requests.models.Response
+            The API response returned by the check_oclc_numbers function
         results: Dict[str, int]
             A dictionary containing the total number of records in the following
             categories: records with the current OCLC number, records with an
@@ -142,9 +142,8 @@ class RecordsBuffer:
         api_response_error_msg = ('Problem with Get Current OCLC Number API '
             'response')
 
-        if json_response is None:
-            logger.exception(f'{api_response_error_msg}: No JSON response')
-        else:
+        try:
+            json_response = api_response.json()
             logger.debug(f'Get Current OCLC Number API response:\n'
                 f'{json.dumps(json_response, indent=2)}')
 
@@ -214,6 +213,15 @@ class RecordsBuffer:
                         record['requestedOclcNumber']
                     ])
                 logger.debug(f'Finished processing record #{record_index}.\n')
+        except json.decoder.JSONDecodeError:
+        # except (requests.exceptions.JSONDecodeError,
+        #         json.decoder.JSONDecodeError):
+            logger.exception(f'{api_response_error_msg}: Error decoding JSON')
+            logger.exception(f'{api_response.text=}')
+
+            # Re-raise exception so that the script is halted (since future API
+            # requests may result in the same error)
+            raise
 
     def process_records(self, results: Dict[str, int]) -> None:
         """Checks each record in oclc_num_dict for the current OCLC number.
@@ -227,10 +235,9 @@ class RecordsBuffer:
         """
 
         logger.debug('Started processing records buffer...')
-        json_response = get_current_oclc_numbers(
-            ','.join(self.oclc_num_dict.keys()))
-        logger.debug(f'{type(json_response)=}')
-        self.process_json_response(json_response, results)
+        response = check_oclc_numbers(','.join(self.oclc_num_dict.keys()))
+        logger.debug(f'{type(response)=}')
+        self.process_api_response(response, results)
         logger.debug('Finished processing records buffer.\n')
 
     def remove_all_records(self) -> None:
@@ -241,10 +248,10 @@ class RecordsBuffer:
         logger.debug(self.__str__() + '\n')
 
 
-def get_current_oclc_numbers(oclc_nums: str) -> Dict:
-    """GETs the current OCLC number for each number in oclc_nums.
+def check_oclc_numbers(oclc_nums: str) -> requests.models.Response:
+    """Checks each number in oclc_nums to see if it's the current one.
 
-    Sends a GET request to the WorldCat Metadata API:
+    This is done by sending a GET request to the WorldCat Metadata API:
     https://worldcat.org/bib/checkcontrolnumbers?oclcNumbers={oclcNumbers}
 
     Parameters
@@ -255,8 +262,8 @@ def get_current_oclc_numbers(oclc_nums: str) -> Dict:
 
     Returns
     -------
-    Dict
-        The JSON response object
+    requests.models.Response
+        The API response object
     """
 
     token = os.getenv('WORLDCAT_METADATA_API_TOKEN')
@@ -270,7 +277,7 @@ def get_current_oclc_numbers(oclc_nums: str) -> Dict:
     logger.debug(f'{type(response)=}')
     libraries.api.log_response_and_raise_for_status(response)
 
-    return response.json()
+    return response
 
 
 def init_argparse() -> argparse.ArgumentParser:
