@@ -137,6 +137,11 @@ class RecordsBuffer:
             A dictionary containing the total number of records in the following
             categories: records with the current OCLC number, records with an
             old OCLC number, records with errors
+
+        Raises
+        ------
+        json.decoder.JSONDecodeError
+            If there is an error decoding the API response
         """
 
         api_response_error_msg = ('Problem with Get Current OCLC Number API '
