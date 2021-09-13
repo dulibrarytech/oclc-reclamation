@@ -163,7 +163,6 @@ class RecordsBuffer:
                 logger.debug(f'Started processing record #{record_index} (OCLC '
                     f'number {record["requestedOclcNumber"]})...')
                 logger.debug(f'{is_current_oclc_num=}')
-                logger.debug(f'{type(is_current_oclc_num)=}')
 
                 if not found_requested_oclc_num:
                     logger.exception(f'{api_response_error_msg}: OCLC number '
@@ -241,7 +240,6 @@ class RecordsBuffer:
 
         logger.debug('Started processing records buffer...')
         response = check_oclc_numbers(','.join(self.oclc_num_dict.keys()))
-        logger.debug(f'{type(response)=}')
         self.process_api_response(response, results)
         logger.debug('Finished processing records buffer.\n')
 
@@ -279,7 +277,7 @@ def check_oclc_numbers(oclc_nums: str) -> requests.models.Response:
     response = requests.get(f"{os.getenv('WORLDCAT_METADATA_SERVICE_URL')}"
         f"/bib/checkcontrolnumbers?oclcNumbers={oclc_nums}&transactionID="
         f"{transactionID}", headers=headers, timeout=45)
-    logger.debug(f'{type(response)=}')
+
     libraries.api.log_response_and_raise_for_status(response)
 
     return response
@@ -428,9 +426,11 @@ def main() -> None:
     logger.debug(f'{len(mms_ids_already_processed)=}\n')
 
     print(f'\nEnd of script. Processed {len(data.index)} rows from input file:'
-        f'\n- {results["num_records_with_current_oclc_num"]} record(s) with current OCLC '
-        f'number\n- {results["num_records_with_old_oclc_num"]} record(s) with old OCLC '
-        f'number\n- {results["num_records_with_errors"]} record(s) with errors')
+        f'\n- {results["num_records_with_current_oclc_num"]} record(s) with '
+        f'current OCLC number'
+        f'\n- {results["num_records_with_old_oclc_num"]} record(s) with old '
+        f'OCLC number'
+        f'\n- {results["num_records_with_errors"]} record(s) with errors')
 
 
 if __name__ == "__main__":
