@@ -331,6 +331,9 @@ def main() -> None:
             f'Input file must a CSV file (.csv)')
         return
 
+    mms_ids_already_processed = set()
+    logger.debug(f'{mms_ids_already_processed=}\n')
+
     results = {
         'num_records_with_current_oclc_num': 0,
         'num_records_with_old_oclc_num': 0,
@@ -371,6 +374,10 @@ def main() -> None:
                     orig_oclc_num, 'OCLC number')
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
+
+                assert mms_id not in mms_ids_already_processed, ('MMS ID has '
+                    'already been processed.')
+                mms_ids_already_processed.add(mms_id)
 
                 if len(records_buffer.oclc_num_dict) < int(os.getenv(
                         'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST')):
@@ -416,6 +423,9 @@ def main() -> None:
         # If records_buffer is not empty, process remaining records
         if len(records_buffer.oclc_num_dict) > 0:
             records_buffer.process_records(results)
+
+    # logger.debug(f'{mms_ids_already_processed=}\n')
+    logger.debug(f'{len(mms_ids_already_processed)=}\n')
 
     print(f'\nEnd of script. Processed {len(data.index)} rows from input file:'
         f'\n- {results["num_records_with_current_oclc_num"]} record(s) with current OCLC '
