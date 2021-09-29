@@ -302,16 +302,34 @@ class RecordsBuffer:
 
             logger.debug(f'{token=}')
 
+            dotenv_file_not_updated_msg = ('Note that .env file may not have '
+                'been updated.')
+
+            # Delete after testing assertion below
+            logger.debug(f'Stored token was {os.getenv("WORLDCAT_METADATA_API_ACCESS_TOKEN")}')
+            os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN'] = \
+                token['access_token']
+            logger.debug(f'Stored token is now {os.getenv("WORLDCAT_METADATA_API_ACCESS_TOKEN")}')
+
             assert token['access_token'] \
-                != os.getenv('WORLDCAT_METADATA_API_ACCESS_TOKEN'), \
-                'Unable to retrieve new access token'
+                != os.getenv('WORLDCAT_METADATA_API_ACCESS_TOKEN'), (
+                f'Unable to retrieve new access token: Acquired token '
+                f'{token["access_token"]} == stored token '
+                f'{os.getenv("WORLDCAT_METADATA_API_ACCESS_TOKEN")}. '
+                f'{dotenv_file_not_updated_msg}')
 
             logger.debug(f"New access token granted: {token['access_token']}")
+
+            # Delete after testing assertion below
+            token['access_token'] = 'hello'
+            logger.debug(f'Changed access token to {token["access_token"]}')
+            logger.debug(f'{self.oauth_session.access_token=}')
 
             assert token['access_token'] == self.oauth_session.access_token, (
                 f"OAuth Session's access token "
                 f"{self.oauth_session.access_token} was not updated to the "
-                f"new access token {token['access_token']}")
+                f"new access token {token['access_token']}. "
+                f"{dotenv_file_not_updated_msg}")
 
             # Set environment variables based on new Access Token info and
             # update .env file accordingly
