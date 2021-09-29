@@ -34,13 +34,13 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
 - Run `pip install -r requirements.txt`
 - Add `.env` file to root folder (you can copy `.env-example`) and initialize
   the variables:
-  - `API_URL`
+  - `ALMA_BIBS_API_URL`
     - If you're in North America, use
     `https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/`
     - If not,
     [look here](https://developers.exlibrisgroup.com/alma/apis/#calling) for the
     base URL for your geographic region
-  - `API_KEY`
+  - `ALMA_API_KEY`
     - [Instructions for creating an API key](https://developers.exlibrisgroup.com/alma/apis/#using)
 - Create `alma-test.xlsx` spreadsheet inside `xlsx` folder (you can copy
   `alma-test-example.xlsx`)

@@ -13,16 +13,17 @@ load_dotenv()
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-API_URL = os.getenv('API_URL')
-API_KEY = os.getenv('API_KEY')
-headers = {'Authorization': f'apikey {API_KEY}'}
+headers = {'Authorization': f'apikey {os.getenv("ALMA_API_KEY")}'}
 params = {'view': 'full'}
 
 def get_alma_record(mms_id):
     """GET record based on MMS ID. Return root element of parsed XML tree."""
 
-    response = requests.get(f'{API_URL}{mms_id}', params=params,
-        headers=headers, timeout=45)
+    response = requests.get(
+        f'{os.getenv("ALMA_BIBS_API_URL")}{mms_id}',
+        params=params,
+        headers=headers,
+        timeout=45)
     logger.debug(f'GET reponse: {response}')
     logger.debug(f'Request URL: {response.url}')
     logger.debug(f'Status: {response.status_code}')
@@ -119,8 +120,11 @@ def update_alma_record(mms_id, oclc_num):
     headers['Content-Type'] = 'application/xml'
     payload = ET.tostring(root, encoding='UTF-8')
 
-    put_response = requests.put(f'{API_URL}{mms_id}', headers=headers,
-        data=payload, timeout=45)
+    put_response = requests.put(
+        f'{os.getenv("ALMA_BIBS_API_URL")}{mms_id}',
+        headers=headers,
+        data=payload,
+        timeout=45)
     logger.debug(f'PUT reponse: {put_response}')
     logger.debug(f'Request URL: {put_response.url}')
     logger.debug(f'Status: {put_response.status_code}')

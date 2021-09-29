@@ -18,9 +18,7 @@ load_dotenv()
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-API_URL = os.getenv('API_URL')
-API_KEY = os.getenv('API_KEY')
-headers = {'Authorization': f'apikey {API_KEY}'}
+headers = {'Authorization': f'apikey {os.getenv("ALMA_API_KEY")}'}
 params = {'view': 'full'}
 
 
@@ -65,8 +63,11 @@ def get_alma_record(mms_id: str) -> ET.Element:
         The root element of the parsed XML tree
     """
 
-    response = requests.get(f'{API_URL}{mms_id}', params=params,
-        headers=headers, timeout=45)
+    response = requests.get(
+        f'{os.getenv("ALMA_BIBS_API_URL")}{mms_id}',
+        params=params,
+        headers=headers,
+        timeout=45)
     libraries.api.log_response_and_raise_for_status(response)
 
     xml_as_pretty_printed_bytes_obj = \
@@ -279,8 +280,11 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         headers['Content-Type'] = 'application/xml'
         payload = ET.tostring(root, encoding='UTF-8')
 
-        put_response = requests.put(f'{API_URL}{mms_id}', headers=headers,
-            data=payload, timeout=45)
+        put_response = requests.put(
+            f'{os.getenv("ALMA_BIBS_API_URL")}{mms_id}',
+            headers=headers,
+            data=payload,
+            timeout=45)
         libraries.api.log_response_and_raise_for_status(put_response)
 
         xml_as_pretty_printed_bytes_obj = libraries.xml.prettify_and_log_xml(
