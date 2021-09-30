@@ -28,8 +28,12 @@ class RecordsBuffer:
 
     Attributes
     ----------
-    auth:
-    oauth_session:
+    auth: HTTPBasicAuth
+        The HTTP Basic Auth object used when requesting an access token
+    oauth_session: OAuth2Session
+        The OAuth 2 Session object used to request an access token and make HTTP
+        requests to the WorldCat Metadata API (note that the OAuth2Session class
+        is a subclass of requests.Session)
     oclc_num_dict: Dict[str, str]
         A dictionary containing each record's original OCLC number (key) and its
         MMS ID (value)
@@ -98,6 +102,8 @@ class RecordsBuffer:
         logger.debug('Creating OAuth2Session...')
         self.auth = HTTPBasicAuth(os.getenv('WORLDCAT_METADATA_API_KEY'),
             os.getenv('WORLDCAT_METADATA_API_SECRET'))
+        logger.debug(f'{type(self.auth)=}')
+        logger.debug(f'{isinstance(self.auth, HTTPBasicAuth)=}')
         client = BackendApplicationClient(
             client_id=os.getenv('WORLDCAT_METADATA_API_KEY'),
             scope=['WorldCatMetadataAPI refresh_token'])
@@ -109,6 +115,8 @@ class RecordsBuffer:
             }
         self.oauth_session = OAuth2Session(client=client, token=token)
         logger.debug(f'{type(self.oauth_session)=}')
+        logger.debug(f'{isinstance(self.oauth_session, OAuth2Session)=}')
+        logger.debug(f'{isinstance(self.oauth_session, requests.Session)=}')
         logger.debug('OAuth2Session created.')
 
         logger.debug('Completed RecordsBuffer constructor.\n')
@@ -253,6 +261,9 @@ class RecordsBuffer:
     def process_records(self, results: Dict[str, int]) -> None:
         """Checks each record in oclc_num_dict for the current OCLC number.
 
+        This is done by sending a GET request to the WorldCat Metadata API:
+        https://worldcat.org/bib/checkcontrolnumbers?oclcNumbers={oclcNumbers}
+
         Parameters
         ----------
         results: Dict[str, int]
@@ -339,35 +350,6 @@ class RecordsBuffer:
         self.oclc_num_dict.clear()
         logger.debug(f'Cleared records buffer.')
         logger.debug(self.__str__() + '\n')
-
-
-def check_oclc_numbers(oclc_nums: str, oauth_session) -> requests.models.Response:
-    """Checks each number in oclc_nums to see if it's the current one.
-
-    This is done by sending a GET request to the WorldCat Metadata API:
-    https://worldcat.org/bib/checkcontrolnumbers?oclcNumbers={oclcNumbers}
-
-    Parameters
-    ----------
-    oclc_nums: str
-        The OCLC numbers to be checked. Each OCLC number should be separated by
-        a comma and contain no spaces, leading zeros, or non-digit characters.
-    oauth_session:
-
-    Returns
-    -------
-    requests.models.Response
-        The API response object
-    """
-
-    # headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    # response = requests.get(f"{os.getenv('WORLDCAT_METADATA_SERVICE_URL')}"
-    #     f"/bib/checkcontrolnumbers?oclcNumbers={oclc_nums}&transactionID="
-    #     f"{transactionID}", headers=headers, timeout=45)
-
-    libraries.api.log_response_and_raise_for_status(response)
-
-    return response
 
 
 def init_argparse() -> argparse.ArgumentParser:
