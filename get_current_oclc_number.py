@@ -1,4 +1,5 @@
 import argparse
+import calendar
 import dotenv
 import json
 import libraries.api
@@ -154,7 +155,6 @@ class RecordsBuffer:
             f'{self.oclc_num_dict[orig_oclc_num]}')
         self.oclc_num_dict[orig_oclc_num] = mms_id
         logger.debug(f'Added {orig_oclc_num} to records buffer.')
-        logger.debug(self.__str__())
 
     def process_api_response(self, api_response: requests.models.Response,
             results: Dict[str, int]) -> None:
@@ -261,7 +261,7 @@ class RecordsBuffer:
     def process_records(self, results: Dict[str, int]) -> None:
         """Checks each record in oclc_num_dict for the current OCLC number.
 
-        This is done by sending a GET request to the WorldCat Metadata API:
+        This is done by making a GET request to the WorldCat Metadata API:
         https://worldcat.org/bib/checkcontrolnumbers?oclcNumbers={oclcNumbers}
 
         Parameters
@@ -274,23 +274,85 @@ class RecordsBuffer:
 
         logger.debug('Started processing records buffer...')
 
-        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        transactionID = f"DVP_{timestamp}_{os.getenv('WORLDCAT_PRINCIPAL_ID')}"
+        # Build transactionID to include with GET request, if applicable
+        transactionID = ''
+        if ('OCLC_INSTITUTION_SYMBOL' in os.environ
+                or 'WORLDCAT_PRINCIPAL_ID' in os.environ):
+            # Add OCLC Institution Symbol, if present
+            transactionID = os.getenv('OCLC_INSTITUTION_SYMBOL', '')
+
+            if transactionID != '':
+                transactionID += '_'
+
+            # Add timestamp and, if present, your WorldCat Principal ID
+            transactionID += time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
+            if 'WORLDCAT_PRINCIPAL_ID' in os.environ:
+                transactionID += f"_{os.getenv('WORLDCAT_PRINCIPAL_ID')}"
+
+        logger.debug(f'{transactionID=}')
+
+        # Build URL and headers for GET request
         url = (f"{os.getenv('WORLDCAT_METADATA_SERVICE_URL')}"
             f"/bib/checkcontrolnumbers"
-            f"?oclcNumbers={','.join(self.oclc_num_dict.keys())}"
-            f"&transactionID={transactionID}")
+            f"?oclcNumbers={','.join(self.oclc_num_dict.keys())}")
+
+        if transactionID != '':
+            url += f"&transactionID={transactionID}"
+
         headers = {"Accept": "application/json"}
         response = None
 
+        # Make GET request
         try:
             response = self.oauth_session.get(url, headers=headers)
         except TokenExpiredError as e:
             logger.debug(f'Access token {self.oauth_session.access_token} '
                 f'expired. Requesting new access token...')
 
+            datetime_format = '%Y-%m-%d %H:%M:%SZ'
+
+            # Confirm the epoch is January 1, 1970, 00:00:00 (UTC).
+            # See https://docs.python.org/3.8/library/time.html for an
+            # explanation of the term 'epoch'.
+            system_epoch = time.strftime(datetime_format, time.gmtime(0))
+            expected_epoch = '1970-01-01 00:00:00Z'
+            if system_epoch != expected_epoch:
+                logger.warning(f"The system's epoch ({system_epoch}) is not "
+                    f"equal to the expected epoch ({expected_epoch}). There "
+                    f"may therefore be issues in determining whether the "
+                    f"WorldCat Metadata API's refresh token has expired.")
+
+            # Convert the WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT value
+            # to a float representing seconds since the epoch.
+            # Note that the WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT value
+            # is a string in ISO 8601 format, except that it substitutes the 'T'
+            # delimiter (which separates the date from the time) for a space, as
+            # in '2021-09-30 22:43:07Z'.
+            refresh_token_expires_at = 0.0
+            if 'WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT' in os.environ:
+                logger.debug(f'WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT '
+                    f'variable exists in .env file, so using this value: '
+                    f'{os.getenv("WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT")}'
+                    f' (UTC), which will be converted to seconds since the '
+                    f'epoch')
+                refresh_token_expires_at = calendar.timegm(
+                    time.strptime(
+                        os.getenv(
+                            'WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT'),
+                        datetime_format))
+
+            refresh_token_expires_in = refresh_token_expires_at - time.time()
+            logger.debug(f'{refresh_token_expires_at=} seconds since the epoch')
+            logger.debug(f'Current time: {time.time()} seconds since the epoch,'
+                f' which is {time.strftime(datetime_format, time.gmtime())} '
+                f'(UTC). So the Refresh Token (if one exists) expires in '
+                f'{refresh_token_expires_in} seconds.')
+
+            # Obtain a new Access Token
             token = None
-            if 'WORLDCAT_METADATA_API_REFRESH_TOKEN' in os.environ:
+            if ('WORLDCAT_METADATA_API_REFRESH_TOKEN' in os.environ
+                    and refresh_token_expires_in > 25):
                 # Use Refresh Token to request new Access Token
                 token = self.oauth_session.refresh_token(
                     os.getenv('OCLC_AUTHORIZATION_SERVER_TOKEN_URL'),
@@ -302,14 +364,26 @@ class RecordsBuffer:
                 token = self.oauth_session.fetch_token(
                     os.getenv('OCLC_AUTHORIZATION_SERVER_TOKEN_URL'),
                     auth=self.auth)
-                logger.debug(f"Refresh token granted: {token['refresh_token']}")
-                # Set Refresh Token environment variable and update .env file
+                logger.debug(f"Refresh token granted ({token['refresh_token']})"
+                    f", which expires at {token['refresh_token_expires_at']}")
+                logger.debug(f"{type(token['refresh_token'])=}")
+                logger.debug(f"{type(token['refresh_token_expires_at'])=}")
+
+                # Set Refresh Token environment variables and update .env file
                 os.environ['WORLDCAT_METADATA_API_REFRESH_TOKEN'] = \
                     token['refresh_token']
                 dotenv.set_key(
                     dotenv_file,
                     'WORLDCAT_METADATA_API_REFRESH_TOKEN',
                     os.environ['WORLDCAT_METADATA_API_REFRESH_TOKEN'])
+
+                os.environ['WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT'] = \
+                    token['refresh_token_expires_at']
+                dotenv.set_key(
+                    dotenv_file,
+                    'WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT',
+                    os.environ['WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT']
+                )
 
             logger.debug(f'{token=}')
             logger.debug(f'New access token granted: '
@@ -331,6 +405,8 @@ class RecordsBuffer:
                 'WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE',
                 os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE'])
 
+            logger.debug(f"{token['expires_at']=}")
+            logger.debug(f"{type(token['expires_at'])=}")
             os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT'] = \
                 str(token['expires_at'])
             dotenv.set_key(
