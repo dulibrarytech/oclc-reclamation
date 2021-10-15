@@ -360,7 +360,7 @@ class RecordsBuffer:
                         'WORLDCAT_METADATA_API_REFRESH_TOKEN'),
                     auth=self.auth)
             else:
-                # Request Access Token
+                # Request Refresh Token and Access Token
                 token = self.oauth_session.fetch_token(
                     os.getenv('OCLC_AUTHORIZATION_SERVER_TOKEN_URL'),
                     auth=self.auth)
