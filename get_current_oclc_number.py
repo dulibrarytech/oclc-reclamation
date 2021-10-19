@@ -14,7 +14,7 @@ from csv import writer
 from oauthlib.oauth2 import BackendApplicationClient, TokenExpiredError
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth2Session
-from typing import Dict, TextIO
+from typing import Callable, Dict, TextIO
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -25,7 +25,11 @@ logger = logging.getLogger(__name__)
 
 class RecordsBuffer:
     """
-    A buffer of records, each of whose OCLC number needs to be checked.
+    A buffer of records. DO NOT INSTANTIATE THIS CLASS DIRECTLY.
+
+    Instead, instantiate one of its subclasses:
+    - AlmaRecordsBuffer: A buffer of records with MMS ID and OCLC number
+    - WorldCatRecordsBuffer: A buffer of records with OCLC number only
 
     Attributes
     ----------
@@ -35,69 +39,19 @@ class RecordsBuffer:
         The OAuth 2 Session object used to request an access token and make HTTP
         requests to the WorldCat Metadata API (note that the OAuth2Session class
         is a subclass of requests.Session)
-    oclc_num_dict: Dict[str, str]
-        A dictionary containing each record's original OCLC number (key) and its
-        MMS ID (value)
-    records_with_current_oclc_num: TextIO
-        The CSV file object where records with a current OCLC number are added
-    records_with_current_oclc_num_writer: writer
-        The CSV writer object for the records_with_current_oclc_num file object
-    records_with_old_oclc_num: TextIO
-        The CSV file object where records with an old OCLC number are added
-    records_with_old_oclc_num_writer: writer
-        The CSV writer object for the records_with_old_oclc_num file object
-    records_with_errors: TextIO
-        The CSV file object where records are added if an error is encountered
-    records_with_errors_writer: writer
-        The CSV writer object for the records_with_errors file object
 
     Methods
     -------
-    add(orig_oclc_num, mms_id)
-        Adds the given record to this buffer (i.e. to oclc_num_dict)
-    process_api_response(api_response, results)
-        Processes the API response from the check_oclc_numbers function
-    process_records(results)
-        Checks each record in oclc_num_dict for the current OCLC number
-    remove_all_records()
-        Removes all records from this buffer (i.e. clears oclc_num_dict)
+    get_transaction_id()
+        Builds transaction_id to include with WorldCat Metadata API request
+    make_api_request(api_request, api_url)
+        Makes the specified API request to the WorldCat Metadata API
     """
 
-    def __init__(self,
-            records_with_current_oclc_num: TextIO,
-            records_with_old_oclc_num: TextIO,
-            records_with_errors: TextIO) -> None:
-        """Instantiates a RecordsBuffer object.
-
-        Parameters
-        ----------
-        records_with_current_oclc_num: TextIO
-            The CSV file object where records with a current OCLC number are
-            added
-        records_with_old_oclc_num: TextIO
-            The CSV file object where records with an old OCLC number are added
-        records_with_errors: TextIO
-            The CSV file object where records are added if an error is
-            encountered
-        """
+    def __init__(self) -> None:
+        """Initializes a RecordsBuffer object by creating its OAuth2Session."""
 
         logger.debug('Started RecordsBuffer constructor...')
-
-        self.oclc_num_dict = {}
-        logger.debug(f'{type(self.oclc_num_dict)=}')
-
-        self.records_with_current_oclc_num = records_with_current_oclc_num
-        self.records_with_current_oclc_num_writer = \
-            writer(records_with_current_oclc_num)
-        logger.debug(f'{type(self.records_with_current_oclc_num)=}')
-        logger.debug(f'{type(self.records_with_current_oclc_num_writer)=}')
-
-        self.records_with_old_oclc_num = records_with_old_oclc_num
-        self.records_with_old_oclc_num_writer = \
-            writer(records_with_old_oclc_num)
-
-        self.records_with_errors = records_with_errors
-        self.records_with_errors_writer = writer(records_with_errors)
 
         # Create OAuth2Session for WorldCat Metadata API
         logger.debug('Creating OAuth2Session...')
@@ -120,192 +74,70 @@ class RecordsBuffer:
         logger.debug(f'{isinstance(self.oauth_session, requests.Session)=}')
         logger.debug('OAuth2Session created.')
 
-        logger.debug('Completed RecordsBuffer constructor.\n')
+        logger.debug('Completed RecordsBuffer constructor.')
 
-    def __str__(self) -> str:
-        """Returns a string listing the contents of the OCLC Number dictionary.
+    def get_transaction_id(self) -> str:
+        """Builds transaction_id to include with WorldCat Metadata API request.
 
         Returns
         -------
         str
-            The contents of the OCLC Number dictionary
+            The transaction_id
         """
 
-        return (f'Records buffer contents ({{OCLC Number: MMS ID}}): '
-            f'{self.oclc_num_dict}')
-
-    def add(self, orig_oclc_num: str, mms_id: str) -> None:
-        """Adds the given record to this buffer (i.e. to oclc_num_dict).
-
-        Parameters
-        ----------
-        orig_oclc_num: str
-            The record's original OCLC number
-        mms_id: str
-            The record's MMS ID
-
-        Raises
-        ------
-        AssertionError
-            If the original OCLC number is already in the OCLC Number dictionary
-        """
-
-        assert orig_oclc_num not in self.oclc_num_dict, (f'OCLC number '
-            f'{orig_oclc_num} already exists in records buffer with MMS ID '
-            f'{self.oclc_num_dict[orig_oclc_num]}')
-        self.oclc_num_dict[orig_oclc_num] = mms_id
-        logger.debug(f'Added {orig_oclc_num} to records buffer.')
-
-    def process_api_response(self, api_response: requests.models.Response,
-            results: Dict[str, int]) -> None:
-        """Processes the API response from the check_oclc_numbers function.
-
-        Parameters
-        ----------
-        api_response: requests.models.Response
-            The API response returned by the check_oclc_numbers function
-        results: Dict[str, int]
-            A dictionary containing the total number of records in the following
-            categories: records with the current OCLC number, records with an
-            old OCLC number, records with errors
-
-        Raises
-        ------
-        json.decoder.JSONDecodeError
-            If there is an error decoding the API response
-        """
-
-        api_response_error_msg = ('Problem with Get Current OCLC Number API '
-            'response')
-
-        try:
-            json_response = api_response.json()
-            logger.debug(f'Get Current OCLC Number API response:\n'
-                f'{json.dumps(json_response, indent=2)}')
-
-            for record_index, record in enumerate(json_response['entry'],
-                    start=1):
-                found_requested_oclc_num = record['found']
-                is_current_oclc_num = not record['merged']
-
-                # Look up MMS ID based on OCLC number
-                mms_id = self.oclc_num_dict[record['requestedOclcNumber']]
-
-                logger.debug(f'Started processing record #{record_index} (OCLC '
-                    f'number {record["requestedOclcNumber"]})...')
-                logger.debug(f'{is_current_oclc_num=}')
-
-                if not found_requested_oclc_num:
-                    logger.exception(f'{api_response_error_msg}: OCLC number '
-                        f'{record["requestedOclcNumber"]} not found')
-
-                    results['num_records_with_errors'] += 1
-
-                    # Add record to records_with_errors spreadsheet
-                    if self.records_with_errors.tell() == 0:
-                        # Write header row
-                        self.records_with_errors_writer.writerow([
-                            'MMS ID',
-                            'OCLC Number',
-                            'Error'
-                        ])
-
-                    self.records_with_errors_writer.writerow([
-                        mms_id,
-                        record['requestedOclcNumber'],
-                        f'{api_response_error_msg}: OCLC number not found'
-                    ])
-                elif is_current_oclc_num:
-                    results['num_records_with_current_oclc_num'] += 1
-
-                    # Add record to already_has_current_oclc_number.csv
-                    if self.records_with_current_oclc_num.tell() == 0:
-                        # Write header row
-                        self.records_with_current_oclc_num_writer.writerow([
-                            'MMS ID',
-                            'Current OCLC Number'
-                        ])
-
-                    self.records_with_current_oclc_num_writer.writerow([
-                        mms_id,
-                        record['currentOclcNumber']
-                    ])
-                else:
-                    results['num_records_with_old_oclc_num'] += 1
-
-                    # Add record to needs_current_oclc_number.csv
-                    if self.records_with_old_oclc_num.tell() == 0:
-                        # Write header row
-                        self.records_with_old_oclc_num_writer.writerow([
-                            'MMS ID',
-                            'Current OCLC Number',
-                            'Original OCLC Number'
-                        ])
-
-                    self.records_with_old_oclc_num_writer.writerow([
-                        mms_id,
-                        record['currentOclcNumber'],
-                        record['requestedOclcNumber']
-                    ])
-                logger.debug(f'Finished processing record #{record_index}.\n')
-        except json.decoder.JSONDecodeError:
-        # except (requests.exceptions.JSONDecodeError,
-        #         json.decoder.JSONDecodeError):
-            logger.exception(f'{api_response_error_msg}: Error decoding JSON')
-            logger.exception(f'{api_response.text=}')
-
-            # Re-raise exception so that the script is halted (since future API
-            # requests may result in the same error)
-            raise
-
-    def process_records(self, results: Dict[str, int]) -> None:
-        """Checks each record in oclc_num_dict for the current OCLC number.
-
-        This is done by making a GET request to the WorldCat Metadata API:
-        https://worldcat.org/bib/checkcontrolnumbers?oclcNumbers={oclcNumbers}
-
-        Parameters
-        ----------
-        results: Dict[str, int]
-            A dictionary containing the total number of records in the following
-            categories: records with the current OCLC number, records with an
-            old OCLC number, records with errors
-        """
-
-        logger.debug('Started processing records buffer...')
-
-        # Build transactionID to include with GET request, if applicable
-        transactionID = ''
+        transaction_id = ''
         if ('OCLC_INSTITUTION_SYMBOL' in os.environ
                 or 'WORLDCAT_PRINCIPAL_ID' in os.environ):
             # Add OCLC Institution Symbol, if present
-            transactionID = os.getenv('OCLC_INSTITUTION_SYMBOL', '')
+            transaction_id = os.getenv('OCLC_INSTITUTION_SYMBOL', '')
 
-            if transactionID != '':
-                transactionID += '_'
+            if transaction_id != '':
+                transaction_id += '_'
 
             # Add timestamp and, if present, your WorldCat Principal ID
-            transactionID += time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+            transaction_id += time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
 
             if 'WORLDCAT_PRINCIPAL_ID' in os.environ:
-                transactionID += f"_{os.getenv('WORLDCAT_PRINCIPAL_ID')}"
+                transaction_id += f"_{os.getenv('WORLDCAT_PRINCIPAL_ID')}"
 
-        logger.debug(f'{transactionID=}')
+        logger.debug(f'{transaction_id=}')
 
-        # Build URL and headers for GET request
-        url = (f"{os.getenv('WORLDCAT_METADATA_SERVICE_URL')}"
-            f"/bib/checkcontrolnumbers"
-            f"?oclcNumbers={','.join(self.oclc_num_dict.keys())}")
+        return transaction_id
 
-        if transactionID != '':
-            url += f"&transactionID={transactionID}"
+    def make_api_request(
+            self,
+            api_request: Callable[..., requests.models.Response],
+            api_url: str) -> requests.models.Response:
+        """Makes the specified API request to the WorldCat Metadata API.
+
+        Parameters
+        ----------
+        api_request: Callable[..., requests.models.Response]
+            The specific WorldCat Metadata API request to make
+        api_url: str
+            The specific WorldCat Metadata API URL to use
+
+        Returns
+        -------
+        requests.models.Response
+            The API response returned by the api_request function
+        """
+
+        transaction_id = self.get_transaction_id()
+
+        if transaction_id != '':
+            api_url += f"&transactionID={transaction_id}"
 
         headers = {"Accept": "application/json"}
         response = None
 
         # Make GET request
         try:
-            response = self.oauth_session.get(url, headers=headers)
+            logger.debug(f'{api_request=}')
+            logger.debug(f'{type(api_request)=}')
+            logger.debug(f'{api_request.__name__=}')
+            logger.debug(f'{api_request.__doc__=}')
+            response = api_request(api_url, headers=headers)
         except TokenExpiredError as e:
             logger.debug(f'Access token {self.oauth_session.access_token} '
                 f'expired. Requesting new access token...')
@@ -414,11 +246,233 @@ class RecordsBuffer:
                 'WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT',
                 os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT'])
 
-            response = self.oauth_session.get(url, headers=headers)
+            response = api_request(api_url, headers=headers)
 
         libraries.api.log_response_and_raise_for_status(response)
-        self.process_api_response(response, results)
-        logger.debug('Finished processing records buffer.\n')
+        return response
+
+
+class AlmaRecordsBuffer(RecordsBuffer):
+    """
+    A buffer of Alma records, each with an MMS ID and OCLC number.
+
+    Attributes
+    ----------
+    oclc_num_dict: Dict[str, str]
+        A dictionary containing each record's original OCLC number (key) and its
+        MMS ID (value)
+    records_with_current_oclc_num: TextIO
+        The CSV file object where records with a current OCLC number are added
+    records_with_current_oclc_num_writer: writer
+        The CSV writer object for the records_with_current_oclc_num file object
+    records_with_old_oclc_num: TextIO
+        The CSV file object where records with an old OCLC number are added
+    records_with_old_oclc_num_writer: writer
+        The CSV writer object for the records_with_old_oclc_num file object
+    records_with_errors: TextIO
+        The CSV file object where records are added if an error is encountered
+    records_with_errors_writer: writer
+        The CSV writer object for the records_with_errors file object
+
+    Methods
+    -------
+    add(orig_oclc_num, mms_id)
+        Adds the given record to this buffer (i.e. to oclc_num_dict)
+    process_records(results)
+        Checks each record in oclc_num_dict for the current OCLC number
+    remove_all_records()
+        Removes all records from this buffer (i.e. clears oclc_num_dict)
+    """
+
+    def __init__(self,
+            records_with_current_oclc_num: TextIO,
+            records_with_old_oclc_num: TextIO,
+            records_with_errors: TextIO) -> None:
+        """Instantiates an AlmaRecordsBuffer object.
+
+        Parameters
+        ----------
+        records_with_current_oclc_num: TextIO
+            The CSV file object where records with a current OCLC number are
+            added
+        records_with_old_oclc_num: TextIO
+            The CSV file object where records with an old OCLC number are added
+        records_with_errors: TextIO
+            The CSV file object where records are added if an error is
+            encountered
+        """
+
+        logger.debug('Started AlmaRecordsBuffer constructor...')
+
+        self.oclc_num_dict = {}
+        logger.debug(f'{type(self.oclc_num_dict)=}')
+
+        self.records_with_current_oclc_num = records_with_current_oclc_num
+        self.records_with_current_oclc_num_writer = \
+            writer(records_with_current_oclc_num)
+        logger.debug(f'{type(self.records_with_current_oclc_num)=}')
+        logger.debug(f'{type(self.records_with_current_oclc_num_writer)=}')
+
+        self.records_with_old_oclc_num = records_with_old_oclc_num
+        self.records_with_old_oclc_num_writer = \
+            writer(records_with_old_oclc_num)
+
+        self.records_with_errors = records_with_errors
+        self.records_with_errors_writer = writer(records_with_errors)
+
+        # Create OAuth2Session for WorldCat Metadata API
+        super().__init__()
+
+        logger.debug('Completed AlmaRecordsBuffer constructor.\n')
+
+    def __str__(self) -> str:
+        """Returns a string listing the contents of the OCLC Number dictionary.
+
+        Returns
+        -------
+        str
+            The contents of the OCLC Number dictionary
+        """
+
+        return (f'Records buffer contents ({{OCLC Number: MMS ID}}): '
+            f'{self.oclc_num_dict}')
+
+    def add(self, orig_oclc_num: str, mms_id: str) -> None:
+        """Adds the given record to this buffer (i.e. to oclc_num_dict).
+
+        Parameters
+        ----------
+        orig_oclc_num: str
+            The record's original OCLC number
+        mms_id: str
+            The record's MMS ID
+
+        Raises
+        ------
+        AssertionError
+            If the original OCLC number is already in the OCLC Number dictionary
+        """
+
+        assert orig_oclc_num not in self.oclc_num_dict, (f'OCLC number '
+            f'{orig_oclc_num} already exists in records buffer with MMS ID '
+            f'{self.oclc_num_dict[orig_oclc_num]}')
+        self.oclc_num_dict[orig_oclc_num] = mms_id
+        logger.debug(f'Added {orig_oclc_num} to records buffer.')
+
+    def process_records(self, results: Dict[str, int]) -> None:
+        """Checks each record in oclc_num_dict for the current OCLC number.
+
+        This is done by making a GET request to the WorldCat Metadata API:
+        https://worldcat.org/bib/checkcontrolnumbers?oclcNumbers={oclcNumbers}
+
+        Parameters
+        ----------
+        results: Dict[str, int]
+            A dictionary containing the total number of records in the following
+            categories: records with the current OCLC number, records with an
+            old OCLC number, records with errors
+
+        Raises
+        ------
+        json.decoder.JSONDecodeError
+            If there is an error decoding the API response
+        """
+
+        logger.debug('Started processing records buffer...')
+
+        api_response_error_msg = ('Problem with Get Current OCLC Number API '
+            'response')
+
+        # Build URL for API request
+        url = (f"{os.getenv('WORLDCAT_METADATA_SERVICE_URL')}"
+            f"/bib/checkcontrolnumbers"
+            f"?oclcNumbers={','.join(self.oclc_num_dict.keys())}")
+
+        try:
+            api_response = super().make_api_request(
+                self.oauth_session.get,
+                url
+            )
+            json_response = api_response.json()
+            logger.debug(f'Get Current OCLC Number API response:\n'
+                f'{json.dumps(json_response, indent=2)}')
+
+            for record_index, record in enumerate(json_response['entry'],
+                    start=1):
+                found_requested_oclc_num = record['found']
+                is_current_oclc_num = not record['merged']
+
+                # Look up MMS ID based on OCLC number
+                mms_id = self.oclc_num_dict[record['requestedOclcNumber']]
+
+                logger.debug(f'Started processing record #{record_index} (OCLC '
+                    f'number {record["requestedOclcNumber"]})...')
+                logger.debug(f'{is_current_oclc_num=}')
+
+                if not found_requested_oclc_num:
+                    logger.exception(f'{api_response_error_msg}: OCLC number '
+                        f'{record["requestedOclcNumber"]} not found')
+
+                    results['num_records_with_errors'] += 1
+
+                    # Add record to records_with_errors spreadsheet
+                    if self.records_with_errors.tell() == 0:
+                        # Write header row
+                        self.records_with_errors_writer.writerow([
+                            'MMS ID',
+                            'OCLC Number',
+                            'Error'
+                        ])
+
+                    self.records_with_errors_writer.writerow([
+                        mms_id,
+                        record['requestedOclcNumber'],
+                        f'{api_response_error_msg}: OCLC number not found'
+                    ])
+                elif is_current_oclc_num:
+                    results['num_records_with_current_oclc_num'] += 1
+
+                    # Add record to already_has_current_oclc_number.csv
+                    if self.records_with_current_oclc_num.tell() == 0:
+                        # Write header row
+                        self.records_with_current_oclc_num_writer.writerow([
+                            'MMS ID',
+                            'Current OCLC Number'
+                        ])
+
+                    self.records_with_current_oclc_num_writer.writerow([
+                        mms_id,
+                        record['currentOclcNumber']
+                    ])
+                else:
+                    results['num_records_with_old_oclc_num'] += 1
+
+                    # Add record to needs_current_oclc_number.csv
+                    if self.records_with_old_oclc_num.tell() == 0:
+                        # Write header row
+                        self.records_with_old_oclc_num_writer.writerow([
+                            'MMS ID',
+                            'Current OCLC Number',
+                            'Original OCLC Number'
+                        ])
+
+                    self.records_with_old_oclc_num_writer.writerow([
+                        mms_id,
+                        record['currentOclcNumber'],
+                        record['requestedOclcNumber']
+                    ])
+                logger.debug(f'Finished processing record #{record_index}.\n')
+        except json.decoder.JSONDecodeError:
+        # except (requests.exceptions.JSONDecodeError,
+        #         json.decoder.JSONDecodeError):
+            logger.exception(f'{api_response_error_msg}: Error decoding JSON')
+            logger.exception(f'{api_response.text=}')
+
+            # Re-raise exception so that the script is halted (since future API
+            # requests may result in the same error)
+            raise
+
+        logger.debug('Finished processing records buffer.')
 
     def remove_all_records(self) -> None:
         """Removes all records from this buffer (i.e. clears oclc_num_dict)."""
@@ -426,6 +480,10 @@ class RecordsBuffer:
         self.oclc_num_dict.clear()
         logger.debug(f'Cleared records buffer.')
         logger.debug(self.__str__() + '\n')
+
+
+class WorldCatRecordsBuffer(RecordsBuffer):
+    pass
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -492,9 +550,13 @@ def main() -> None:
 
         records_with_errors_writer = writer(records_with_errors)
 
-        records_buffer = RecordsBuffer(records_with_current_oclc_num,
+        records_buffer = AlmaRecordsBuffer(records_with_current_oclc_num,
             records_with_old_oclc_num, records_with_errors)
         logger.debug(f'{type(records_buffer)=}')
+        logger.debug(f'{isinstance(records_buffer, AlmaRecordsBuffer)=}')
+        logger.debug(f'{isinstance(records_buffer, RecordsBuffer)=}')
+        logger.debug(f'{issubclass(AlmaRecordsBuffer, RecordsBuffer)=}')
+        logger.debug(f'{issubclass(WorldCatRecordsBuffer, RecordsBuffer)=}')
         logger.debug(records_buffer)
         logger.debug(f'{type(records_buffer.oclc_num_dict)=}\n')
 
