@@ -662,11 +662,15 @@ class WorldCatRecordsBuffer(RecordsBuffer):
                 is_current_oclc_num = (record['requestedOclcNumber']
                     == record['currentOclcNumber'])
 
+                new_oclc_num = ''
                 oclc_num_msg = ''
                 if not is_current_oclc_num:
-                    oclc_num_msg = (f'Warning: OCLC number has been updated to '
-                        f'{record["currentOclcNumber"]}. Consider updating '
-                        f'Alma record.')
+                    new_oclc_num = record['currentOclcNumber']
+                    oclc_num_msg = (f'OCLC number '
+                        f'{record["requestedOclcNumber"]} has been updated to '
+                        f'{new_oclc_num}. Consider updating Alma record.')
+                    logger.warning(oclc_num_msg)
+                    oclc_num_msg = f'Warning: {oclc_num_msg}'
 
                 logger.debug(f'Started processing record #{record_index} (OCLC '
                     f'number {record["requestedOclcNumber"]})...')
@@ -681,14 +685,14 @@ class WorldCatRecordsBuffer(RecordsBuffer):
                     if self.records_with_holding_successfully_set.tell() == 0:
                         # Write header row
                         self.records_with_holding_successfully_set_writer.writerow([
-                            'Current OCLC Number',
                             'Requested OCLC Number',
+                            'New OCLC Number (if applicable)',
                             'Warning'
                         ])
 
                     self.records_with_holding_successfully_set_writer.writerow([
-                        record['currentOclcNumber'],
                         record['requestedOclcNumber'],
+                        new_oclc_num,
                         oclc_num_msg
                     ])
                 elif record['httpStatusCode'] == 'HTTP 409 Conflict':
@@ -698,15 +702,16 @@ class WorldCatRecordsBuffer(RecordsBuffer):
                     if self.records_with_holding_already_set.tell() == 0:
                         # Write header row
                         self.records_with_holding_already_set_writer.writerow([
-                            'Current OCLC Number',
                             'Requested OCLC Number',
+                            'New OCLC Number (if applicable)',
                             'Error'
                         ])
 
                     self.records_with_holding_already_set_writer.writerow([
-                        record['currentOclcNumber'],
                         record['requestedOclcNumber'],
-                        f"Error: {record['errorDetail']}. {oclc_num_msg}"
+                        new_oclc_num,
+                        (f"{api_response_error_msg}: {record['errorDetail']}. "
+                            f"{oclc_num_msg}")
                     ])
                 else:
                     logger.exception(f"{api_response_error_msg} for OCLC "
@@ -720,16 +725,16 @@ class WorldCatRecordsBuffer(RecordsBuffer):
                     if self.records_with_errors.tell() == 0:
                         # Write header row
                         self.records_with_errors_writer.writerow([
-                            'Current OCLC Number',
                             'Requested OCLC Number',
+                            'New OCLC Number (if applicable)',
                             'Error'
                         ])
 
                     self.records_with_errors_writer.writerow([
-                        record['currentOclcNumber'],
                         record['requestedOclcNumber'],
-                        (f"Error: {record['httpStatusCode']}: "
-                            f"{record['errorDetail']}. {oclc_num_msg}")
+                        new_oclc_num,
+                        (f"{api_response_error_msg}: {record['httpStatusCode']}"
+                            f": {record['errorDetail']}. {oclc_num_msg}")
                     ])
                 logger.debug(f'Finished processing record #{record_index}.\n')
         except json.decoder.JSONDecodeError:
@@ -898,7 +903,6 @@ def main() -> None:
             try:
                 mms_id = None
                 orig_oclc_num = None
-                record_id = None
                 if args.operation == 'get_current_oclc_number':
                     mms_id = row['MMS ID']
                     orig_oclc_num = \
@@ -907,10 +911,8 @@ def main() -> None:
                         mms_id,
                         'MMS ID'
                     )
-                    record_id = mms_id
                 else:
                     orig_oclc_num = row['OCLC Number']
-                    record_id = orig_oclc_num
 
                 # Make sure OCLC Number is valid
                 orig_oclc_num = libraries.record.get_valid_record_identifier(
@@ -918,14 +920,15 @@ def main() -> None:
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
 
-                logger.debug(f'{record_id=} is equal to {mms_id=}? '
-                    f'{record_id == mms_id}')
-                logger.debug(f'{record_id=} is equal to {orig_oclc_num=}? '
-                    f'{record_id == orig_oclc_num}')
-
-                assert record_id not in records_already_processed, (f'Record '
-                    f'{record_id} has already been processed.')
-                records_already_processed.add(record_id)
+                if args.operation == 'get_current_oclc_number':
+                    assert mms_id not in records_already_processed, (f'Record '
+                        f'with MMS ID {mms_id} has already been processed.')
+                    records_already_processed.add(mms_id)
+                else:
+                    assert orig_oclc_num not in records_already_processed, (
+                        f'Record with OCLC Number {orig_oclc_num} has already '
+                        f'been processed.')
+                    records_already_processed.add(orig_oclc_num)
 
                 if len(records_buffer) < int(os.getenv(
                         'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST')):
@@ -963,19 +966,34 @@ def main() -> None:
                     results['num_records_with_errors'] += 1
 
                     # Add record to records_with_errors spreadsheet
-                    if records_with_errors.tell() == 0:
-                        # Write header row
-                        records_with_errors_writer.writerow([
-                            'MMS ID',
-                            'OCLC Number',
-                            'Error'
-                        ])
+                    if args.operation == 'get_current_oclc_number':
+                        if records_with_errors.tell() == 0:
+                            # Write header row
+                            records_with_errors_writer.writerow([
+                                'MMS ID',
+                                'OCLC Number',
+                                'Error'
+                            ])
 
-                    records_with_errors_writer.writerow([
-                        mms_id,
-                        orig_oclc_num,
-                        error_msg
-                    ])
+                        records_with_errors_writer.writerow([
+                            mms_id,
+                            orig_oclc_num,
+                            error_msg
+                        ])
+                    else:
+                        if records_with_errors.tell() == 0:
+                            # Write header row
+                            records_with_errors_writer.writerow([
+                                'Requested OCLC Number',
+                                'New OCLC Number (if applicable)',
+                                'Error'
+                            ])
+
+                        records_with_errors_writer.writerow([
+                            orig_oclc_num,
+                            '',
+                            error_msg
+                        ])
                 logger.debug(f'Finished processing row {index + 2} of input '
                     f'file.\n')
 
