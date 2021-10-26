@@ -58,18 +58,18 @@ class RecordsBuffer:
 
         # Create OAuth2Session for WorldCat Metadata API
         logger.debug('Creating OAuth2Session...')
-        self.auth = HTTPBasicAuth(os.getenv('WORLDCAT_METADATA_API_KEY'),
-            os.getenv('WORLDCAT_METADATA_API_SECRET'))
+        self.auth = HTTPBasicAuth(os.environ['WORLDCAT_METADATA_API_KEY'],
+            os.environ['WORLDCAT_METADATA_API_SECRET'])
         logger.debug(f'{type(self.auth)=}')
         logger.debug(f'{isinstance(self.auth, HTTPBasicAuth)=}')
         client = BackendApplicationClient(
-            client_id=os.getenv('WORLDCAT_METADATA_API_KEY'),
+            client_id=os.environ['WORLDCAT_METADATA_API_KEY'],
             scope=['WorldCatMetadataAPI refresh_token'])
         token = {
-            'access_token': os.getenv('WORLDCAT_METADATA_API_ACCESS_TOKEN'),
-            'expires_at': float(os.getenv(
-                'WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT')),
-            'token_type': os.getenv('WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE')
+            'access_token': os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN'],
+            'expires_at': float(
+                os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT']),
+            'token_type': os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE']
             }
         self.oauth_session = OAuth2Session(client=client, token=token)
         logger.debug(f'{type(self.oauth_session)=}')
@@ -206,14 +206,14 @@ class RecordsBuffer:
                     and refresh_token_expires_in > 25):
                 # Use Refresh Token to request new Access Token
                 token = self.oauth_session.refresh_token(
-                    os.getenv('OCLC_AUTHORIZATION_SERVER_TOKEN_URL'),
+                    os.environ['OCLC_AUTHORIZATION_SERVER_TOKEN_URL'],
                     refresh_token=os.getenv(
                         'WORLDCAT_METADATA_API_REFRESH_TOKEN'),
                     auth=self.auth)
             else:
                 # Request Refresh Token and Access Token
                 token = self.oauth_session.fetch_token(
-                    os.getenv('OCLC_AUTHORIZATION_SERVER_TOKEN_URL'),
+                    os.environ['OCLC_AUTHORIZATION_SERVER_TOKEN_URL'],
                     auth=self.auth)
                 logger.debug(f"Refresh token granted ({token['refresh_token']})"
                     f", which expires at {token['refresh_token_expires_at']}")
@@ -409,7 +409,7 @@ class AlmaRecordsBuffer(RecordsBuffer):
             'response')
 
         # Build URL for API request
-        url = (f"{os.getenv('WORLDCAT_METADATA_SERVICE_URL')}"
+        url = (f"{os.environ['WORLDCAT_METADATA_SERVICE_URL']}"
             f"/bib/checkcontrolnumbers"
             f"?oclcNumbers={','.join(self.oclc_num_dict.keys())}")
 
@@ -645,7 +645,7 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         api_response_error_msg = ('Problem with Set Holding API response')
 
         # Build URL for API request
-        url = (f"{os.getenv('WORLDCAT_METADATA_SERVICE_URL')}"
+        url = (f"{os.environ['WORLDCAT_METADATA_SERVICE_URL']}"
             f"/ih/datalist?oclcNumbers={','.join(self.oclc_num_set)}")
 
         try:
@@ -930,8 +930,8 @@ def main() -> None:
                         f'been processed.')
                     records_already_processed.add(orig_oclc_num)
 
-                if len(records_buffer) < int(os.getenv(
-                        'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST')):
+                if len(records_buffer) < int(os.environ[
+                        'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST']):
                     if args.operation == 'get_current_oclc_number':
                         records_buffer.add(orig_oclc_num, mms_id)
                     else:

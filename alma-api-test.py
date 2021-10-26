@@ -13,14 +13,15 @@ load_dotenv()
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-headers = {'Authorization': f'apikey {os.getenv("ALMA_API_KEY")}'}
+alma_bibs_api_url = os.environ["ALMA_BIBS_API_URL"]
+headers = {'Authorization': f'apikey {os.environ["ALMA_API_KEY"]}'}
 params = {'view': 'full'}
 
 def get_alma_record(mms_id):
     """GET record based on MMS ID. Return root element of parsed XML tree."""
 
     response = requests.get(
-        f'{os.getenv("ALMA_BIBS_API_URL")}{mms_id}',
+        f'{alma_bibs_api_url}{mms_id}',
         params=params,
         headers=headers,
         timeout=45)
@@ -121,7 +122,7 @@ def update_alma_record(mms_id, oclc_num):
     payload = ET.tostring(root, encoding='UTF-8')
 
     put_response = requests.put(
-        f'{os.getenv("ALMA_BIBS_API_URL")}{mms_id}',
+        f'{alma_bibs_api_url}{mms_id}',
         headers=headers,
         data=payload,
         timeout=45)
