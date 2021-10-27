@@ -3,6 +3,7 @@ import calendar
 import dotenv
 import json
 import libraries.api
+import libraries.handle_file
 import libraries.record
 import logging
 import logging.config
@@ -221,20 +222,13 @@ class RecordsBuffer:
                 logger.debug(f"{type(token['refresh_token_expires_at'])=}")
 
                 # Set Refresh Token environment variables and update .env file
-                os.environ['WORLDCAT_METADATA_API_REFRESH_TOKEN'] = \
-                    token['refresh_token']
-                dotenv.set_key(
-                    dotenv_file,
+                libraries.handle_file.set_env_var(
                     'WORLDCAT_METADATA_API_REFRESH_TOKEN',
-                    os.environ['WORLDCAT_METADATA_API_REFRESH_TOKEN'])
+                    token['refresh_token'])
 
-                os.environ['WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT'] = \
-                    token['refresh_token_expires_at']
-                dotenv.set_key(
-                    dotenv_file,
+                libraries.handle_file.set_env_var(
                     'WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT',
-                    os.environ['WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT']
-                )
+                    token['refresh_token_expires_at'])
 
             logger.debug(f'{token=}')
             logger.debug(f'New access token granted: '
@@ -242,28 +236,19 @@ class RecordsBuffer:
 
             # Set environment variables based on new Access Token info and
             # update .env file accordingly
-            os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN'] = \
-                token['access_token']
-            dotenv.set_key(
-                dotenv_file,
+            libraries.handle_file.set_env_var(
                 'WORLDCAT_METADATA_API_ACCESS_TOKEN',
-                os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN'])
+                token['access_token'])
 
-            os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE'] = \
-                token['token_type']
-            dotenv.set_key(
-                dotenv_file,
+            libraries.handle_file.set_env_var(
                 'WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE',
-                os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE'])
+                token['token_type'])
 
             logger.debug(f"{token['expires_at']=}")
             logger.debug(f"{type(token['expires_at'])=}")
-            os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT'] = \
-                str(token['expires_at'])
-            dotenv.set_key(
-                dotenv_file,
+            libraries.handle_file.set_env_var(
                 'WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT',
-                os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT'])
+                str(token['expires_at']))
 
             response = api_request(api_url, headers=headers)
 

@@ -1,8 +1,13 @@
+import csv
+import dotenv
 import libraries.record
 import logging
 import logging.config
-import csv
+import os
 from typing import Set
+
+dotenv_file = dotenv.find_dotenv()
+dotenv.load_dotenv(dotenv_file)
 
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
@@ -57,9 +62,23 @@ def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
                     target_set.add(value)
 
 
+def set_env_var(key_to_set: str, value_to_set: str) -> None:
+    """Adds or updates the specified environment variable (in OS and .env file).
+
+    Parameters
+    ----------
+    key_to_set: str
+        The name of the environment variable to set
+    value_to_set: str
+        The new value of the environment variable
+    """
+    os.environ[key_to_set] = value_to_set
+    dotenv.set_key(dotenv_file, key_to_set, value_to_set)
+
+
 def set_to_csv(source_set: Set[str], set_name: str, csv_writer: csv.writer,
         col_heading: str) -> None:
-    """Add all values from the source set to the specified CSV writer object.
+    """Adds all values from the source set to the specified CSV writer object.
 
     Parameters
     ----------
