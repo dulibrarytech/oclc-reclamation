@@ -54,15 +54,15 @@ class RecordsBuffer:
 
         logger.debug('Started RecordsBuffer constructor...')
         self.contents = None
-        logger.debug(f'{self.contents=}')
         logger.debug(f'{type(self.contents)=}')
 
         # Create OAuth2Session for WorldCat Metadata API
         logger.debug('Creating OAuth2Session...')
+
         self.auth = HTTPBasicAuth(os.environ['WORLDCAT_METADATA_API_KEY'],
             os.environ['WORLDCAT_METADATA_API_SECRET'])
         logger.debug(f'{type(self.auth)=}')
-        logger.debug(f'{isinstance(self.auth, HTTPBasicAuth)=}')
+
         client = BackendApplicationClient(
             client_id=os.environ['WORLDCAT_METADATA_API_KEY'],
             scope=['WorldCatMetadataAPI refresh_token'])
@@ -72,12 +72,10 @@ class RecordsBuffer:
                 os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT']),
             'token_type': os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE']
             }
+
         self.oauth_session = OAuth2Session(client=client, token=token)
         logger.debug(f'{type(self.oauth_session)=}')
-        logger.debug(f'{isinstance(self.oauth_session, OAuth2Session)=}')
-        logger.debug(f'{isinstance(self.oauth_session, requests.Session)=}')
         logger.debug('OAuth2Session created.')
-
         logger.debug('Completed RecordsBuffer constructor.')
 
     def __len__(self) -> int:
@@ -151,12 +149,8 @@ class RecordsBuffer:
         headers = {"Accept": "application/json"}
         response = None
 
-        # Make GET request
+        # Make API request
         try:
-            logger.debug(f'{api_request=}')
-            logger.debug(f'{type(api_request)=}')
-            logger.debug(f'{api_request.__name__=}')
-            logger.debug(f'{api_request.__doc__=}')
             response = api_request(api_url, headers=headers)
         except TokenExpiredError as e:
             logger.debug(f'Access token {self.oauth_session.access_token} '
@@ -218,8 +212,6 @@ class RecordsBuffer:
                     auth=self.auth)
                 logger.debug(f"Refresh token granted ({token['refresh_token']})"
                     f", which expires at {token['refresh_token_expires_at']}")
-                logger.debug(f"{type(token['refresh_token'])=}")
-                logger.debug(f"{type(token['refresh_token_expires_at'])=}")
 
                 # Set Refresh Token environment variables and update .env file
                 libraries.handle_file.set_env_var(
@@ -245,7 +237,7 @@ class RecordsBuffer:
                 token['token_type'])
 
             logger.debug(f"{token['expires_at']=}")
-            logger.debug(f"{type(token['expires_at'])=}")
+
             libraries.handle_file.set_env_var(
                 'WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT',
                 str(token['expires_at']))
@@ -314,8 +306,6 @@ class AlmaRecordsBuffer(RecordsBuffer):
         self.records_with_current_oclc_num = records_with_current_oclc_num
         self.records_with_current_oclc_num_writer = \
             writer(records_with_current_oclc_num)
-        logger.debug(f'{type(self.records_with_current_oclc_num)=}')
-        logger.debug(f'{type(self.records_with_current_oclc_num_writer)=}')
 
         self.records_with_old_oclc_num = records_with_old_oclc_num
         self.records_with_old_oclc_num_writer = \
@@ -555,8 +545,6 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         self.records_with_holding_already_set = records_with_holding_already_set
         self.records_with_holding_already_set_writer = \
             writer(records_with_holding_already_set)
-        logger.debug(f'{type(self.records_with_holding_already_set)=}')
-        logger.debug(f'{type(self.records_with_holding_already_set_writer)=}')
 
         self.records_with_holding_successfully_set = \
             records_with_holding_successfully_set
@@ -868,14 +856,8 @@ def main() -> None:
             )
 
         logger.debug(f'{type(records_buffer)=}')
-        logger.debug(f'{isinstance(records_buffer, AlmaRecordsBuffer)=}')
-        logger.debug(f'{isinstance(records_buffer, WorldCatRecordsBuffer)=}')
-        logger.debug(f'{isinstance(records_buffer, RecordsBuffer)=}')
-        logger.debug(f'{issubclass(AlmaRecordsBuffer, RecordsBuffer)=}')
-        logger.debug(f'{issubclass(WorldCatRecordsBuffer, RecordsBuffer)=}')
         logger.debug(records_buffer)
         logger.debug(f'{type(records_buffer.contents)=}')
-        logger.debug(f'{len(records_buffer.contents)=}')
         logger.debug(f'{len(records_buffer)=}\n')
 
         # Loop over each row in DataFrame and check whether OCLC number is the
