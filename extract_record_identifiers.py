@@ -90,7 +90,7 @@ def main() -> None:
         # Check every XML file in directory
         for file in os.listdir(args.directory_with_xml_files):
             if not file.endswith('.xml'):
-                logger.debug(f'Not an XML file: {file}\n')
+                logger.warning(f'Not an XML file: {file}\n')
                 continue
 
             logger.debug(f'Started processing file: {file}\n')

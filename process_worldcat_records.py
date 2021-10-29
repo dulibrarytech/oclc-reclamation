@@ -794,9 +794,8 @@ def main() -> None:
     if args.input_file.endswith('.csv'):
         data = pd.read_csv(args.input_file, dtype='str', keep_default_na=False)
     else:
-        logger.exception(f'Invalid format for input file ({args.input_file}). '
-            f'Must be a CSV file (.csv)')
-        return
+        raise ValueError(f'Invalid format for input file ({args.input_file}). '
+            f'Must be a CSV file (.csv).')
 
     records_already_processed = set()
     logger.debug(f'{records_already_processed=}\n')

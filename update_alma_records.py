@@ -307,9 +307,9 @@ def init_argparse() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         usage='%(prog)s [option] input_file',
-        description=(f'For each row in the input file, add the corresponding '
-            f'OCLC Number to the specified Alma record (indicated by the MMS '
-            f'ID).')
+        description=('For each row in the input file, add the corresponding '
+            'OCLC Number to the specified Alma record (indicated by the MMS '
+            'ID).')
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -318,8 +318,8 @@ def init_argparse() -> argparse.ArgumentParser:
     parser.add_argument(
         'input_file',
         type=str,
-        help=(f'the name and path of the input file, which must be in either '
-            f'CSV or Excel format (e.g. xlsx/filename.xlsx)')
+        help=('the name and path of the input file, which must be in either CSV'
+            ' (.csv) or Excel (.xlsx or .xls) format (e.g. xlsx/filename.xlsx)')
     )
     return parser
 
@@ -353,11 +353,9 @@ def main() -> None:
             dtype={'MMS ID': 'str', 'OCLC Number': 'str'},
             keep_default_na=False)
     else:
-        logger.exception(f'Invalid format for input file ({args.input_file}). '
-            f'Input file must be one of the following file formats (as '
-            f'indicated by its file extension): CSV file (.csv) or Excel file '
-            f'(.xlsx or .xls)')
-        return
+        raise ValueError(f'Invalid format for input file ({args.input_file}). '
+            f'Must be one of the following file formats: CSV (.csv) or Excel '
+            f'(.xlsx or .xls).')
 
     # Loop over rows in DataFrame and update the corresponding Alma record
     num_records_updated = 0
