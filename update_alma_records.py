@@ -316,8 +316,7 @@ def init_argparse() -> argparse.ArgumentParser:
         version=f'{parser.prog} version 1.0.0'
     )
     parser.add_argument(
-        'Input_file',
-        metavar='input_file',
+        'input_file',
         type=str,
         help=(f'the name and path of the input file, which must be in either '
             f'CSV or Excel format (e.g. xlsx/filename.xlsx)')
@@ -341,20 +340,20 @@ def main() -> None:
 
     # Convert input file into pandas DataFrame
     data = None
-    if args.Input_file.endswith('.csv'):
-        data = pd.read_csv(args.Input_file,
+    if args.input_file.endswith('.csv'):
+        data = pd.read_csv(args.input_file,
             dtype={'MMS ID': 'str', 'OCLC Number': 'str'},
             keep_default_na=False)
-    elif args.Input_file.endswith('.xlsx'):
-        data = pd.read_excel(args.Input_file, 'Sheet1', engine='openpyxl',
+    elif args.input_file.endswith('.xlsx'):
+        data = pd.read_excel(args.input_file, 'Sheet1', engine='openpyxl',
             dtype={'MMS ID': 'str', 'OCLC Number': 'str'},
             keep_default_na=False)
-    elif args.Input_file.endswith('.xls'):
-        data = pd.read_excel(args.Input_file, 'Sheet1', engine='xlrd',
+    elif args.input_file.endswith('.xls'):
+        data = pd.read_excel(args.input_file, 'Sheet1', engine='xlrd',
             dtype={'MMS ID': 'str', 'OCLC Number': 'str'},
             keep_default_na=False)
     else:
-        logger.exception(f'Invalid format for input file ({args.Input_file}). '
+        logger.exception(f'Invalid format for input file ({args.input_file}). '
             f'Input file must be one of the following file formats (as '
             f'indicated by its file extension): CSV file (.csv) or Excel file '
             f'(.xlsx or .xls)')

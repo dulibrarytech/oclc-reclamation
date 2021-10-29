@@ -23,8 +23,7 @@ def init_argparse() -> argparse.ArgumentParser:
         version=f'{parser.prog} version 1.0.0'
     )
     parser.add_argument(
-        'Alma_records_file',
-        metavar='alma_records_file',
+        'alma_records_file',
         type=str,
         help=('the name and path of the CSV file containing the records in '
             'Alma whose holdings **should be set** in WorldCat (e.g. '
@@ -32,8 +31,7 @@ def init_argparse() -> argparse.ArgumentParser:
             'column with one OCLC number per row')
     )
     parser.add_argument(
-        'Worldcat_records_directory',
-        metavar='worldcat_records_directory',
+        'worldcat_records_directory',
         type=str,
         help=('the path to the directory of files containing the records whose '
             'holdings **are currently set** in WorldCat for your institution; '
@@ -65,7 +63,7 @@ def main() -> None:
 
     # Create sets from each input file
     alma_records_set = set()
-    libraries.handle_file.csv_column_to_set(args.Alma_records_file,
+    libraries.handle_file.csv_column_to_set(args.alma_records_file,
         alma_records_set,
         0,
         False)
@@ -75,7 +73,7 @@ def main() -> None:
     worldcat_records_set = set()
 
     # Check every file in directory
-    for file in os.listdir(args.Worldcat_records_directory):
+    for file in os.listdir(args.worldcat_records_directory):
         if not file.endswith('.txt'):
             logger.debug(f'Not a text (.txt) file: {file}\n')
             continue
@@ -83,7 +81,7 @@ def main() -> None:
         logger.debug(f'Started processing file: {file}\n')
 
         libraries.handle_file.csv_column_to_set(
-            f'{args.Worldcat_records_directory}/{file}',
+            f'{args.worldcat_records_directory}/{file}',
             worldcat_records_set,
             0,
             False)

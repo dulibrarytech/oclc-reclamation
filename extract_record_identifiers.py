@@ -27,16 +27,13 @@ def init_argparse() -> argparse.ArgumentParser:
         version=f'{parser.prog} version 1.0.0'
     )
     parser.add_argument(
-        'Directory_with_xml_files',
-        metavar='directory_with_xml_files',
+        'directory_with_xml_files',
         type=str,
         help='the path to the directory containing the XML files to process'
     )
     parser.add_argument(
-        'Alma_records_with_current_oclc_num',
-        metavar='alma_records_with_current_oclc_num',
+        'alma_records_with_current_oclc_num',
         nargs='?',
-        const=None,
         type=str,
         help=('the name and path of the CSV file containing the MMS IDs of '
             'all Alma records with a current OCLC number (e.g. '
@@ -65,7 +62,7 @@ def main() -> None:
 
     alma_records_with_current_oclc_num = set()
     libraries.handle_file.csv_column_to_set(
-        args.Alma_records_with_current_oclc_num,
+        args.alma_records_with_current_oclc_num,
         alma_records_with_current_oclc_num,
         0,
         True)
@@ -91,7 +88,7 @@ def main() -> None:
             f"{libraries.record.subfield_a_disclaimer}]")
 
         # Check every XML file in directory
-        for file in os.listdir(args.Directory_with_xml_files):
+        for file in os.listdir(args.directory_with_xml_files):
             if not file.endswith('.xml'):
                 logger.debug(f'Not an XML file: {file}\n')
                 continue
@@ -99,7 +96,7 @@ def main() -> None:
             logger.debug(f'Started processing file: {file}\n')
 
             # Get root element of XML file
-            root = ET.parse(f'{args.Directory_with_xml_files}/{file}').getroot()
+            root = ET.parse(f'{args.directory_with_xml_files}/{file}').getroot()
 
             # Iterate over each record element
             for record_element in root.findall('record'):
