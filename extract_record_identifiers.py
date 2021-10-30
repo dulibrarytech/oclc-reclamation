@@ -60,6 +60,8 @@ def main() -> None:
     logger.debug(f'{mms_ids_already_processed=}')
     logger.debug(f'{type(mms_ids_already_processed)=}\n')
 
+    # Populate alma_records_with_current_oclc_num set from input file.
+    # If there is no input file, then this set will remain empty.
     alma_records_with_current_oclc_num = set()
     libraries.handle_file.csv_column_to_set(
         args.alma_records_with_current_oclc_num,

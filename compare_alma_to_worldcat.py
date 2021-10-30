@@ -61,7 +61,7 @@ def main() -> None:
     parser = init_argparse()
     args = parser.parse_args()
 
-    # Create sets from each input file
+    # Populate alma_records_set from input file
     alma_records_set = set()
     libraries.handle_file.csv_column_to_set(
         args.alma_records_file,
@@ -75,7 +75,7 @@ def main() -> None:
 
     logger.debug(f'{args.worldcat_records_directory=}')
 
-    # Check every file in directory
+    # Check every file in directory and populate worldcat_records_set
     for file in os.listdir(args.worldcat_records_directory):
         if not file.endswith(('.txt', '.csv')):
             logger.warning(f'Not a CSV (.csv) or text (.txt) file: {file}\n')
@@ -90,21 +90,6 @@ def main() -> None:
             False)
 
         logger.debug(f'Finished processing file: {file}\n')
-
-        ### Not using the try/except block because it clutters the script
-        ### output/log with too many redundant tracebacks.
-        # try:
-        #     logger.debug(f'Started processing file: {file}\n')
-        #
-        #     libraries.handle_file.csv_column_to_set(
-        #         f'{args.worldcat_records_directory}/{file}',
-        #         worldcat_records_set,
-        #         0,
-        #         False)
-        #
-        #     logger.debug(f'Finished processing file: {file}\n')
-        # except ValueError:
-        #     logger.exception(f'Not a CSV (.csv) or text file (.txt): {file}\n')
 
     # logger.debug(f'{worldcat_records_set=}')
     logger.debug(f'{len(worldcat_records_set)=}\n')
