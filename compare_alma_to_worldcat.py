@@ -60,6 +60,10 @@ def main() -> None:
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
+    worldcat_records_directory = args.worldcat_records_directory.rstrip('/')
+    logger.debug(f'Command line args:\n'
+        f'alma_records_file = {args.alma_records_file}\n'
+        f'{worldcat_records_directory = }\n')
 
     # Populate alma_records_set from input file
     alma_records_set = set()
@@ -73,10 +77,10 @@ def main() -> None:
 
     worldcat_records_set = set()
 
-    logger.debug(f'{args.worldcat_records_directory=}')
-
     # Check every file in directory and populate worldcat_records_set
-    for file in os.listdir(args.worldcat_records_directory):
+    logger.debug(f'Started checking directory: {worldcat_records_directory}\n')
+
+    for file in os.listdir(worldcat_records_directory):
         if not file.endswith(('.txt', '.csv')):
             logger.warning(f'Not a CSV (.csv) or text (.txt) file: {file}\n')
             continue
@@ -84,12 +88,14 @@ def main() -> None:
         logger.debug(f'Started processing file: {file}\n')
 
         libraries.handle_file.csv_column_to_set(
-            f'{args.worldcat_records_directory}/{file}',
+            f'{worldcat_records_directory}/{file}',
             worldcat_records_set,
             0,
             False)
 
         logger.debug(f'Finished processing file: {file}\n')
+
+    logger.debug(f'Finished checking directory: {worldcat_records_directory}\n')
 
     # logger.debug(f'{worldcat_records_set=}')
     logger.debug(f'{len(worldcat_records_set)=}\n')

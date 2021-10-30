@@ -54,6 +54,11 @@ def main() -> None:
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
+    directory_with_xml_files = args.directory_with_xml_files.rstrip('/')
+    logger.debug(f'Command line args:\n'
+        f'{directory_with_xml_files = }\n'
+        f'alma_records_with_current_oclc_num = '
+        f'{args.alma_records_with_current_oclc_num}\n')
 
     # Create sets
     mms_ids_already_processed = set()
@@ -68,8 +73,8 @@ def main() -> None:
         alma_records_with_current_oclc_num,
         0,
         True)
-
-    logger.debug(f'{alma_records_with_current_oclc_num=}')
+    # logger.debug(f'{alma_records_with_current_oclc_num=}')
+    logger.debug(f'{len(alma_records_with_current_oclc_num)=}')
     logger.debug(f'{type(alma_records_with_current_oclc_num)=}\n')
 
     with open('csv/master_list_records_with_current_oclc_num.csv', mode='a',
@@ -90,7 +95,10 @@ def main() -> None:
             f"{libraries.record.subfield_a_disclaimer}]")
 
         # Check every XML file in directory
-        for file in os.listdir(args.directory_with_xml_files):
+        logger.debug(f'Started checking directory: {directory_with_xml_files}'
+            f'\n')
+
+        for file in os.listdir(directory_with_xml_files):
             if not file.endswith('.xml'):
                 logger.warning(f'Not an XML file: {file}\n')
                 continue
@@ -98,7 +106,7 @@ def main() -> None:
             logger.debug(f'Started processing file: {file}\n')
 
             # Get root element of XML file
-            root = ET.parse(f'{args.directory_with_xml_files}/{file}').getroot()
+            root = ET.parse(f'{directory_with_xml_files}/{file}').getroot()
 
             # Iterate over each record element
             for record_element in root.findall('record'):
@@ -249,6 +257,9 @@ def main() -> None:
                 logger.debug(f'Finished processing MMS ID {mms_id}\n')
 
             logger.debug(f'Finished processing file: {file}\n')
+
+        logger.debug(f'Finished checking directory: {directory_with_xml_files}'
+            f'\n')
 
     # logger.debug(f'{mms_ids_already_processed=}\n')
     logger.debug(f'{len(mms_ids_already_processed)=}\n')

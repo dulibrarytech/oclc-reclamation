@@ -40,7 +40,6 @@ def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
         If the path_to_csv argument does not end with '.csv' or '.txt'
     """
 
-    logger.debug(f'{path_to_csv=}')
     if path_to_csv is None:
         return
     elif not path_to_csv.endswith(('.csv', '.txt')):
@@ -68,11 +67,11 @@ def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
                     else:
                         logger.warning(f'{path_to_csv}, row #{row_index} '
                             f'contains a value with at least one non-digit '
-                            f'character: {value}')
+                            f'character: {value}\n')
                 else:
                     logger.warning(f'{path_to_csv}, row #{row_index} '
                         f'contains the value "{value}", which is not a string, '
-                        f'but rather of type: {type(value)}')
+                        f'but rather of type: {type(value)}\n')
 
                 target_set.add(value)
 
