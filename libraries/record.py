@@ -45,7 +45,7 @@ def extract_oclc_num_from_subfield_a(
         field_035_element_index: int,
         found_error_in_record: bool
         ) -> Tuple[str, str, bool, bool, bool]:
-    """Checks the given 035 field for a subfield $a containing an OCLC number.
+    """Extracts OCLC number from the given 035 $a field and checks if it's valid.
 
     Parameters
     ----------
