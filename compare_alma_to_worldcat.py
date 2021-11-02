@@ -72,8 +72,6 @@ def main() -> None:
         alma_records_set,
         0,
         False)
-    # logger.debug(f'{alma_records_set=}')
-    logger.debug(f'{len(alma_records_set)=}\n')
 
     worldcat_records_set = set()
 
@@ -96,6 +94,9 @@ def main() -> None:
         logger.debug(f'Finished processing file: {file}\n')
 
     logger.debug(f'Finished checking directory: {worldcat_records_directory}\n')
+
+    # logger.debug(f'{alma_records_set=}')
+    logger.debug(f'{len(alma_records_set)=}\n')
 
     # logger.debug(f'{worldcat_records_set=}')
     logger.debug(f'{len(worldcat_records_set)=}\n')
