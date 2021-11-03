@@ -16,7 +16,7 @@ def init_argparse() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         usage='%(prog)s [option] alma_records_file worldcat_records_directory',
         description=('Compare the Alma records (which **should be** set in '
-            'WorldCat) to the current WorldCat holdings'),
+            'WorldCat) to the current WorldCat holdings.'),
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -61,7 +61,7 @@ def main() -> None:
     parser = init_argparse()
     args = parser.parse_args()
     worldcat_records_directory = args.worldcat_records_directory.rstrip('/')
-    logger.debug(f'Command line args:\n'
+    logger.debug(f'Command-line args:\n'
         f'alma_records_file = {args.alma_records_file}\n'
         f'{worldcat_records_directory = }\n')
 

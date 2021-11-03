@@ -55,7 +55,7 @@ def main() -> None:
     parser = init_argparse()
     args = parser.parse_args()
     directory_with_xml_files = args.directory_with_xml_files.rstrip('/')
-    logger.debug(f'Command line args:\n'
+    logger.debug(f'Command-line args:\n'
         f'{directory_with_xml_files = }\n'
         f'alma_records_with_current_oclc_num = '
         f'{args.alma_records_with_current_oclc_num}\n')
