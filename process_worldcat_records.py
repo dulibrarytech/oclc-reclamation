@@ -734,29 +734,28 @@ def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
-        usage=('%(prog)s [-h] [-v] --input_file INPUT_FILE --operation '
-            '{get_current_oclc_number, set_holding}'),
+        usage='%(prog)s [option] operation input_file',
         description=('For each row in the input file, perform the specified '
-            'operation.')
+            'operation (either get_current_oclc_number or set_holding).')
     )
     parser.add_argument(
         '-v', '--version', action='version',
         version=f'{parser.prog} version 1.0.0'
     )
     parser.add_argument(
-        '--input_file',
-        required=True,
+        'operation',
+        type=str,
+        choices=['get_current_oclc_number', 'set_holding'],
+        help=('the operation to be performed on each row of the input file '
+            '(either get_current_oclc_number or set_holding)'),
+        metavar='operation'
+    )
+    parser.add_argument(
+        'input_file',
         type=str,
         help=('the name and path of the file to be processed, which must be in '
             'CSV format (e.g. '
             'csv/master_list_records_with_potentially_old_oclc_num.csv)')
-    )
-    parser.add_argument(
-        '--operation',
-        required=True,
-        choices=['get_current_oclc_number', 'set_holding'],
-        help=('the operation to be performed on each row of the input file '
-            '(either get_current_oclc_number or set_holding)')
     )
     return parser
 
@@ -788,6 +787,9 @@ def main() -> None:
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
+    logger.debug(f'Command-line args:\n'
+        f'operation = {args.operation}\n'
+        f'input_file = {args.input_file}\n')
 
     # Convert input file into pandas DataFrame
     data = None
@@ -799,8 +801,6 @@ def main() -> None:
 
     records_already_processed = set()
     logger.debug(f'{records_already_processed=}\n')
-
-    logger.debug(f'{args.operation=}')
 
     results = None
     filename_for_records_to_update = None
