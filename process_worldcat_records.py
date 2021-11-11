@@ -754,8 +754,8 @@ def init_argparse() -> argparse.ArgumentParser:
         'input_file',
         type=str,
         help=('the name and path of the file to be processed, which must be in '
-            'CSV format (e.g. '
-            'csv/master_list_records_with_potentially_old_oclc_num.csv)')
+            'CSV format (e.g. inputs/process_worldcat_records/set_holding/'
+            'filename.csv)')
     )
     return parser
 
@@ -768,20 +768,26 @@ def main() -> None:
 
     Operations:
     - get_current_oclc_number
-        For each row, check whether the given OCLC number is the current one:
-        -- If so, then add the record to csv/already_has_current_oclc_number.csv
-        -- If not, then add the record to csv/needs_current_oclc_number.csv
+        For each row, check whether the given OCLC number is the current one.
+        -- If so, then add the record to outputs/process_worldcat_records/
+           get_current_oclc_number/already_has_current_oclc_number.csv
+        -- If not, then add the record to outputs/process_worldcat_records/
+           get_current_oclc_number/needs_current_oclc_number.csv
         -- If an error is encountered, then add the record to
-           csv/records_with_errors_when_getting_current_oclc_number.csv
+           outputs/process_worldcat_records/get_current_oclc_number/
+           records_with_errors_when_getting_current_oclc_number.csv
 
     - set_holding
-        For each row, set holding for the given OCLC number
+        For each row, set holding for the given OCLC number.
         -- If holding is set successfully, then add the record to
-           csv/records_with_holding_successfully_set.csv
+           outputs/process_worldcat_records/set_holding/
+           records_with_holding_successfully_set.csv
         -- If holding was already set, then add the record to
-           csv/records_with_holding_already_set.csv
+           outputs/process_worldcat_records/set_holding/
+           records_with_holding_already_set.csv
         -- If an error is encountered, then add the record to
-           csv/records_with_errors_when_setting_holding.csv
+           outputs/process_worldcat_records/set_holding/
+           records_with_errors_when_setting_holding.csv
     """
 
     # Initialize parser and parse command-line args
@@ -813,23 +819,30 @@ def main() -> None:
             'num_records_with_old_oclc_num': 0,
             'num_records_with_errors': 0
         }
-        filename_for_records_to_update = 'csv/needs_current_oclc_number.csv'
-        filename_for_records_with_no_update_needed = \
-            'csv/already_has_current_oclc_number.csv'
-        filename_for_records_with_errors = \
-            'csv/records_with_errors_when_getting_current_oclc_number.csv'
+        filename_for_records_to_update = (
+            'outputs/process_worldcat_records/get_current_oclc_number/'
+            'needs_current_oclc_number.csv')
+        filename_for_records_with_no_update_needed = (
+            'outputs/process_worldcat_records/get_current_oclc_number/'
+            'already_has_current_oclc_number.csv')
+        filename_for_records_with_errors = (
+            'outputs/process_worldcat_records/get_current_oclc_number/'
+            'records_with_errors_when_getting_current_oclc_number.csv')
     else:
         results = {
             'num_records_successfully_set': 0,
             'num_records_already_set': 0,
             'num_records_with_errors': 0
         }
-        filename_for_records_to_update = \
-            'csv/records_with_holding_successfully_set.csv'
-        filename_for_records_with_no_update_needed = \
-            'csv/records_with_holding_already_set.csv'
-        filename_for_records_with_errors = \
-            'csv/records_with_errors_when_setting_holding.csv'
+        filename_for_records_to_update = (
+            'outputs/process_worldcat_records/set_holding/'
+            'records_with_holding_successfully_set.csv')
+        filename_for_records_with_no_update_needed = (
+            'outputs/process_worldcat_records/set_holding/'
+            'records_with_holding_already_set.csv')
+        filename_for_records_with_errors = (
+            'outputs/process_worldcat_records/set_holding/'
+            'records_with_errors_when_setting_holding.csv')
 
     with open(filename_for_records_to_update, mode='a',
             newline='') as records_to_update, \

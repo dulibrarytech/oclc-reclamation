@@ -75,7 +75,8 @@ def get_alma_record(mms_id: str) -> ET.Element:
         libraries.xml.prettify_and_log_xml(response, 'Original record')
 
     # Create XML file
-    with open(f'xml/{mms_id}_original.xml', 'wb') as file:
+    with open(f'outputs/update_alma_records/xml/{mms_id}_original.xml',
+            'wb') as file:
         file.write(xml_as_pretty_printed_bytes_obj)
 
     # Return root element of XML tree
@@ -292,7 +293,8 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             put_response, 'Modified record')
 
         # Create XML file
-        with open(f'xml/{mms_id}_modified.xml', 'wb') as file:
+        with open(f'outputs/update_alma_records/xml/{mms_id}_modified.xml',
+                'wb') as file:
             file.write(xml_as_pretty_printed_bytes_obj)
 
         logger.debug(f"MMS ID '{mms_id}' has been updated.")
@@ -318,8 +320,9 @@ def init_argparse() -> argparse.ArgumentParser:
     parser.add_argument(
         'input_file',
         type=str,
-        help=('the name and path of the input file, which must be in either CSV'
-            ' (.csv) or Excel (.xlsx or .xls) format (e.g. xlsx/filename.xlsx)')
+        help=('the name and path of the input file, which must be in either '
+            'CSV (.csv) or Excel (.xlsx or .xls) format (e.g. inputs/'
+            'update_alma_records/filename.csv)')
     )
     return parser
 
@@ -359,11 +362,11 @@ def main() -> None:
 
     # Loop over rows in DataFrame and update the corresponding Alma record
     num_records_updated = 0
-    with open('xlsx/records_updated.csv', mode='a',
+    with open('outputs/update_alma_records/records_updated.csv', mode='a',
             newline='') as records_updated, \
-        open('xlsx/records_with_no_update_needed.csv', mode='a',
-            newline='') as records_with_no_update_needed, \
-        open('xlsx/records_with_errors.csv', mode='a',
+        open('outputs/update_alma_records/records_with_no_update_needed.csv',
+            mode='a', newline='') as records_with_no_update_needed, \
+        open('outputs/update_alma_records/records_with_errors.csv', mode='a',
             newline='') as records_with_errors:
 
         records_updated_writer = writer(records_updated)

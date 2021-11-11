@@ -20,7 +20,8 @@ def init_argparse() -> argparse.ArgumentParser:
             '[alma_records_with_current_oclc_num]'),
         description=('For each XML file in the directory, extract the MMS ID '
             'and OCLC Number(s) from each Alma record and append them to '
-            'the appropriate master_list_records CSV file.'),
+            'the appropriate outputs/extract_record_identifiers/'
+            'master_list_records CSV file.')
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -36,8 +37,8 @@ def init_argparse() -> argparse.ArgumentParser:
         nargs='?',
         type=str,
         help=('the name and path of the CSV file containing the MMS IDs of '
-            'all Alma records with a current OCLC number (e.g. '
-            'csv/alma_records_with_current_oclc_num.csv)')
+            'all Alma records with a current OCLC number (e.g. inputs/extract_'
+            'record_identifiers/alma_records_with_current_oclc_num.csv)')
     )
     return parser
 
@@ -47,7 +48,7 @@ def main() -> None:
 
     For each XML file in the specified directory, the MMS ID and OCLC Number(s)
     from each Alma record are extracted and appended to the appropriate
-    master_list_records CSV file.
+    outputs/extract_record_identifiers/master_list_records CSV file.
     """
     start_time = datetime.now()
 
@@ -77,11 +78,14 @@ def main() -> None:
     logger.debug(f'{len(alma_records_with_current_oclc_num)=}')
     logger.debug(f'{type(alma_records_with_current_oclc_num)=}\n')
 
-    with open('csv/master_list_records_with_current_oclc_num.csv', mode='a',
+    with open('outputs/extract_record_identifiers/master_list_records_with_'
+            'current_oclc_num.csv', mode='a',
             newline='') as records_with_current_oclc_num, \
-        open('csv/master_list_records_with_potentially_old_oclc_num.csv',
-            mode='a', newline='') as records_with_potentially_old_oclc_num, \
-        open('csv/master_list_records_with_errors.csv', mode='a',
+        open('outputs/extract_record_identifiers/master_list_records_with_'
+            'potentially_old_oclc_num.csv', mode='a',
+            newline='') as records_with_potentially_old_oclc_num, \
+        open('outputs/extract_record_identifiers/master_list_records_with_'
+            'errors.csv', mode='a',
             newline='') as records_with_errors:
 
         records_with_current_oclc_num_writer = \
