@@ -9,8 +9,8 @@
 
 ### Background
 
-Objective: To create Python scripts to reconcile a library's local holdings in
-Ex Libris Alma with OCLC's WorldCat database.
+Python scripts to reconcile a library's local holdings in Ex Libris Alma with
+OCLC's WorldCat database.
 
 The current test script (`alma-api-test.py`) takes an Excel file
 (`alma-test.xlsx`) and, for each row, adds the corresponding OCLC Number to the
@@ -29,9 +29,11 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
 ### Local Environment Setup
 
 - Go into `oclc-reclamation` folder (i.e. root folder of repository)
-- Recommended: Create and activate virtual environment (for example, see
-  [venv](https://docs.python.org/3/library/venv.html))
-- Run `pip install -r requirements.txt`
+- Create and activate virtual environment:
+  - `python -m venv virtualenv`
+  - `source virtualenv/bin/activate`
+- Install python dependencies:
+  - `pip install -r requirements.txt`
 - Add `.env` file to root folder (you can copy `.env-example`) and initialize
   the variables:
   - `ALMA_BIBS_API_URL`
