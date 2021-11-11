@@ -58,8 +58,7 @@ def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
 
                 if isinstance(value, str):
                     value = value.strip().strip("\"'")
-                    value = \
-                        libraries.record.remove_oclc_org_code_prefix(value)
+                    value = libraries.record.remove_oclc_org_code_prefix(value)
                     if value.isdigit():
                         if not keep_leading_zeros:
                             value = \
