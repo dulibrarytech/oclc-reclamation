@@ -1,3 +1,4 @@
+venv
 virtualenv
 __pycache__
 .python-version
