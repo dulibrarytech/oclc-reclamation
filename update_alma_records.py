@@ -311,7 +311,8 @@ def init_argparse() -> argparse.ArgumentParser:
         usage='%(prog)s [option] input_file',
         description=('For each row in the input file, add the corresponding '
             'OCLC Number to the specified Alma record (indicated by the MMS '
-            'ID).')
+            'ID). Script results are saved to the following directory: '
+            'outputs/update_alma_records/')
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -334,7 +335,62 @@ def main() -> None:
     the specified Alma record (indicated by the MMS ID), unless the Alma record
     already contains that OCLC number. If the Alma record contains non-matching
     OCLC numbers in an 035 field (in the subfield $a), those OCLC numbers are
-    moved to the 019 field.
+    moved to the 019 field (as long as they are valid).
+
+    When processing each Alma record:
+    - The original record is saved in XML format as:
+      outputs/update_alma_records/xml/{mms_id}_original.xml
+    - If the record is updated, then it is added to outputs/update_alma_records/
+      records_updated.csv and the modified Alma record is saved in XML format
+      as: outputs/update_alma_records/xml/{mms_id}_modified.xml
+    - If the record is not updated because it already has the current OCLC
+      number, then it is added to:
+      outputs/update_alma_records/records_with_no_update_needed.csv
+    - If an error is encountered, then that record is added to:
+      outputs/update_alma_records/records_with_errors.csv
+
+    How OCLC numbers are recognized within an Alma record:
+    - The 035 fields of the Alma record are checked.
+    - For each 035 field, if the first subfield $a value begins with '(OCoLC)',
+      'ocm', 'ocn', or 'on', then it is considered to be an OCLC number. Any
+      subsequent subfield $a values within the same 035 field are logged (as a
+      DEBUG-level event) but otherwise ignored.
+
+    OCLC numbers (e.g. 'ocm01234567') consist of an optional prefix (e.g. 'ocm')
+    and the number itself, which must contain only digits (e.g. '01234567').
+
+    Extracting the OCLC number from the 035 $a value:
+    - First, the 'OCoLC' org code is removed (if present).
+    - Then, this script searches for the first digit. If found, then everything
+      before this first digit is considered the prefix, and everything after
+      (and including) this first digit is considered the number itself.
+
+    An OCLC number is considered valid if it falls into one of these categories:
+    1) Number only (no prefix), i.e. only digits
+    2) A number (i.e. only digits) preceded by one of the following valid
+       prefixes:
+       - ocm
+       - ocn
+       - on
+       - |a (though not a traditional OCLC prefix, '|a' is allowed so this
+         script can successfully process 035 $a values like '(OCoLC)|a01234567')
+    3) Any value with a single trailing '#' character that would otherwise fall
+       into one of the above categories, e.g. '01234567#' or 'ocm01234567#'
+
+    How invalid OCLC numbers are handled:
+    - Case 1 (invalid prefix, valid number): If the Alma record contains an OCLC
+      number with an invalid prefix preceding a valid number, then this record
+      is added to the records_with_errors.csv file and **not updated** in Alma.
+      Example of a valid OCLC number with an invalid prefix (i.e. ABC):
+      035 __ $a (OCoLC)ABC01234567
+    - Case 2 (any or no prefix, invalid number): If the Alma record contains an
+      OCLC number with no digits or at least one non-digit character after the
+      first digit, then the entire 035 field is removed and the invalid OCLC
+      number is not added to the 019 field. This record **would get updated** in
+      Alma. Examples of invalid OCLC numbers:
+      035 __ $a (OCoLC)01234567def
+      035 __ $a (OCoLC)ocm01234567def
+      035 __ $a (OCoLC)ABC01234567def
     """
 
     # Initialize parser and parse command-line args

@@ -736,7 +736,9 @@ def init_argparse() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         usage='%(prog)s [option] operation input_file',
         description=('For each row in the input file, perform the specified '
-            'operation (either get_current_oclc_number or set_holding).')
+            'operation (either get_current_oclc_number or set_holding). '
+            'Script results are saved to the following directory: '
+            'outputs/process_worldcat_records/')
     )
     parser.add_argument(
         '-v', '--version', action='version',

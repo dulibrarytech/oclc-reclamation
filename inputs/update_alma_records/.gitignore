@@ -2,5 +2,5 @@
 *
 # Except these files
 !.gitignore
-!alma-test-example.csv
-!alma-test-example.xlsx
+!example.csv
+!example.xlsx
