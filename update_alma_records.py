@@ -346,7 +346,7 @@ def main() -> None:
     - If the record is not updated because it already has the current OCLC
       number, then it is added to:
       outputs/update_alma_records/records_with_no_update_needed.csv
-    - If an error is encountered, then that record is added to:
+    - If an error is encountered, then the record is added to:
       outputs/update_alma_records/records_with_errors.csv
 
     How OCLC numbers are recognized within an Alma record:

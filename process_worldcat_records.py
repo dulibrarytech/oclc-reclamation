@@ -900,6 +900,8 @@ def main() -> None:
                     orig_oclc_num, 'OCLC number')
                 orig_oclc_num = \
                     libraries.record.remove_leading_zeros(orig_oclc_num)
+                assert orig_oclc_num != '0', (f"Invalid OCLC number: "
+                    f"'{orig_oclc_num}'. It cannot be zero.")
 
                 if args.operation == 'get_current_oclc_number':
                     assert mms_id not in records_already_processed, (f'Record '
