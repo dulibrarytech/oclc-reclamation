@@ -1,4 +1,6 @@
 # Ignore everything in this directory
 *
-# Except these files
+# Except these files/directories
 !.gitignore
+!example_alma_records_file.csv
+!worldcat_records

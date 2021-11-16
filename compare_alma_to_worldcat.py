@@ -15,8 +15,10 @@ def init_argparse() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(
         usage='%(prog)s [option] alma_records_file worldcat_records_directory',
-        description=('Compare the Alma records (which **should be** set in '
-            'WorldCat) to the current WorldCat holdings.')
+        description=('Compare the Alma records which **should be set in '
+            'WorldCat** to the current WorldCat holdings. Script results are '
+            'saved to the following directory: '
+            'outputs/compare_alma_to_worldcat/')
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -26,7 +28,7 @@ def init_argparse() -> argparse.ArgumentParser:
         'alma_records_file',
         type=str,
         help=('the name and path of the CSV file containing the records in '
-            'Alma whose holdings **should be set** in WorldCat (e.g. '
+            'Alma whose holdings **should be set in WorldCat** (e.g. '
             'inputs/compare_alma_to_worldcat/alma_master_list.csv); this file '
             'should consist of a single column with one OCLC number per row')
     )
@@ -34,7 +36,7 @@ def init_argparse() -> argparse.ArgumentParser:
         'worldcat_records_directory',
         type=str,
         help=('the path to the directory of files containing the records whose '
-            'holdings **are currently set** in WorldCat for your institution; '
+            'holdings **are currently set in WorldCat** for your institution; '
             'each file should be in text (.txt) or CSV (.csv) format and '
             'consist of a single column with one OCLC number per row')
     )

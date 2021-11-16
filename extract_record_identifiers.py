@@ -49,6 +49,16 @@ def main() -> None:
     For each XML file in the specified directory, the MMS ID and OCLC Number(s)
     from each Alma record are extracted and appended to the appropriate
     outputs/extract_record_identifiers/master_list_records CSV file.
+
+    When processing each Alma record:
+    - If an error is encountered, then the record is added to:
+      outputs/extract_record_identifiers/master_list_records_with_errors.csv
+    - If the record's MMS ID appears in the optional
+      alma_records_with_current_oclc_num input file, then the record is added to
+      outputs/extract_record_identifiers/
+      master_list_records_with_current_oclc_num.csv
+    - Otherwise, the record is added to: outputs/extract_record_identifiers/
+      master_list_records_with_potentially_old_oclc_num.csv
     """
     start_time = datetime.now()
 
