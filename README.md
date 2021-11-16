@@ -65,11 +65,10 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
 
 ### Using the Scripts
 
-#### Update Alma Records
+#### `update_alma_records.py`
 
-**Script name:** `update_alma_records.py`
+##### Usage notes
 
-**Usage notes:**
 ```
 usage: update_alma_records.py [option] input_file
 
@@ -85,7 +84,9 @@ For required format of input file, see either:
 - `inputs/update_alma_records/example.csv`
 - `inputs/update_alma_records/example.xlsx`
 
-**Description:** Updates Alma records to have the corresponding OCLC number.
+##### Description
+
+Updates Alma records to have the corresponding OCLC number.
 
 For each row in the input file, the corresponding OCLC number is added to
 the specified Alma record (indicated by the MMS ID), unless the Alma record
@@ -111,6 +112,14 @@ about:
 - how OCLC numbers are recognized and extracted
 - what constitutes a valid OCLC number for the purposes of this script
 - how invalid OCLC numbers are handled
+
+---
+
+#### `extract_record_identifiers.py`
+
+##### Usage notes
+
+##### Description
 
 ### Maintainers
 
