@@ -88,7 +88,7 @@ For required format of input file, see either:
 - `inputs/update_alma_records/example.csv`
 - `inputs/update_alma_records/example.xlsx`
 
-##### Description
+##### Description and script outputs
 
 Updates Alma records to have the corresponding OCLC number.
 
@@ -158,7 +158,7 @@ facilitate easy retrieval of all sets.
 For required format of the `alma_records_with_current_oclc_num` input file, see:
 - `inputs/extract_record_identifiers/example_file_for_alma_records_with_current_oclc_num.csv`
 
-##### Description
+##### Description and script outputs
 
 For each XML file in the specified directory, the MMS ID and OCLC Number(s)
 from each Alma record are extracted and appended to the appropriate
@@ -199,14 +199,14 @@ Required format of input file:
 - For `set_holding` operation, see:
 `inputs/process_worldcat_records/set_holding/example.csv`
 
-##### Description
+##### Description and script outputs
 
 Performs the specified operation on every record in the input file.
 
 Gathers the maximum OCLC numbers possible before sending the appropriate request
 to the WorldCat Metadata API.
 
-Operations:
+What each `operation` does:
 - `get_current_oclc_number`: For each row, check whether the given OCLC number
 is the current one.
   - If so, then add the record to:
@@ -267,21 +267,21 @@ format:
 - Use this directory as the `worldcat_records_directory`.
 - [See these instructions](https://help.oclc.org/Metadata_Services/WorldShare_Collection_Manager/Query_collections/Create_a_query_collection_to_get_a_spreadsheet_of_your_holdings/Create_a_spreadsheet_of_your_WorldCat_holdings?sl=en) for more details.
 
-##### Description
+##### Description and script outputs
 
-Compare the Alma records which *should be set in WorldCat* to the current
+Compares the Alma records which *should be set in WorldCat* to the current
 WorldCat holdings.
 
 Outputs the following files:
-- `outputs/compare_alma_to_worldcat/records_with_no_action_needed.csv`
-    The OCLC numbers found in both the `alma_records_file` and the
-    `worldcat_records_directory`
-- `outputs/compare_alma_to_worldcat/records_to_set_in_worldcat.csv`
-    The OCLC numbers found in the `alma_records_file` but not the
-    `worldcat_records_directory`
-- `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv`
-    The OCLC numbers found in the `worldcat_records_directory` but not the
-    `alma_records_file`
+- `outputs/compare_alma_to_worldcat/records_with_no_action_needed.csv`:
+The OCLC numbers found in both the `alma_records_file` and the
+`worldcat_records_directory`
+- `outputs/compare_alma_to_worldcat/records_to_set_in_worldcat.csv`:
+The OCLC numbers found in the `alma_records_file` but not the
+`worldcat_records_directory`
+- `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv`:
+The OCLC numbers found in the `worldcat_records_directory` but not the
+`alma_records_file`
 
 ### Maintainers
 
