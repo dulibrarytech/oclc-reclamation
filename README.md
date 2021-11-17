@@ -10,6 +10,7 @@
     - [`update_alma_records.py`](#update_alma_recordspy)
     - [`extract_record_identifiers.py`](#extract_record_identifierspy)
     - [`process_worldcat_records.py`](#process_worldcat_recordspy)
+    - [`compare_alma_to_worldcat.py`](#compare_alma_to_worldcatpy)
   - [Maintainers](#maintainers)
   - [Acknowledgements](#acknowledgements)
 - [Contact](#contact)
@@ -223,6 +224,64 @@ is the current one.
   `outputs/process_worldcat_records/set_holding/records_with_errors_when_setting_holding.csv`
 
 ---
+
+#### `compare_alma_to_worldcat.py`
+
+##### Usage notes
+
+```
+usage: compare_alma_to_worldcat.py [option] alma_records_file worldcat_records_directory
+
+positional arguments:
+  alma_records_file     the name and path of the CSV file containing the records
+                        in Alma whose holdings **should be set in WorldCat**
+                        (e.g. inputs/compare_alma_to_worldcat/alma_master_list.csv);
+                        this file should consist of a single column with one
+                        OCLC number per row
+  worldcat_records_directory
+                        the path to the directory of files containing the records
+                        whose holdings **are currently set in WorldCat** for your
+                        institution; each file should be in text (.txt) or
+                        CSV (.csv) format and consist of a single column with one
+                        OCLC number per row
+
+example: python compare_alma_to_worldcat.py inputs/compare_alma_to_worldcat/alma_records_file.csv inputs/compare_alma_to_worldcat/worldcat_records/
+```
+
+For required format of the `alma_records_file` input file, see:
+- `inputs/compare_alma_to_worldcat/example_alma_records_file.csv`
+
+To create/populate the `worldcat_records_directory`:
+- Use OCLC WorldShare to export the bibliographic records for all your
+institution's WorldCat holdings.
+- Use MarcEdit (which you'll need to download and install locally) to pull only
+the OCLC number (035 $a) out of these records.
+- This should leave you with a directory of text (.txt) files in the following
+format:
+```
+035$a
+"(OCoLC)00000001"
+"(OCoLC)00000002"
+"(OCoLC)00000003"
+```
+- Use this directory as the `worldcat_records_directory`.
+- [See these instructions](https://help.oclc.org/Metadata_Services/WorldShare_Collection_Manager/Query_collections/Create_a_query_collection_to_get_a_spreadsheet_of_your_holdings/Create_a_spreadsheet_of_your_WorldCat_holdings?sl=en) for more details.
+
+##### Description
+
+Compare the Alma records which *should be set in WorldCat* to the current
+WorldCat holdings.
+
+Outputs the following files:
+- `outputs/compare_alma_to_worldcat/records_with_no_action_needed.csv`
+    The OCLC numbers found in both the `alma_records_file` and the
+    `worldcat_records_directory`
+- `outputs/compare_alma_to_worldcat/records_to_set_in_worldcat.csv`
+    The OCLC numbers found in the `alma_records_file` but not the
+    `worldcat_records_directory`
+- `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv`
+    The OCLC numbers found in the `worldcat_records_directory` but not the
+    `alma_records_file`
 
 ### Maintainers
 
