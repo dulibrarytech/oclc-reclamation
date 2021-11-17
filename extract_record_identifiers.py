@@ -54,8 +54,8 @@ def main() -> None:
     - If an error is encountered, then the record is added to:
       outputs/extract_record_identifiers/master_list_records_with_errors.csv
     - If the record's MMS ID appears in the optional
-      alma_records_with_current_oclc_num input file, then the record is added to
-      outputs/extract_record_identifiers/
+      alma_records_with_current_oclc_num input file, then the record is added
+      to: outputs/extract_record_identifiers/
       master_list_records_with_current_oclc_num.csv
     - Otherwise, the record is added to: outputs/extract_record_identifiers/
       master_list_records_with_potentially_old_oclc_num.csv
