@@ -9,6 +9,7 @@
   - [Using the Scripts](#using-the-scripts)
     - [`update_alma_records.py`](#update_alma_recordspy)
     - [`extract_record_identifiers.py`](#extract_record_identifierspy)
+    - [`process_worldcat_records.py`](#process_worldcat_recordspy)
   - [Maintainers](#maintainers)
   - [Acknowledgements](#acknowledgements)
 - [Contact](#contact)
@@ -171,6 +172,8 @@ When processing each Alma record:
 - Otherwise, the record is added to:
 `outputs/extract_record_identifiers/master_list_records_with_potentially_old_oclc_num.csv`
 
+---
+
 #### `process_worldcat_records.py`
 
 ##### Usage notes
@@ -218,6 +221,8 @@ is the current one.
   `outputs/process_worldcat_records/set_holding/records_with_holding_already_set.csv`
   - If an error is encountered, then add the record to:
   `outputs/process_worldcat_records/set_holding/records_with_errors_when_setting_holding.csv`
+
+---
 
 ### Maintainers
 
