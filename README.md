@@ -7,6 +7,8 @@
   - [Licenses](#licenses)
   - [Local Environment Setup](#local-environment-setup)
   - [Using the Scripts](#using-the-scripts)
+    - [`update_alma_records.py`](#update_alma_recordspy)
+    - [`extract_record_identifiers.py`](#extract_record_identifierspy)
   - [Maintainers](#maintainers)
   - [Acknowledgements](#acknowledgements)
 - [Contact](#contact)
@@ -74,8 +76,8 @@ usage: update_alma_records.py [option] input_file
 
 positional arguments:
   input_file     the name and path of the input file, which must be in either
-                 CSV (.csv) or Excel (.xlsx or .xls) format (e.g.
-                 inputs/update_alma_records/filename.csv)
+                 CSV (.csv) or Excel (.xlsx or .xls) format
+                 (e.g. inputs/update_alma_records/filename.csv)
 
 example: python update_alma_records.py inputs/update_alma_records/filename.csv
 ```
@@ -119,7 +121,55 @@ about:
 
 ##### Usage notes
 
+```
+usage: extract_record_identifiers.py [option] directory_with_xml_files [alma_records_with_current_oclc_num]
+
+positional arguments:
+  directory_with_xml_files
+                        the path to the directory containing the XML files to process
+  alma_records_with_current_oclc_num
+                        the name and path of the CSV file containing the MMS IDs
+                        of all Alma records with a current OCLC number
+                        (e.g. inputs/extract_record_identifiers/alma_records_with_current_oclc_num.csv)
+
+example: python extract_record_identifiers.py inputs/extract_record_identifiers/xml_files_to_extract_from/ inputs/extract_record_identifiers/alma_records_with_current_oclc_num.csv
+```
+
+To create/populate the `directory_with_xml_files`, you will need to export the
+XML files from Alma. Here's one approach:
+- Create the following directory for these XML files:
+`inputs/extract_record_identifiers/xml_files_to_extract_from/`
+- Create sets in Alma that contain the records whose holdings should be set in
+WorldCat. Begin each set name with the same prefix, e.g. "OCLC Reclamation" to
+facilitate easy retrieval of all sets.
+- Export these sets as XML files:
+  - You can do this by [running a job on each set][https://knowledge.exlibrisgroup.com/Alma/Product_Documentation/010Alma_Online_Help_(English)/050Administration/070Managing_Jobs/020Manual_Jobs_on_Defined_Sets].
+  - For Select Job to Run, choose "Export Bibliographic Records".
+  - Select the set you want to export.
+  - Choose "MARC21 Bibliographic" as the Output Format and "XML" as the Physical
+  Format.
+  - If you want the XML file to be downloadable by others in your institution,
+  choose "Institution" for Export Into Folder. Otherwise, leave it as "Private".
+  - When the job is complete, download the XML file to the desired directory,
+  e.g. `inputs/extract_record_identifiers/xml_files_to_extract_from/`.
+
+For required format of `alma_records_with_current_oclc_num` input file, see:
+- `example_file_for_alma_records_with_current_oclc_num.csv`
+
 ##### Description
+
+For each XML file in the specified directory, the MMS ID and OCLC Number(s)
+from each Alma record are extracted and appended to the appropriate
+`outputs/extract_record_identifiers/master_list_records` CSV file.
+
+When processing each Alma record:
+- If an error is encountered, then the record is added to:
+`outputs/extract_record_identifiers/master_list_records_with_errors.csv`
+- If the record's MMS ID appears in the optional
+`alma_records_with_current_oclc_num` input file, then the record is added to:
+`outputs/extract_record_identifiers/master_list_records_with_current_oclc_num.csv`
+- Otherwise, the record is added to:
+`outputs/extract_record_identifiers/master_list_records_with_potentially_old_oclc_num.csv`
 
 ### Maintainers
 
