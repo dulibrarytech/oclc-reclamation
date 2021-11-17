@@ -171,6 +171,54 @@ When processing each Alma record:
 - Otherwise, the record is added to:
 `outputs/extract_record_identifiers/master_list_records_with_potentially_old_oclc_num.csv`
 
+#### `process_worldcat_records.py`
+
+##### Usage notes
+
+```
+usage: process_worldcat_records.py [option] operation input_file
+
+positional arguments:
+  operation      the operation to be performed on each row of the input file
+                 (either get_current_oclc_number or set_holding)
+  input_file     the name and path of the file to be processed, which must be in CSV format
+                 (e.g. inputs/process_worldcat_records/set_holding/filename.csv)
+
+examples:
+  python process_worldcat_records.py get_current_oclc_number inputs/process_worldcat_records/get_current_oclc_number/filename.csv
+  python process_worldcat_records.py set_holding inputs/process_worldcat_records/set_holding/filename.csv
+```
+
+Required format of input file:
+- For `get_current_oclc_number` operation, see:
+`inputs/process_worldcat_records/get_current_oclc_number/example.csv`
+- For `set_holding` operation, see:
+`inputs/process_worldcat_records/set_holding/example.csv`
+
+##### Description
+
+Performs the specified operation on every record in the input file.
+
+Gathers the maximum OCLC numbers possible before sending the appropriate request
+to the WorldCat Metadata API.
+
+Operations:
+- `get_current_oclc_number`: For each row, check whether the given OCLC number
+is the current one.
+  - If so, then add the record to:
+  `outputs/process_worldcat_records/get_current_oclc_number/already_has_current_oclc_number.csv`
+  - If not, then add the record to:
+  `outputs/process_worldcat_records/get_current_oclc_number/needs_current_oclc_number.csv`
+  - If an error is encountered, then add the record to:
+  `outputs/process_worldcat_records/get_current_oclc_number/records_with_errors_when_getting_current_oclc_number.csv`
+- `set_holding`: For each row, set holding for the given OCLC number.
+  - If holding is set successfully, then add the record to:
+  `outputs/process_worldcat_records/set_holding/records_with_holding_successfully_set.csv`
+  - If holding was already set, then add the record to:
+  `outputs/process_worldcat_records/set_holding/records_with_holding_already_set.csv`
+  - If an error is encountered, then add the record to:
+  `outputs/process_worldcat_records/set_holding/records_with_errors_when_setting_holding.csv`
+
 ### Maintainers
 
 @scottsalvaggio
