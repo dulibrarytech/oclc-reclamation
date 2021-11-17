@@ -137,13 +137,13 @@ example: python extract_record_identifiers.py inputs/extract_record_identifiers/
 
 To create/populate the `directory_with_xml_files`, you will need to export the
 XML files from Alma. Here's one approach:
-- Create the following directory for these XML files:
+- Recommended: Create the following directory for these XML files:
 `inputs/extract_record_identifiers/xml_files_to_extract_from/`
 - Create sets in Alma that contain the records whose holdings should be set in
-WorldCat. Begin each set name with the same prefix, e.g. "OCLC Reclamation" to
+WorldCat. Begin each set name with the same prefix (e.g. "OCLC Reclamation") to
 facilitate easy retrieval of all sets.
-- Export these sets as XML files:
-  - You can do this by [running a job on each set][https://knowledge.exlibrisgroup.com/Alma/Product_Documentation/010Alma_Online_Help_(English)/050Administration/070Managing_Jobs/020Manual_Jobs_on_Defined_Sets].
+- Export each set as an XML file:
+  - You can do this by [running a job on each set](https://knowledge.exlibrisgroup.com/Alma/Product_Documentation/010Alma_Online_Help_(English)/050Administration/070Managing_Jobs/020Manual_Jobs_on_Defined_Sets).
   - For Select Job to Run, choose "Export Bibliographic Records".
   - Select the set you want to export.
   - Choose "MARC21 Bibliographic" as the Output Format and "XML" as the Physical
@@ -153,8 +153,8 @@ facilitate easy retrieval of all sets.
   - When the job is complete, download the XML file to the desired directory,
   e.g. `inputs/extract_record_identifiers/xml_files_to_extract_from/`.
 
-For required format of `alma_records_with_current_oclc_num` input file, see:
-- `example_file_for_alma_records_with_current_oclc_num.csv`
+For required format of the `alma_records_with_current_oclc_num` input file, see:
+- `inputs/extract_record_identifiers/example_file_for_alma_records_with_current_oclc_num.csv`
 
 ##### Description
 
