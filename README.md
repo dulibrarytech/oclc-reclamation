@@ -69,6 +69,18 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
 
 ### Using the Scripts
 
+#### Preventing your system from going to sleep while the scripts are running
+
+These scripts can take some time to complete, especially if they are processing
+many records. So be sure to disable your system's sleep settings prior to
+running any of the scripts. Otherwise, the scripts could get interrupted
+mid-execution.
+
+For Mac users: You can prevent idle sleep while a script is running by using the
+`caffeinate` command-line tool. With this approach, you won't have to adjust
+your sleep settings. Example (from the Terminal, run the following command):
+`caffeinate -i python update_alma_records.py inputs/update_alma_records/filename.csv`
+
 #### `update_alma_records.py`
 
 ##### Usage notes
