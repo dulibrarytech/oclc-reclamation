@@ -7,6 +7,7 @@
   - [Licenses](#licenses)
   - [Local Environment Setup](#local-environment-setup)
   - [Using the Scripts](#using-the-scripts)
+    - [Preventing your system from going to sleep while the scripts are running](#preventing-your-system-from-going-to-sleep-while-the-scripts-are-running)
     - [`update_alma_records.py`](#update_alma_recordspy)
     - [`extract_record_identifiers.py`](#extract_record_identifierspy)
     - [`process_worldcat_records.py`](#process_worldcat_recordspy)
