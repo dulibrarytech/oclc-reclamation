@@ -4,6 +4,8 @@
 
 - [README](#readme)
   - [Background](#background)
+    - [Alma API Key](#alma-api-key)
+    - [OCLC Web Service Key](#oclc-web-service-key)
   - [Licenses](#licenses)
   - [Local Environment Setup](#local-environment-setup)
   - [Using the Scripts](#using-the-scripts)
@@ -22,6 +24,8 @@
 
 Python scripts to reconcile a library's local holdings in Ex Libris Alma with
 OCLC's WorldCat database.
+
+Some of the scripts require an API key:
 
 #### Alma API Key
 
@@ -60,16 +64,14 @@ WorldCat Metadata API, as
 [explained here](https://www.oclc.org/developer/api/oclc-apis/worldcat-metadata-api/sandbox-testing.en.html).
 
 For example, when running the `process_worldcat_records.py` script with the
-`set_holding` operation, your Sandbox WSKey can update your institution's actual
-holdings in WorldCat *even when using your Sandbox WSKey.* To avoid this,
-make sure your `input_file` consists exclusively of Test Sandbox Records[^*]
-(there should be no OCLC numbers for *real* WorldCat records).
+`set_holding` operation, your
+*Sandbox WSKey can update your institution's actual holdings in WorldCat.* To
+avoid this, make sure your `input_file` consists exclusively of Test Sandbox
+Records. (Your WSKey approval email from OCLC should include the OCLC numbers
+for these Test Sandbox Records.)
 
 In contrast, it is safe to use real WorldCat records when testing this script's
-`get_current_oclc_number` operation because it doesn't not update any records.
-
-[^*]: Your WSKey approval email from OCLC should include these Test Sandbox
-  Records. Use these OCLC numbers when testing the `set_holding` operation.
+`get_current_oclc_number` operation because it doesn't not update the records.
 
 ### Licenses
 
@@ -112,9 +114,10 @@ running any of the scripts. Otherwise, the scripts could get interrupted
 mid-execution.
 
 For Mac users: You can prevent idle sleep while a script is running by using the
-`caffeinate` command-line tool. With this approach, you won't have to adjust
-your sleep settings. Example (from the Terminal, run the following command):
+`caffeinate` command-line tool. From the Terminal, just prepend `caffeinate -i`
+to the desired script command. For example:
 `caffeinate -i python update_alma_records.py inputs/update_alma_records/filename.csv`
+With this approach, you won't have to adjust your sleep settings.
 
 #### `update_alma_records.py`
 
