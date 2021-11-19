@@ -23,13 +23,53 @@
 Python scripts to reconcile a library's local holdings in Ex Libris Alma with
 OCLC's WorldCat database.
 
-The current test script (`alma-api-test.py`) takes an Excel file
-(`alma-test.xlsx`) and, for each row, adds the corresponding OCLC Number to the
-specified Alma record (indicated by the MMS ID).
+#### Alma API Key
 
-You will need an Ex Libris Developer Network account and an API key (see [Alma
-API documentation](https://developers.exlibrisgroup.com/alma/apis/) for more
-details).
+For the `update_alma_records.py` script, you will need an Ex Libris Developer
+Network account and an API key (see the
+[Alma API documentation](https://developers.exlibrisgroup.com/alma/apis/) for
+more details).
+
+Once logged into the Ex Libris Developer Network, follow these
+[instructions for creating an API key](https://developers.exlibrisgroup.com/alma/apis/#using).
+
+You should create both a Production and a Sandbox API key. That way, you can use
+your Sandbox API key when testing the `update_alma_records.py` script.
+
+When you click the "Add Permission" button, choose "Bibs" for Area, either
+"Production" or "Sandbox" for Env (depending on which key you're creating), and
+"Read/write" for Permissions.
+
+#### OCLC Web Service Key
+
+For the `process_worldcat_records.py` script, you will need an OCLC web service
+key (aka WSKey) with access to the WorldCat Metadata API service. Follow these
+[instructions to request one](https://www.oclc.org/developer/develop/authentication/how-to-request-a-wskey.en.html).
+
+When filling out the request form, be sure to choose "WorldCat Metadata API"
+under Services. Note that, at the time of writing, the WorldCat Metadata API
+service was only available when requesting a Production WSKey. If your
+Production WSKey request is approved and you do not also receive a Sandbox WSKey
+for the WorldCat Metadata API service, reach out to OCLC to ask for one, as this
+is very helpful when testing the scripts.
+
+##### Important note about WorldCat Metadata API sandbox testing
+
+Even when using your Sandbox WSKey, you should still be careful when using the
+WorldCat Metadata API, as
+[explained here](https://www.oclc.org/developer/api/oclc-apis/worldcat-metadata-api/sandbox-testing.en.html).
+
+For example, when running the `process_worldcat_records.py` script with the
+`set_holding` operation, your Sandbox WSKey can update your institution's actual
+holdings in WorldCat *even when using your Sandbox WSKey.* To avoid this,
+make sure your `input_file` consists exclusively of Test Sandbox Records[^*]
+(there should be no OCLC numbers for *real* WorldCat records).
+
+In contrast, it is safe to use real WorldCat records when testing this script's
+`get_current_oclc_number` operation because it doesn't not update any records.
+
+[^*]: Your WSKey approval email from OCLC should include these Test Sandbox
+  Records. Use these OCLC numbers when testing the `set_holding` operation.
 
 ### Licenses
 
@@ -54,19 +94,13 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
       [look here](https://developers.exlibrisgroup.com/alma/apis/#calling) for
       the base URL for your geographic region
     - `ALMA_API_KEY`
-      - [Instructions for creating an API key](https://developers.exlibrisgroup.com/alma/apis/#using)
+      - See [Alma API Key](#alma-api-key) section for how to request one.
   - To use the `process_worldcat_records.py` script, initialize these variables:
     - `WORLDCAT_METADATA_API_KEY`
     - `WORLDCAT_METADATA_API_SECRET`
-      - If you don't already have an OCLC web service key (aka WSKey), you'll
-      need to [request one](https://www.oclc.org/developer/develop/authentication/how-to-request-a-wskey.en.html).
-      - When filling out the request form, be sure to choose "WorldCat Metadata
-      API" under Services. Note that, at the time of writing, the WorldCat
-      Metadata API service was only available when requesting a Production
-      WSKey. If your Production WSKey request is approved and you do not
-      also receive a Sandbox WSKey for the WorldCat Metadata API service, reach
-      out to OCLC to ask for one, as this is very helpful when testing the
-      scripts.
+      - Your OCLC WSKey for the WorldCat Metadata API service will include both
+      a key and secret. See [OCLC Web Service Key](#oclc-web-service-key)
+      section for how to request one.
 
 ### Using the Scripts
 
