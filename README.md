@@ -71,7 +71,7 @@ Records. (Your WSKey approval email from OCLC should include the OCLC numbers
 for these Test Sandbox Records.)
 
 In contrast, it is safe to use real WorldCat records when testing this script's
-`get_current_oclc_number` operation because it doesn't not update the records.
+`get_current_oclc_number` operation because it does not update the records.
 
 ### Licenses
 
@@ -110,13 +110,15 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
 
 These scripts can take some time to complete, especially if they are processing
 many records. So be sure to disable your system's sleep settings prior to
-running any of the scripts. Otherwise, the scripts could get interrupted
-mid-execution.
+running any of the scripts. Otherwise, the scripts could get interrupted during
+execution.
 
 For Mac users: You can prevent idle sleep while a script is running by using the
 `caffeinate` command-line tool. From the Terminal, just prepend `caffeinate -i`
 to the desired script command. For example:
-`caffeinate -i python update_alma_records.py inputs/update_alma_records/filename.csv`
+```
+caffeinate -i python update_alma_records.py inputs/update_alma_records/filename.csv
+```
 With this approach, you won't have to adjust your sleep settings.
 
 #### `update_alma_records.py`
@@ -248,6 +250,10 @@ Required format of input file:
 `inputs/process_worldcat_records/get_current_oclc_number/example.csv`
 - For `set_holding` operation, see:
 `inputs/process_worldcat_records/set_holding/example.csv`
+  - This operation can update your institution's holdings
+  *even when using your OCLC Sandbox WSKey.* To avoid this during testing, only
+  include the OCLC numbers of Test Sandbox Records in this input file
+  ([see above section for more details](#important-note-about-worldcat-metadata-api-sandbox-testing)).
 
 ##### Description and script outputs
 
