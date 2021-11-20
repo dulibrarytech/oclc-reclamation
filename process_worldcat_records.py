@@ -491,18 +491,19 @@ class WorldCatRecordsBuffer(RecordsBuffer):
     ----------
     oclc_num_set: Set[str]
         A set containing each record's OCLC number
-    records_with_holding_already_set: TextIO
-        The CSV file object where records whose holding is already set are added
-        (i.e. records that were not updated)
-    records_with_holding_already_set_writer: writer
-        The CSV writer object for the records_with_holding_already_set file
-        object
-    records_with_holding_successfully_set: TextIO
-        The CSV file object where records whose holding was successfully set are
-        added (i.e. records that were successfully updated)
-    records_with_holding_successfully_set_writer: writer
-        The CSV writer object for the records_with_holding_successfully_set file
-        object
+    set_or_unset_choice: str
+        The operation to perform on each WorldCat record in this buffer (i.e.
+        either 'set' or 'unset' holding)
+    records_with_no_update_needed: TextIO
+        The CSV file object where records whose holding was already set or unset
+        are added (i.e. records that did not need to be updated)
+    records_with_no_update_needed_writer: writer
+        The CSV writer object for the records_with_no_update_needed file object
+    records_updated: TextIO
+        The CSV file object where records whose holding was successfully set or
+        unset are added (i.e. records that were successfully updated)
+    records_updated_writer: writer
+        The CSV writer object for the records_updated file object
     records_with_errors: TextIO
         The CSV file object where records are added if an error is encountered
     records_with_errors_writer: writer
@@ -519,19 +520,23 @@ class WorldCatRecordsBuffer(RecordsBuffer):
     """
 
     def __init__(self,
-            records_with_holding_already_set: TextIO,
-            records_with_holding_successfully_set: TextIO,
+            set_or_unset_choice: str,
+            records_with_no_update_needed: TextIO,
+            records_updated: TextIO,
             records_with_errors: TextIO) -> None:
         """Instantiates a WorldCatRecordsBuffer object.
 
         Parameters
         ----------
-        records_with_holding_already_set: TextIO
-            The CSV file object where records whose holding is already set are
-            added (i.e. records that were not updated)
-        records_with_holding_successfully_set: TextIO
+        set_or_unset_choice: str
+            The operation to perform on each WorldCat record in this buffer
+            (i.e. either 'set' or 'unset' holding)
+        records_with_no_update_needed: TextIO
+            The CSV file object where records whose holding was already set or
+            unset are added (i.e. records that did not need to be updated)
+        records_updated: TextIO
             The CSV file object where records whose holding was successfully set
-            are added (i.e. records that were successfully updated)
+            or unset are added (i.e. records that were successfully updated)
         records_with_errors: TextIO
             The CSV file object where records are added if an error is
             encountered
@@ -542,14 +547,15 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         self.oclc_num_set = set()
         logger.debug(f'{type(self.oclc_num_set)=}')
 
-        self.records_with_holding_already_set = records_with_holding_already_set
-        self.records_with_holding_already_set_writer = \
-            writer(records_with_holding_already_set)
+        self.set_or_unset_choice = set_or_unset_choice
+        logger.debug(f'{self.set_or_unset_choice=}')
 
-        self.records_with_holding_successfully_set = \
-            records_with_holding_successfully_set
-        self.records_with_holding_successfully_set_writer = \
-            writer(records_with_holding_successfully_set)
+        self.records_with_no_update_needed = records_with_no_update_needed
+        self.records_with_no_update_needed_writer = \
+            writer(records_with_no_update_needed)
+
+        self.records_updated = records_updated
+        self.records_updated_writer = writer(records_updated)
 
         self.records_with_errors = records_with_errors
         self.records_with_errors_writer = writer(records_with_errors)
@@ -595,16 +601,21 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         logger.debug(f'Added {oclc_num} to records buffer.')
 
     def process_records(self, results: Dict[str, int]) -> None:
-        """Attempts to set the holding for each record in oclc_num_set.
+        """Attempts to set or unset the holding for each record in oclc_num_set.
 
-        This is done by making a POST request to the WorldCat Metadata API:
+        This is done by making a POST request (if setting holdings) or a DELETE
+        request (if unsetting holdings) to the WorldCat Metadata API:
         https://worldcat.org/ih/datalist?oclcNumbers={oclcNumbers}
+
+        If unsetting holdings, the "cascade" URL parameter is also included.
+        For example:
+        https://worldcat.org/ih/datalist?oclcNumbers={oclcNumbers}&cascade=0
 
         Parameters
         ----------
         results: Dict[str, int]
             A dictionary containing the total number of records in the following
-            categories: records successfully set, records already set, records
+            categories: records updated, records with no update needed, records
             with errors
 
         Raises
@@ -615,19 +626,33 @@ class WorldCatRecordsBuffer(RecordsBuffer):
 
         logger.debug('Started processing records buffer...')
 
-        api_response_error_msg = ('Problem with Set Holding API response')
+        api_name = None
+        if self.set_or_unset_choice == 'set':
+            api_name = 'Set Holding API'
+        else:
+            api_name = 'Unset Holding API'
+
+        api_response_error_msg = f'Problem with {api_name} response'
 
         # Build URL for API request
         url = (f"{os.environ['WORLDCAT_METADATA_SERVICE_URL']}"
             f"/ih/datalist?oclcNumbers={','.join(self.oclc_num_set)}")
 
         try:
-            api_response = super().make_api_request(
-                self.oauth_session.post,
-                url
-            )
+            api_response = None
+            if self.set_or_unset_choice == 'set':
+                api_response = super().make_api_request(
+                    self.oauth_session.post,
+                    url
+                )
+            else:
+                url += '&cascade=0'
+                api_response = super().make_api_request(
+                    self.oauth_session.delete,
+                    url
+                )
             json_response = api_response.json()
-            logger.debug(f'Set Holding API response:\n'
+            logger.debug(f'{api_name} response:\n'
                 f'{json.dumps(json_response, indent=2)}')
 
             for record_index, record in enumerate(json_response['entry'],
@@ -652,35 +677,37 @@ class WorldCatRecordsBuffer(RecordsBuffer):
                 logger.debug(f'{record["errorDetail"]=}')
 
                 if record['httpStatusCode'] == 'HTTP 200 OK':
-                    results['num_records_successfully_set'] += 1
+                    results['num_records_updated'] += 1
 
-                    # Add record to records_with_holding_successfully_set.csv
-                    if self.records_with_holding_successfully_set.tell() == 0:
+                    # Add record to
+                    # records_with_holding_successfully_{set_or_unset_choice}.csv
+                    if self.records_updated.tell() == 0:
                         # Write header row
-                        self.records_with_holding_successfully_set_writer.writerow([
+                        self.records_updated_writer.writerow([
                             'Requested OCLC Number',
                             'New OCLC Number (if applicable)',
                             'Warning'
                         ])
 
-                    self.records_with_holding_successfully_set_writer.writerow([
+                    self.records_updated_writer.writerow([
                         record['requestedOclcNumber'],
                         new_oclc_num,
                         oclc_num_msg
                     ])
                 elif record['httpStatusCode'] == 'HTTP 409 Conflict':
-                    results['num_records_already_set'] += 1
+                    results['num_records_with_no_update_needed'] += 1
 
-                    # Add record to records_with_holding_already_set.csv
-                    if self.records_with_holding_already_set.tell() == 0:
+                    # Add record to
+                    # records_with_holding_already_{set_or_unset_choice}.csv
+                    if self.records_with_no_update_needed.tell() == 0:
                         # Write header row
-                        self.records_with_holding_already_set_writer.writerow([
+                        self.records_with_no_update_needed_writer.writerow([
                             'Requested OCLC Number',
                             'New OCLC Number (if applicable)',
                             'Error'
                         ])
 
-                    self.records_with_holding_already_set_writer.writerow([
+                    self.records_with_no_update_needed_writer.writerow([
                         record['requestedOclcNumber'],
                         new_oclc_num,
                         (f"{api_response_error_msg}: {record['errorDetail']}. "
@@ -736,9 +763,9 @@ def init_argparse() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         usage='%(prog)s [option] operation input_file',
         description=('For each row in the input file, perform the specified '
-            'operation (either get_current_oclc_number or set_holding). '
-            'Script results are saved to the following directory: '
-            'outputs/process_worldcat_records/')
+            'operation (either get_current_oclc_number, set_holding, or '
+            'unset_holding). Script results are saved to the following '
+            'directory: outputs/process_worldcat_records/')
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -747,9 +774,9 @@ def init_argparse() -> argparse.ArgumentParser:
     parser.add_argument(
         'operation',
         type=str,
-        choices=['get_current_oclc_number', 'set_holding'],
+        choices=['get_current_oclc_number', 'set_holding', 'unset_holding'],
         help=('the operation to be performed on each row of the input file '
-            '(either get_current_oclc_number or set_holding)'),
+            '(either get_current_oclc_number, set_holding, or unset_holding)'),
         metavar='operation'
     )
     parser.add_argument(
@@ -790,6 +817,18 @@ def main() -> None:
         -- If an error is encountered, then add the record to
            outputs/process_worldcat_records/set_holding/
            records_with_errors_when_setting_holding.csv
+
+    - unset_holding
+        For each row, unset holding for the given OCLC number.
+        -- If holding is unset successfully, then add the record to
+           outputs/process_worldcat_records/unset_holding/
+           records_with_holding_successfully_unset.csv
+        -- If holding was already unset, then add the record to
+           outputs/process_worldcat_records/unset_holding/
+           records_with_holding_already_unset.csv
+        -- If an error is encountered, then add the record to
+           outputs/process_worldcat_records/unset_holding/
+           records_with_errors_when_unsetting_holding.csv
     """
 
     # Initialize parser and parse command-line args
@@ -814,6 +853,7 @@ def main() -> None:
     filename_for_records_to_update = None
     filename_for_records_with_no_update_needed = None
     filename_for_records_with_errors = None
+    set_or_unset_choice = None
 
     if args.operation == 'get_current_oclc_number':
         results = {
@@ -832,19 +872,26 @@ def main() -> None:
             'records_with_errors_when_getting_current_oclc_number.csv')
     else:
         results = {
-            'num_records_successfully_set': 0,
-            'num_records_already_set': 0,
+            'num_records_updated': 0,
+            'num_records_with_no_update_needed': 0,
             'num_records_with_errors': 0
         }
+
+        if args.operation == 'set_holding':
+            set_or_unset_choice = 'set'
+        else:
+            # args.operation == 'unset_holding'
+            set_or_unset_choice = 'unset'
+
         filename_for_records_to_update = (
-            'outputs/process_worldcat_records/set_holding/'
-            'records_with_holding_successfully_set.csv')
+            f'outputs/process_worldcat_records/{set_or_unset_choice}_holding/'
+            f'records_with_holding_successfully_{set_or_unset_choice}.csv')
         filename_for_records_with_no_update_needed = (
-            'outputs/process_worldcat_records/set_holding/'
-            'records_with_holding_already_set.csv')
+            f'outputs/process_worldcat_records/{set_or_unset_choice}_holding/'
+            f'records_with_holding_already_{set_or_unset_choice}.csv')
         filename_for_records_with_errors = (
-            'outputs/process_worldcat_records/set_holding/'
-            'records_with_errors_when_setting_holding.csv')
+            f'outputs/process_worldcat_records/{set_or_unset_choice}_holding/'
+            f'records_with_errors_when_{set_or_unset_choice}ting_holding.csv')
 
     with open(filename_for_records_to_update, mode='a',
             newline='') as records_to_update, \
@@ -864,6 +911,7 @@ def main() -> None:
             )
         else:
             records_buffer = WorldCatRecordsBuffer(
+                set_or_unset_choice,
                 records_with_no_update_needed,
                 records_to_update,
                 records_with_errors
@@ -996,10 +1044,10 @@ def main() -> None:
             f'old OCLC number\n'
             f'- {results["num_records_with_errors"]} record(s) with errors')
     else:
-        print(f'- {results["num_records_successfully_set"]} record(s) updated, '
-            f'i.e. holding was successfully set\n'
-            f'- {results["num_records_already_set"]} record(s) not updated '
-            f'because holding was already set\n'
+        print(f'- {results["num_records_updated"]} record(s) updated, '
+            f'i.e. holding was successfully {set_or_unset_choice}\n'
+            f'- {results["num_records_with_no_update_needed"]} record(s) not '
+            f'updated because holding was already {set_or_unset_choice}\n'
             f'- {results["num_records_with_errors"]} record(s) with errors')
 
 if __name__ == "__main__":
