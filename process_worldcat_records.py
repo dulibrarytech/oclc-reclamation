@@ -494,6 +494,12 @@ class WorldCatRecordsBuffer(RecordsBuffer):
     set_or_unset_choice: str
         The operation to perform on each WorldCat record in this buffer (i.e.
         either 'set' or 'unset' holding)
+    cascade: str
+        Only applicable to the unset_holding operation: whether or not to unset
+        the holding if a local holdings record or local bibliographic record
+        exists (0 - don't unset holding if local holdings record or local
+        bibliographic records exists; 1 - unset holding and delete local
+        holdings record and local bibliographic record)
     records_with_no_update_needed: TextIO
         The CSV file object where records whose holding was already set or unset
         are added (i.e. records that did not need to be updated)
@@ -521,6 +527,7 @@ class WorldCatRecordsBuffer(RecordsBuffer):
 
     def __init__(self,
             set_or_unset_choice: str,
+            cascade: str,
             records_with_no_update_needed: TextIO,
             records_updated: TextIO,
             records_with_errors: TextIO) -> None:
@@ -531,6 +538,12 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         set_or_unset_choice: str
             The operation to perform on each WorldCat record in this buffer
             (i.e. either 'set' or 'unset' holding)
+        cascade: str
+            Only applicable to the unset_holding operation: whether or not to
+            unset the holding if a local holdings record or local bibliographic
+            record exists (0 - don't unset holding if local holdings record or
+            local bibliographic records exists; 1 - unset holding and delete
+            local holdings record and local bibliographic record)
         records_with_no_update_needed: TextIO
             The CSV file object where records whose holding was already set or
             unset are added (i.e. records that did not need to be updated)
@@ -549,6 +562,9 @@ class WorldCatRecordsBuffer(RecordsBuffer):
 
         self.set_or_unset_choice = set_or_unset_choice
         logger.debug(f'{self.set_or_unset_choice=}')
+
+        self.cascade = cascade
+        logger.debug(f'{self.cascade=}')
 
         self.records_with_no_update_needed = records_with_no_update_needed
         self.records_with_no_update_needed_writer = \
@@ -646,7 +662,8 @@ class WorldCatRecordsBuffer(RecordsBuffer):
                     url
                 )
             else:
-                url += '&cascade=0'
+                # Include "cascade" URL parameter for unset_holding operation
+                url += f'&cascade={self.cascade}'
                 api_response = super().make_api_request(
                     self.oauth_session.delete,
                     url
@@ -761,7 +778,6 @@ def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
-        usage='%(prog)s [option] operation input_file',
         description=('For each row in the input file, perform the specified '
             'operation (either get_current_oclc_number, set_holding, or '
             'unset_holding). Script results are saved to the following '
@@ -785,6 +801,18 @@ def init_argparse() -> argparse.ArgumentParser:
         help=('the name and path of the file to be processed, which must be in '
             'CSV format (e.g. inputs/process_worldcat_records/set_holding/'
             'filename.csv)')
+    )
+    parser.add_argument(
+        '--cascade',
+        type=str,
+        choices=['0', '1'],
+        default='0',
+        help=("only applicable to the unset_holding operation: whether or not "
+            "to unset the holding if a local holdings record or local "
+            "bibliographic record exists. Choose either 0 or 1 (default is 0). "
+            "0 - don't unset holding if local holdings record or local "
+            "bibliographic records exists; 1 - unset holding and delete local "
+            "holdings record and local bibliographic record")
     )
     return parser
 
@@ -836,7 +864,8 @@ def main() -> None:
     args = parser.parse_args()
     logger.debug(f'Command-line args:\n'
         f'operation = {args.operation}\n'
-        f'input_file = {args.input_file}\n')
+        f'input_file = {args.input_file}\n'
+        f'cascade = {args.cascade}\n')
 
     # Convert input file into pandas DataFrame
     data = None
@@ -912,6 +941,7 @@ def main() -> None:
         else:
             records_buffer = WorldCatRecordsBuffer(
                 set_or_unset_choice,
+                args.cascade,
                 records_with_no_update_needed,
                 records_to_update,
                 records_with_errors
