@@ -64,7 +64,7 @@ WorldCat Metadata API, as
 [explained here](https://www.oclc.org/developer/api/oclc-apis/worldcat-metadata-api/sandbox-testing.en.html).
 
 For example, when running the `process_worldcat_records.py` script with the
-`set_holding` operation, your
+`set_holding` or `unset_holding` operation, your
 *Sandbox WSKey can update your institution's actual holdings in WorldCat.* To
 avoid this, make sure your `input_file` consists exclusively of Test Sandbox
 Records. (Your WSKey approval email from OCLC should include the OCLC numbers
@@ -232,17 +232,26 @@ When processing each Alma record:
 ##### Usage notes
 
 ```
-usage: process_worldcat_records.py [option] operation input_file
+usage: process_worldcat_records.py [-h] [-v] [--cascade {0,1}] operation input_file
 
 positional arguments:
-  operation      the operation to be performed on each row of the input file
-                 (either get_current_oclc_number or set_holding)
-  input_file     the name and path of the file to be processed, which must be in CSV format
-                 (e.g. inputs/process_worldcat_records/set_holding/filename.csv)
+  operation        the operation to be performed on each row of the input file
+                   (either get_current_oclc_number, set_holding, or unset_holding)
+  input_file       the name and path of the file to be processed, which must be in CSV format
+                   (e.g. inputs/process_worldcat_records/set_holding/filename.csv)
+
+optional arguments:
+  -h, --help       show this help message and exit
+  -v, --version    show program's version number and exit
+  --cascade {0,1}  only applicable to the unset_holding operation: whether or not to unset the holding if a local holdings record
+                   or local bibliographic record exists. Choose either 0 or 1 (default is 0). 0 - don't unset holding if local
+                   holdings record or local bibliographic records exists; 1 - unset holding and delete local holdings record and
+                   local bibliographic record
 
 examples:
   python process_worldcat_records.py get_current_oclc_number inputs/process_worldcat_records/get_current_oclc_number/filename.csv
   python process_worldcat_records.py set_holding inputs/process_worldcat_records/set_holding/filename.csv
+  python process_worldcat_records.py --cascade 0 unset_holding inputs/process_worldcat_records/unset_holding/filename.csv
 ```
 
 Required format of input file:
@@ -250,10 +259,13 @@ Required format of input file:
 `inputs/process_worldcat_records/get_current_oclc_number/example.csv`
 - For `set_holding` operation, see:
 `inputs/process_worldcat_records/set_holding/example.csv`
-  - This operation can update your institution's holdings
-  *even when using your OCLC Sandbox WSKey.* To avoid this during testing, only
-  include the OCLC numbers of Test Sandbox Records in this input file
-  ([see above section for more details](#important-note-about-worldcat-metadata-api-sandbox-testing)).
+- For `unset_holding` operation, see:
+`inputs/process_worldcat_records/unset_holding/example.csv`
+- **Important note:** The `set_holding` and `unset_holding` operations can
+update your institution's holdings *even when using your OCLC Sandbox WSKey.* To
+avoid this during testing, only include the OCLC numbers of Test Sandbox Records
+in this input file
+([see above section for more details](#important-note-about-worldcat-metadata-api-sandbox-testing)).
 
 ##### Description and script outputs
 
@@ -278,6 +290,20 @@ is the current one.
   `outputs/process_worldcat_records/set_holding/records_with_holding_already_set.csv`
   - If an error is encountered, then add the record to:
   `outputs/process_worldcat_records/set_holding/records_with_errors_when_setting_holding.csv`
+- `unset_holding`: For each row, unset holding for the given OCLC number.
+  - If holding is unset successfully, then add the record to:
+  `outputs/process_worldcat_records/unset_holding/records_with_holding_successfully_unset.csv`
+  - If holding was already unset, then add the record to:
+  `outputs/process_worldcat_records/unset_holding/records_with_holding_already_unset.csv`
+  - If an error is encountered, then add the record to:
+  `outputs/process_worldcat_records/unset_holding/records_with_errors_when_unsetting_holding.csv`
+  - **Important note:** Be careful when running the `unset_holding` operation
+  with `--cascade 1`. According to the
+  [WorldCat Metadata API documentation](https://developer.api.oclc.org/wc-metadata)
+  (search this page for the Institution Holdings section, then look for the
+  `DELETE` request on the `/ih/datalist` endpoint), `cascade` with value `1`
+  will unset the holding and
+  *delete the local holdings record and local bibliographic record (if one exists).*
 
 ---
 
