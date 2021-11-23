@@ -495,11 +495,13 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         The operation to perform on each WorldCat record in this buffer (i.e.
         either 'set' or 'unset' holding)
     cascade: str
-        Only applicable to the unset_holding operation: whether or not to unset
-        the holding if a local holdings record or local bibliographic record
-        exists (0 - don't unset holding if local holdings record or local
-        bibliographic records exists; 1 - unset holding and delete local
-        holdings record and local bibliographic record)
+        Only applicable to the unset_holding operation: whether or not to
+        execute the operation if a local holdings record or local bibliographic
+        record exists:
+        0 - don't unset holding if local holdings record or local bibliographic
+            records exists;
+        1 - unset holding and delete local holdings record and local
+            bibliographic record (if one exists)
     records_with_no_update_needed: TextIO
         The CSV file object where records whose holding was already set or unset
         are added (i.e. records that did not need to be updated)
@@ -540,10 +542,12 @@ class WorldCatRecordsBuffer(RecordsBuffer):
             (i.e. either 'set' or 'unset' holding)
         cascade: str
             Only applicable to the unset_holding operation: whether or not to
-            unset the holding if a local holdings record or local bibliographic
-            record exists (0 - don't unset holding if local holdings record or
-            local bibliographic records exists; 1 - unset holding and delete
-            local holdings record and local bibliographic record)
+            execute the operation if a local holdings record or local
+            bibliographic record exists:
+            0 - don't unset holding if local holdings record or local
+                bibliographic records exists;
+            1 - unset holding and delete local holdings record and local
+                bibliographic record (if one exists)
         records_with_no_update_needed: TextIO
             The CSV file object where records whose holding was already set or
             unset are added (i.e. records that did not need to be updated)
