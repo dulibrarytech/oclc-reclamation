@@ -243,8 +243,8 @@ positional arguments:
 optional arguments:
   -h, --help       show this help message and exit
   -v, --version    show program's version number and exit
-  --cascade {0,1}  only applicable to the unset_holding operation: whether or not to unset the
-                   holding if a local holdings record or local bibliographic record exists.
+  --cascade {0,1}  only applicable to the unset_holding operation: whether or not to execute
+                   the operation if a local holdings record or local bibliographic record exists.
                    Choose either 0 or 1 (default is 0).
                    0 - don't unset holding if local holdings record or local bibliographic
                        records exists;
