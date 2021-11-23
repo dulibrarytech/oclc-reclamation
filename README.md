@@ -243,10 +243,13 @@ positional arguments:
 optional arguments:
   -h, --help       show this help message and exit
   -v, --version    show program's version number and exit
-  --cascade {0,1}  only applicable to the unset_holding operation: whether or not to unset the holding if a local holdings record
-                   or local bibliographic record exists. Choose either 0 or 1 (default is 0). 0 - don't unset holding if local
-                   holdings record or local bibliographic records exists; 1 - unset holding and delete local holdings record and
-                   local bibliographic record
+  --cascade {0,1}  only applicable to the unset_holding operation: whether or not to unset the
+                   holding if a local holdings record or local bibliographic record exists.
+                   Choose either 0 or 1 (default is 0).
+                   0 - don't unset holding if local holdings record or local bibliographic
+                       records exists;
+                   1 - unset holding and delete local holdings record and local bibliographic
+                       record (if one exists)
 
 examples:
   python process_worldcat_records.py get_current_oclc_number inputs/process_worldcat_records/get_current_oclc_number/filename.csv

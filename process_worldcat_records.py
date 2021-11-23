@@ -812,7 +812,7 @@ def init_argparse() -> argparse.ArgumentParser:
             "bibliographic record exists. Choose either 0 or 1 (default is 0). "
             "0 - don't unset holding if local holdings record or local "
             "bibliographic records exists; 1 - unset holding and delete local "
-            "holdings record and local bibliographic record")
+            "holdings record and local bibliographic record (if one exists)")
     )
     return parser
 
