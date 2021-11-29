@@ -360,7 +360,7 @@ def main() -> None:
     and the number itself, which must contain only digits (e.g. '01234567').
 
     Extracting the OCLC number from the 035 $a value:
-    - First, the 'OCoLC' org code is removed (if present).
+    - First, the '(OCoLC)' org code is removed (if present).
     - Then, this script searches for the first digit. If found, then everything
       before this first digit is considered the prefix, and everything after
       (and including) this first digit is considered the number itself.
