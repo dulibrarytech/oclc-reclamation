@@ -213,6 +213,12 @@ def get_valid_record_identifier(record_identifier: str,
     str
         The record identifier with whitespace removed from the beginning and end
         of the string
+
+    Raises
+    ------
+    AssertionError
+        If the record identifier is invalid (i.e. it is empty or contains
+        non-digit characters)
     """
     empty_identifier_error_msg = (f"Invalid {identifier_name}: "
         f"'{record_identifier}'. It cannot be empty.")
