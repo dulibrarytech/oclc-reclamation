@@ -522,7 +522,7 @@ class WorldCatRecordsBuffer(RecordsBuffer):
     add(oclc_num)
         Adds the given record to this buffer (i.e. to oclc_num_set)
     process_records(results)
-        Attempts to set the institution holding for each record in oclc_num_set
+        Attempts to set or unset the holding for each record in oclc_num_set
     remove_all_records()
         Removes all records from this buffer (i.e. clears oclc_num_set)
     """
