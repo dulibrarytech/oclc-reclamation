@@ -12,7 +12,7 @@ from csv import writer
 from oauthlib.oauth2 import BackendApplicationClient, TokenExpiredError
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth2Session
-from typing import Callable, Dict, Set, TextIO
+from typing import Callable, Dict, Set, TextIO, Union
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -33,6 +33,8 @@ class RecordsBuffer:
     ----------
     auth: HTTPBasicAuth
         The HTTP Basic Auth object used when requesting an access token
+    contents: Union[Dict[str, str], Set[str]]
+        The contents of the buffer (this attribute is defined in the subclass)
     oauth_session: OAuth2Session
         The OAuth 2 Session object used to request an access token and make HTTP
         requests to the WorldCat Metadata API (note that the OAuth2Session class
