@@ -6,13 +6,14 @@ import libraries.handle_file
 import logging
 import logging.config
 import os
+import pandas as pd
 import requests
 import time
 from csv import writer
 from oauthlib.oauth2 import BackendApplicationClient, TokenExpiredError
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth2Session
-from typing import Callable, Dict, Set, TextIO, Union
+from typing import Callable, Dict, List, NamedTuple, Set, TextIO, Union
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -28,12 +29,15 @@ class RecordsBuffer:
     Instead, instantiate one of its subclasses:
     - AlmaRecordsBuffer: A buffer of records with MMS ID and OCLC number
     - WorldCatRecordsBuffer: A buffer of records with OCLC number only
+    - WorldCatSearchBuffer: A buffer containing data to be searched for in
+      WorldCat (use this subclass to find a record's OCLC Number given other
+      record identifiers; see search_worldcat.py for more details)
 
     Attributes
     ----------
     auth: HTTPBasicAuth
         The HTTP Basic Auth object used when requesting an access token
-    contents: Union[Dict[str, str], Set[str]]
+    contents: Union[Dict[str, str], Set[str], List[NamedTuple]]
         The contents of the buffer (this attribute is defined in the subclass)
     oauth_session: OAuth2Session
         The OAuth 2 Session object used to request an access token and make HTTP
@@ -361,7 +365,7 @@ class AlmaRecordsBuffer(RecordsBuffer):
     def process_records(self, results: Dict[str, int]) -> None:
         """Checks each record in oclc_num_dict for the current OCLC number.
 
-        This is done by making a GET request to the WorldCat Metadata API:
+        This is done by making a GET request to the WorldCat Metadata API v1.0:
         https://worldcat.org/bib/checkcontrolnumbers?oclcNumbers={oclcNumbers}
 
         Parameters
@@ -383,7 +387,7 @@ class AlmaRecordsBuffer(RecordsBuffer):
             'response')
 
         # Build URL for API request
-        url = (f"{os.environ['WORLDCAT_METADATA_SERVICE_URL']}"
+        url = (f"{os.environ['WORLDCAT_METADATA_API_URL']}"
             f"/bib/checkcontrolnumbers"
             f"?oclcNumbers={','.join(self.oclc_num_dict.keys())}")
 
@@ -623,7 +627,7 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         """Attempts to set or unset the holding for each record in oclc_num_set.
 
         This is done by making a POST request (if setting holdings) or a DELETE
-        request (if unsetting holdings) to the WorldCat Metadata API:
+        request (if unsetting holdings) to the WorldCat Metadata API v1.0:
         https://worldcat.org/ih/datalist?oclcNumbers={oclcNumbers}
 
         If unsetting holdings, the "cascade" URL parameter is also included.
@@ -654,7 +658,7 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         api_response_error_msg = f'Problem with {api_name} response'
 
         # Build URL for API request
-        url = (f"{os.environ['WORLDCAT_METADATA_SERVICE_URL']}"
+        url = (f"{os.environ['WORLDCAT_METADATA_API_URL']}"
             f"/ih/datalist?oclcNumbers={','.join(self.oclc_num_set)}")
 
         try:
@@ -773,5 +777,254 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         """Removes all records from this buffer (i.e. clears oclc_num_set)."""
 
         self.oclc_num_set.clear()
+        logger.debug(f'Cleared records buffer.')
+        logger.debug(self.__str__() + '\n')
+
+
+class WorldCatSearchBuffer(RecordsBuffer):
+    """
+    A buffer containing data to be searched for in WorldCat.
+
+    This buffer must contain only one record at a time.
+
+    Attributes
+    ----------
+    dataframe_for_input_file: pd.DataFrame
+        The pandas DataFrame created from the input file
+    record_list: List[NamedTuple]
+        A list containing the record data to use when searching WorldCat; this
+        list should contain no more than one element (i.e. record)
+
+    Methods
+    -------
+    add(record_data)
+        Adds the given record to this buffer (i.e. to record_list)
+    process_records(results)
+        Searches WorldCat using the record data in record_list
+    remove_all_records()
+        Removes all records from this buffer (i.e. clears record_list)
+    """
+
+    def __init__(self, dataframe_for_input_file: pd.DataFrame) -> None:
+        """Instantiates a WorldCatSearchBuffer object.
+
+        Parameters
+        ----------
+        dataframe_for_input_file: pd.DataFrame
+            The pandas DataFrame created from the input file
+        """
+
+        logger.debug('Started WorldCatSearchBuffer constructor...')
+
+        self.record_list = []
+        logger.debug(f'{type(self.record_list)=}')
+
+        self.dataframe_for_input_file = dataframe_for_input_file
+
+        # Create OAuth2Session for WorldCat Metadata API
+        super().__init__()
+
+        self.contents = self.record_list
+        logger.debug(f'{type(self.contents)=}')
+
+        logger.debug('Completed WorldCatSearchBuffer constructor.\n')
+
+    def __str__(self) -> str:
+        """Returns a string listing the contents of this records buffer.
+
+        In specific, this method lists the contents of the record_list.
+
+        Returns
+        -------
+        str
+            The contents of the record_list
+        """
+
+        return (f'Records buffer contents: {self.record_list}')
+
+    def add(self, record_data: NamedTuple) -> None:
+        """Adds the given record to this buffer (i.e. to record_list).
+
+        Parameters
+        ----------
+        record_data: NamedTuple
+            The record data to use when searching WorldCat
+
+        Raises
+        ------
+        AssertionError
+            If adding to a non-empty record_list (this list should never contain
+            more than one record)
+        """
+
+        assert super().__len__() == 0, (f'Cannot add to a non-empty '
+            f'WorldCatSearchBuffer. Buffer currently contains '
+            f'{super().__len__()} record(s).')
+        self.record_list.append(record_data)
+        logger.debug(f'{type(record_data)}') ### Delete this line after testing ###
+        logger.debug(f'Added {record_data} to records buffer.')
+
+    def process_records(self, results: Dict[str, int]) -> None:
+        """Searches WorldCat using the record data in record_list.
+
+        The WorldCat search is performed using each available record identifier
+        (LCCN, ISBN, ISSN, and Government Document Number), stopping as soon as
+        search results are found for a given identifier.
+
+        This is done by making a GET request to the WorldCat Metadata API v1.1:
+        https://americas.metadata.api.oclc.org/worldcat/search/v1/brief-bibs?q={search_query}
+
+        Parameters
+        ----------
+        results: Dict[str, int]
+            A dictionary containing the total number of records in the following
+            categories: records with a single search result, records with
+            multiple search results, records with errors
+
+        Raises
+        ------
+        AssertionError
+            If buffer (i.e. record_list) does not contain exactly one record OR
+            if WorldCat search returns 0 results
+        json.decoder.JSONDecodeError
+            If there is an error decoding the API response
+        """
+
+        logger.debug('Started processing records buffer...')
+
+        api_response_error_msg = ('Problem with Search Brief Bibliographic '
+            'Resources API response')
+
+        assert super().__len__() == 1, (f'Buffer must contain exactly one '
+            f'record but instead contains {super().__len__()} records. Cannot '
+            f'process buffer.')
+
+        # Build URL for API request
+        url = (f"{os.environ['WORLDCAT_METADATA_API_URL_FOR_SEARCH']}"
+            f"/brief-bibs"
+            f"?q=nl:{self.record_list[0].lccn}"
+            f"&heldBySymbol={os.environ['OCLC_INSTITUTION_SYMBOL']}")
+
+        try:
+            api_response = super().make_api_request(
+                self.oauth_session.get,
+                url
+            )
+            json_response = api_response.json()
+            logger.debug(f'Search Brief Bibliographic Resources API response:\n'
+                f'{json.dumps(json_response, indent=2)}')
+
+            assert json_response['numberOfRecords'] != 0, ('No records found '
+                'in WorldCat.')
+
+            if json_response['numberOfRecords'] == 1:
+                oclc_num = json_response['briefRecords'][0]['oclcNumber']
+
+                logger.debug(f"For row {self.record_list[0].Index + 2}, the "
+                    f"OCLC Number is {oclc_num}")
+
+                # Add OCLC Number to DataFrame
+                self.dataframe_for_input_file.loc[
+                    self.record_list[0].Index,
+                    'oclc_num'
+                ] = oclc_num
+            else:
+                # There are multiple WorldCat search results
+                logger.debug(f"Found {json_response['numberOfRecords']} "
+                    f"records for row {self.record_list[0].Index + 2}")
+
+                # Update found_multiple_oclc_nums column of DataFrame
+                self.dataframe_for_input_file.loc[
+                    self.record_list[0].Index,
+                    'found_multiple_oclc_nums'
+                ] = 1
+
+                # Delete this block of code once you've confirmed it's unneeded
+                for record_index, record in enumerate(
+                        json_response['briefRecords'],
+                        start=1):
+                    logger.debug(f"Record {record_index}'s OCLC Number = "
+                        f"{record['oclcNumber']}")
+
+                # found_requested_oclc_num = record['found']
+                # is_current_oclc_num = not record['merged']
+                #
+                # # Look up MMS ID based on OCLC number
+                # mms_id = self.oclc_num_dict[record['requestedOclcNumber']]
+                #
+                # logger.debug(f'Started processing record #{record_index} (OCLC '
+                #     f'number {record["requestedOclcNumber"]})...')
+                # logger.debug(f'{is_current_oclc_num=}')
+                #
+                # if not found_requested_oclc_num:
+                #     logger.exception(f'{api_response_error_msg}: OCLC number '
+                #         f'{record["requestedOclcNumber"]} not found')
+                #
+                #     results['num_records_with_errors'] += 1
+                #
+                #     # Add record to
+                #     # records_with_errors_when_getting_current_oclc_number.csv
+                #     if self.records_with_errors.tell() == 0:
+                #         # Write header row
+                #         self.records_with_errors_writer.writerow([
+                #             'MMS ID',
+                #             'OCLC Number',
+                #             'Error'
+                #         ])
+                #
+                #     self.records_with_errors_writer.writerow([
+                #         mms_id,
+                #         record['requestedOclcNumber'],
+                #         f'{api_response_error_msg}: OCLC number not found'
+                #     ])
+                # elif is_current_oclc_num:
+                #     results['num_records_with_current_oclc_num'] += 1
+                #
+                #     # Add record to already_has_current_oclc_number.csv
+                #     if self.records_with_current_oclc_num.tell() == 0:
+                #         # Write header row
+                #         self.records_with_current_oclc_num_writer.writerow([
+                #             'MMS ID',
+                #             'Current OCLC Number'
+                #         ])
+                #
+                #     self.records_with_current_oclc_num_writer.writerow([
+                #         mms_id,
+                #         record['currentOclcNumber']
+                #     ])
+                # else:
+                #     results['num_records_with_old_oclc_num'] += 1
+                #
+                #     # Add record to needs_current_oclc_number.csv
+                #     if self.records_with_old_oclc_num.tell() == 0:
+                #         # Write header row
+                #         self.records_with_old_oclc_num_writer.writerow([
+                #             'MMS ID',
+                #             'Current OCLC Number',
+                #             'Original OCLC Number'
+                #         ])
+                #
+                #     self.records_with_old_oclc_num_writer.writerow([
+                #         mms_id,
+                #         record['currentOclcNumber'],
+                #         record['requestedOclcNumber']
+                #     ])
+                # logger.debug(f'Finished processing record #{record_index}.\n')
+        except json.decoder.JSONDecodeError:
+        # except (requests.exceptions.JSONDecodeError,
+        #         json.decoder.JSONDecodeError):
+            logger.exception(f'{api_response_error_msg}: Error decoding JSON')
+            logger.exception(f'{api_response.text=}')
+
+            # Re-raise exception so that the script is halted (since future API
+            # requests may result in the same error)
+            raise
+
+        logger.debug('Finished processing records buffer.')
+
+    def remove_all_records(self) -> None:
+        """Removes all records from this buffer (i.e. clears record_list)."""
+
+        self.record_list.clear()
         logger.debug(f'Cleared records buffer.')
         logger.debug(self.__str__() + '\n')
