@@ -918,6 +918,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                 'in WorldCat.')
 
             if json_response['numberOfRecords'] == 1:
+                # Found a single WorldCat search result, so save the OCLC Number
                 oclc_num = json_response['briefRecords'][0]['oclcNumber']
 
                 logger.debug(f"For row {self.record_list[0].Index + 2}, the "
@@ -929,7 +930,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     'oclc_num'
                 ] = oclc_num
             else:
-                # There are multiple WorldCat search results
+                # Found multiple WorldCat search results
                 logger.debug(f"Found {json_response['numberOfRecords']} "
                     f"records for row {self.record_list[0].Index + 2}")
 
@@ -937,79 +938,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                 self.dataframe_for_input_file.loc[
                     self.record_list[0].Index,
                     'found_multiple_oclc_nums'
-                ] = 1
-
-                # Delete this block of code once you've confirmed it's unneeded
-                for record_index, record in enumerate(
-                        json_response['briefRecords'],
-                        start=1):
-                    logger.debug(f"Record {record_index}'s OCLC Number = "
-                        f"{record['oclcNumber']}")
-
-                # found_requested_oclc_num = record['found']
-                # is_current_oclc_num = not record['merged']
-                #
-                # # Look up MMS ID based on OCLC number
-                # mms_id = self.oclc_num_dict[record['requestedOclcNumber']]
-                #
-                # logger.debug(f'Started processing record #{record_index} (OCLC '
-                #     f'number {record["requestedOclcNumber"]})...')
-                # logger.debug(f'{is_current_oclc_num=}')
-                #
-                # if not found_requested_oclc_num:
-                #     logger.exception(f'{api_response_error_msg}: OCLC number '
-                #         f'{record["requestedOclcNumber"]} not found')
-                #
-                #     results['num_records_with_errors'] += 1
-                #
-                #     # Add record to
-                #     # records_with_errors_when_getting_current_oclc_number.csv
-                #     if self.records_with_errors.tell() == 0:
-                #         # Write header row
-                #         self.records_with_errors_writer.writerow([
-                #             'MMS ID',
-                #             'OCLC Number',
-                #             'Error'
-                #         ])
-                #
-                #     self.records_with_errors_writer.writerow([
-                #         mms_id,
-                #         record['requestedOclcNumber'],
-                #         f'{api_response_error_msg}: OCLC number not found'
-                #     ])
-                # elif is_current_oclc_num:
-                #     results['num_records_with_current_oclc_num'] += 1
-                #
-                #     # Add record to already_has_current_oclc_number.csv
-                #     if self.records_with_current_oclc_num.tell() == 0:
-                #         # Write header row
-                #         self.records_with_current_oclc_num_writer.writerow([
-                #             'MMS ID',
-                #             'Current OCLC Number'
-                #         ])
-                #
-                #     self.records_with_current_oclc_num_writer.writerow([
-                #         mms_id,
-                #         record['currentOclcNumber']
-                #     ])
-                # else:
-                #     results['num_records_with_old_oclc_num'] += 1
-                #
-                #     # Add record to needs_current_oclc_number.csv
-                #     if self.records_with_old_oclc_num.tell() == 0:
-                #         # Write header row
-                #         self.records_with_old_oclc_num_writer.writerow([
-                #             'MMS ID',
-                #             'Current OCLC Number',
-                #             'Original OCLC Number'
-                #         ])
-                #
-                #     self.records_with_old_oclc_num_writer.writerow([
-                #         mms_id,
-                #         record['currentOclcNumber'],
-                #         record['requestedOclcNumber']
-                #     ])
-                # logger.debug(f'Finished processing record #{record_index}.\n')
+                ] = True
         except json.decoder.JSONDecodeError:
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):

@@ -4,6 +4,7 @@ import libraries.record
 import libraries.records_buffer
 import logging
 import logging.config
+import numpy as np
 import pandas as pd
 from datetime import datetime
 
@@ -81,6 +82,14 @@ def main() -> None:
             f'Must be one of the following file formats: CSV (.csv) or Excel '
             f'(.xlsx or .xls).')
 
+    # Add results columns to DataFrame
+    data['oclc_num'] = np.nan
+    data['found_multiple_oclc_nums'] = np.nan
+    data['error'] = np.nan
+
+    logger.debug(f'DataFrame dtypes:\n{data.dtypes}\n')
+    logger.debug(f'DataFrame memory usage:\n{data.memory_usage()}\n')
+
     records_already_processed = set()
     logger.debug(f'{records_already_processed=}\n')
 
@@ -143,8 +152,50 @@ def main() -> None:
     logger.debug(f"Updated DataFrame (selected columns):\n"
         f"{data[['mms_id', 'oclc_num', 'found_multiple_oclc_nums', 'lccn', 'error']]}\n")
 
+    logger.debug(f'Updated DataFrame dtypes:\n{data.dtypes}\n')
+    logger.debug(f'Updated DataFrame memory usage:\n{data.memory_usage()}\n')
+
+    # Create CSV output files
+    records_with_oclc_num = data.dropna(subset=['oclc_num'])
+    logger.debug(f"Records with a single OCLC Number:\n{records_with_oclc_num}\n")
+    records_with_oclc_num.to_csv(
+        'outputs/search_worldcat/records_with_oclc_num.csv',
+        # columns=['mms_id', 'oclc_num'],
+        # header=['MMS ID', 'OCLC Number'],
+        index=False)
+
+    records_with_multiple_worldcat_matches = \
+        data.dropna(subset=['found_multiple_oclc_nums'])
+    logger.debug(f"Records with multiple WorldCat matches:\n"
+        f"{records_with_multiple_worldcat_matches}\n")
+    records_with_multiple_worldcat_matches.to_csv(
+        'outputs/search_worldcat/records_with_multiple_worldcat_matches.csv',
+        # columns=['mms_id', 'lccn_fixed', 'lccn', 'isbn', 'issn'],
+        index=False)
+
+    records_with_errors = data.dropna(subset=['error'])
+    logger.debug(f"Records with errors:\n{records_with_errors}\n")
+    records_with_errors.to_csv(
+        'outputs/search_worldcat/records_with_errors_when_searching_worldcat.csv',
+        # columns=['mms_id', 'lccn_fixed', 'lccn', 'isbn', 'issn', 'error'],
+        index=False)
+
     print(f'End of script. Completed in: {datetime.now() - start_time} ' \
-        f'(hours:minutes:seconds.microseconds)')
+        f'(hours:minutes:seconds.microseconds).\n'
+        f'Processed {len(data.index)} rows from input file:\n'
+        f'- {len(records_with_oclc_num.index)} record(s) with OCLC Number\n'
+        f'- {len(records_with_multiple_worldcat_matches.index)} record(s) with '
+        f'multiple WorldCat matches\n'
+        f'- {len(records_with_errors.index)} record(s) with errors')
+
+    total_records_in_output_files = (
+        len(records_with_oclc_num.index)
+        + len(records_with_multiple_worldcat_matches.index)
+        + len(records_with_errors.index))
+
+    assert len(data.index) == total_records_in_output_files, (f'Total records '
+        f'in input file ({len(data.index)}) does not equal total records in '
+        f'output files ({total_records_in_output_files}).')
 
 
 if __name__ == "__main__":
