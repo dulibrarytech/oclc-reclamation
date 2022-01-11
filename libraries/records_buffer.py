@@ -899,10 +899,38 @@ class WorldCatSearchBuffer(RecordsBuffer):
             f'record but instead contains {super().__len__()} records. Cannot '
             f'process buffer.')
 
+        # Build search query
+        search_query = None
+        if (hasattr(self.record_list[0], 'lccn_fixed')
+                and self.record_list[0].lccn_fixed.strip() != ''):
+            search_query = f'nl:{self.record_list[0].lccn_fixed.strip()}'
+        elif (hasattr(self.record_list[0], 'lccn')
+                and self.record_list[0].lccn.strip() != ''):
+            search_query = f'nl:{self.record_list[0].lccn.strip()}'
+        elif (hasattr(self.record_list[0], 'isbn')
+                and self.record_list[0].isbn.strip() != ''):
+            isbn_list = self.record_list[0].isbn.strip().split('; ')
+            logger.debug(f'{isbn_list = }')
+            isbn_list_as_str = '|'.join(filter(str.isdigit, isbn_list))
+            logger.debug(f'{isbn_list_as_str = }')
+            if isbn_list_as_str != '':
+                search_query = f'bn:{isbn_list_as_str}'
+        elif (hasattr(self.record_list[0], 'issn')
+                and self.record_list[0].issn.strip() != ''):
+            issn_list = self.record_list[0].issn.strip().split('; ')
+            logger.debug(f'{issn_list = }')
+            issn_list_as_str = '|'.join(filter(str.isdigit, issn_list))
+            logger.debug(f'{issn_list_as_str = }')
+            if issn_list_as_str != '':
+                search_query = f'in:{issn_list_as_str}'
+
+        assert search_query is not None, ('Could not build a valid search '
+            'query. All record identifiers were either empty or invalid.')
+
         # Build URL for API request
         url = (f"{os.environ['WORLDCAT_METADATA_API_URL_FOR_SEARCH']}"
             f"/brief-bibs"
-            f"?q=nl:{self.record_list[0].lccn}"
+            f"?q={search_query}"
             f"&heldBySymbol={os.environ['OCLC_INSTITUTION_SYMBOL']}")
 
         try:
