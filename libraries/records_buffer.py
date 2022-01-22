@@ -73,8 +73,7 @@ class RecordsBuffer:
             'access_token': os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN'],
             'expires_at': float(
                 os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT']),
-            'token_type': os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE']
-            }
+            'token_type': os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE']}
 
         self.oauth_session = OAuth2Session(client=client, token=token)
         logger.debug(f'{type(self.oauth_session)=}')
@@ -924,6 +923,11 @@ class WorldCatSearchBuffer(RecordsBuffer):
             if issn_list_as_str != '':
                 search_query = f'in:{issn_list_as_str}'
 
+        # Hard code the search query to test a broad search (title
+        # contains 'test'). Best to test this with an input file containing only
+        # one record.
+        search_query = 'ti:test'
+
         assert search_query is not None, ('Could not build a valid search '
             'query. All record identifiers were either empty or invalid.')
 
@@ -931,7 +935,11 @@ class WorldCatSearchBuffer(RecordsBuffer):
         url = (f"{os.environ['WORLDCAT_METADATA_API_URL_FOR_SEARCH']}"
             f"/brief-bibs"
             f"?q={search_query}"
-            f"&heldBySymbol={os.environ['OCLC_INSTITUTION_SYMBOL']}")
+            f"&showHoldingsIndicators=true"
+            f"&limit=13")
+            # f"&offset=40")
+            # f"&heldBySymbol={os.environ['OCLC_INSTITUTION_SYMBOL']}")
+            # f"&orderBy=library")
 
         try:
             api_response = super().make_api_request(
@@ -961,6 +969,28 @@ class WorldCatSearchBuffer(RecordsBuffer):
                 # Found multiple WorldCat search results
                 logger.debug(f"Found {json_response['numberOfRecords']} "
                     f"records for row {self.record_list[0].Index + 2}")
+
+                for record_index, record in enumerate(
+                        json_response['briefRecords'],
+                        start=1):
+                    logger.debug(f"Record #{record_index} has "
+                        f"{record['institutionHoldingIndicators'][0]['holdsItem'] = }, "
+                        f"and {type(record['institutionHoldingIndicators'][0]['holdsItem']) = }")
+
+                    if (record['institutionHoldingIndicators'][0]['id']
+                            == os.environ['WORLDCAT_REGISTRY_ID']
+                            and
+                            record['institutionHoldingIndicators'][0]['holdsItem']):
+                        isbns = None
+                        if 'isbns' in record:
+                            isbns = record['isbns']
+                        logger.debug(f"Record #{record_index} is held by your "
+                            f"institution:\n"
+                            f"{record['oclcNumber'] = }\n"
+                            f"{record['title'] = }\n"
+                            f"{record['creator'] = }\n"
+                            f"{record['date'] = }\n"
+                            f"{isbns = }\n")
 
                 # Update found_multiple_oclc_nums column of DataFrame
                 self.dataframe_for_input_file.loc[
