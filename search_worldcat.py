@@ -5,8 +5,12 @@ import libraries.records_buffer
 import logging
 import logging.config
 import numpy as np
+import os
 import pandas as pd
 from datetime import datetime
+
+dotenv_file = dotenv.find_dotenv()
+dotenv.load_dotenv(dotenv_file)
 
 logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
@@ -84,7 +88,9 @@ def main() -> None:
 
     # Add results columns to DataFrame
     data['oclc_num'] = np.nan
-    data['found_multiple_oclc_nums'] = np.nan
+    data[f"num_records_held_by_{os.environ['OCLC_INSTITUTION_SYMBOL']}"] = \
+        np.nan
+    data['num_records_total'] = np.nan
     data['error'] = np.nan
 
     logger.debug(f'DataFrame dtypes:\n{data.dtypes}\n')
@@ -92,12 +98,6 @@ def main() -> None:
 
     records_already_processed = set()
     logger.debug(f'{records_already_processed=}\n')
-
-    results = {
-        'num_records_with_single_search_result': 0,
-        'num_records_with_multiple_search_results': 0,
-        'num_records_with_errors': 0
-    }
 
     records_buffer = libraries.records_buffer.WorldCatSearchBuffer(data)
 
@@ -124,7 +124,7 @@ def main() -> None:
 
             # Add current row's data to the empty buffer and process that record
             records_buffer.add(row)
-            records_buffer.process_records(results)
+            records_buffer.process_records()
         except AssertionError as assert_err:
             logger.exception(f"An assertion error occurred when processing MMS "
                 f"ID '{row.mms_id}' (at row {row.Index + 2} of input file): "
@@ -133,8 +133,6 @@ def main() -> None:
             error_occurred = True
         finally:
             if error_occurred:
-                results['num_records_with_errors'] += 1
-
                 # Update Error column of input file for the given row
                 data.loc[row.Index, 'error'] = error_msg
 
@@ -149,9 +147,6 @@ def main() -> None:
 
     logger.debug(f'Updated DataFrame:\n{data}\n')
 
-    logger.debug(f"Updated DataFrame (selected columns):\n"
-        f"{data[['mms_id', 'oclc_num', 'found_multiple_oclc_nums', 'lccn', 'error']]}\n")
-
     logger.debug(f'Updated DataFrame dtypes:\n{data.dtypes}\n')
     logger.debug(f'Updated DataFrame memory usage:\n{data.memory_usage()}\n')
 
@@ -164,12 +159,15 @@ def main() -> None:
         # header=['MMS ID', 'OCLC Number'],
         index=False)
 
-    records_with_multiple_worldcat_matches = \
-        data.dropna(subset=['found_multiple_oclc_nums'])
-    logger.debug(f"Records with multiple WorldCat matches:\n"
-        f"{records_with_multiple_worldcat_matches}\n")
-    records_with_multiple_worldcat_matches.to_csv(
-        'outputs/search_worldcat/records_with_multiple_worldcat_matches.csv',
+    records_with_zero_or_multiple_worldcat_matches = \
+        data.dropna(how='all', subset=[
+            f"num_records_held_by_{os.environ['OCLC_INSTITUTION_SYMBOL']}",
+            'num_records_total'])
+        # This drops the rows where BOTH num_records values are missing
+    logger.debug(f"Records with zero or multiple WorldCat matches:\n"
+        f"{records_with_zero_or_multiple_worldcat_matches}\n")
+    records_with_zero_or_multiple_worldcat_matches.to_csv(
+        'outputs/search_worldcat/records_with_zero_or_multiple_worldcat_matches.csv',
         # columns=['mms_id', 'lccn_fixed', 'lccn', 'isbn', 'issn'],
         index=False)
 
@@ -184,13 +182,13 @@ def main() -> None:
         f'(hours:minutes:seconds.microseconds).\n'
         f'Processed {len(data.index)} rows from input file:\n'
         f'- {len(records_with_oclc_num.index)} record(s) with OCLC Number\n'
-        f'- {len(records_with_multiple_worldcat_matches.index)} record(s) with '
-        f'multiple WorldCat matches\n'
+        f'- {len(records_with_zero_or_multiple_worldcat_matches.index)} '
+        f'record(s) with zero or multiple WorldCat matches\n'
         f'- {len(records_with_errors.index)} record(s) with errors')
 
     total_records_in_output_files = (
         len(records_with_oclc_num.index)
-        + len(records_with_multiple_worldcat_matches.index)
+        + len(records_with_zero_or_multiple_worldcat_matches.index)
         + len(records_with_errors.index))
 
     assert len(data.index) == total_records_in_output_files, (f'Total records '
