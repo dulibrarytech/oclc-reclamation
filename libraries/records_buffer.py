@@ -860,7 +860,6 @@ class WorldCatSearchBuffer(RecordsBuffer):
             f'WorldCatSearchBuffer. Buffer currently contains '
             f'{super().__len__()} record(s).')
         self.record_list.append(record_data)
-        logger.debug(f'{type(record_data)}') ### Delete this line after testing ###
         logger.debug(f'Added {record_data} to records buffer.')
 
     def process_records(self) -> None:
@@ -877,7 +876,8 @@ class WorldCatSearchBuffer(RecordsBuffer):
         ------
         AssertionError
             If buffer (i.e. record_list) does not contain exactly one record OR
-            if WorldCat search returns 0 results
+            if a valid search query cannot be built (because all record
+            identifiers are either empty or invalid)
         json.decoder.JSONDecodeError
             If there is an error decoding the API response
         """
@@ -921,21 +921,23 @@ class WorldCatSearchBuffer(RecordsBuffer):
         # one record.
         # search_query = 'ti:test'
 
-        assert search_query is not None, ('Could not build a valid search '
-            'query. All record identifiers were either empty or invalid.')
+        assert search_query is not None, ('Cannot build a valid search query. '
+            'All record identifiers are either empty or invalid.')
 
         # Build URL for API request
         url = (f"{os.environ['WORLDCAT_METADATA_API_URL_FOR_SEARCH']}"
             f"/brief-bibs"
-            f"?q={search_query}")
+            f"?q={search_query}"
+            f"&limit=2")
 
         try:
             api_response = super().make_api_request(
                 self.oauth_session.get,
                 f"{url}&heldBySymbol={os.environ['OCLC_INSTITUTION_SYMBOL']}")
             json_response = api_response.json()
-            logger.debug(f'Search Brief Bibliographic Resources API response:\n'
-                f'{json.dumps(json_response, indent=2)}')
+            logger.debug(f"Search Brief Bibliographic Resources API response "
+                f"(records held by {os.environ['OCLC_INSTITUTION_SYMBOL']}):\n"
+                f"{json.dumps(json_response, indent=2)}")
 
             if json_response['numberOfRecords'] == 1:
                 # Found a single WorldCat search result, so save the OCLC Number
@@ -952,8 +954,8 @@ class WorldCatSearchBuffer(RecordsBuffer):
             elif json_response['numberOfRecords'] > 1:
                 # Found multiple WorldCat search results held by your library
                 logger.debug(f"For row {self.record_list[0].Index + 2}, found "
-                    f"{json_response['numberOfRecords']} records held by your "
-                    f"library.")
+                    f"{json_response['numberOfRecords']} records held by "
+                    f"{os.environ['OCLC_INSTITUTION_SYMBOL']}.")
 
                 # Add number of records found to DataFrame
                 self.dataframe_for_input_file.loc[
@@ -962,16 +964,18 @@ class WorldCatSearchBuffer(RecordsBuffer):
                 ] = json_response['numberOfRecords']
             else:
                 # Found no WorldCat search results held by your library, so
-                # search WorldCat WITHOUT a 'held by' filter.
+                # search WorldCat WITHOUT a "held by" filter.
+                logger.debug(f'Found no records held by '
+                    f"{os.environ['OCLC_INSTITUTION_SYMBOL']}. Searching "
+                    f'without the "held by" filter...')
+
                 api_response = super().make_api_request(
                     self.oauth_session.get,
                     url)
                 json_response = api_response.json()
                 logger.debug(f'Search Brief Bibliographic Resources API '
-                    f'response:\n{json.dumps(json_response, indent=2)}')
-
-                assert json_response['numberOfRecords'] != 0, ('No records '
-                    'found in WorldCat.')
+                    f'response (all records; no "held by" filter):\n'
+                    f'{json.dumps(json_response, indent=2)}')
 
                 if json_response['numberOfRecords'] == 1:
                     # Found a single WorldCat search result, so save the OCLC
@@ -987,7 +991,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                         'oclc_num'
                     ] = oclc_num
                 else:
-                    # Found multiple WorldCat search results
+                    # Found zero or multiple WorldCat search results
                     logger.debug(f"For row {self.record_list[0].Index + 2}, "
                         f"found {json_response['numberOfRecords']} records.")
 
