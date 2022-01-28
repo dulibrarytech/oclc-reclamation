@@ -3,6 +3,7 @@ import dotenv
 import json
 import libraries.api
 import libraries.handle_file
+import libraries.record
 import logging
 import logging.config
 import os
@@ -894,32 +895,24 @@ class WorldCatSearchBuffer(RecordsBuffer):
         # Build search query
         search_query = None
         if (hasattr(self.record_list[0], 'lccn_fixed')
-                and self.record_list[0].lccn_fixed.strip() != ''):
-            search_query = f'nl:{self.record_list[0].lccn_fixed.strip()}'
+                and (lccn_fixed := self.record_list[0].lccn_fixed.strip())
+                    != ''):
+            search_query = f'nl:{lccn_fixed}'
         elif (hasattr(self.record_list[0], 'lccn')
-                and self.record_list[0].lccn.strip() != ''):
-            search_query = f'nl:{self.record_list[0].lccn.strip()}'
+                and (lccn := self.record_list[0].lccn.strip()) != ''):
+            search_query = f'nl:{lccn}'
         elif (hasattr(self.record_list[0], 'isbn')
-                and self.record_list[0].isbn.strip() != ''):
-            isbn_list = self.record_list[0].isbn.strip().split('; ')
-            logger.debug(f'{isbn_list = }')
-            isbn_list_as_str = '|'.join(filter(str.isdigit, isbn_list))
-            logger.debug(f'{isbn_list_as_str = }')
-            if isbn_list_as_str != '':
-                search_query = f'bn:{isbn_list_as_str}'
+                and (isbn := libraries.record.split_and_join_valid_record_identifiers(
+                    self.record_list[0].isbn,
+                    identifier_name='isbn',
+                    split_separator=';')) != ''):
+            search_query = f'bn:{isbn}'
         elif (hasattr(self.record_list[0], 'issn')
-                and self.record_list[0].issn.strip() != ''):
-            issn_list = self.record_list[0].issn.strip().split('; ')
-            logger.debug(f'{issn_list = }')
-            issn_list_as_str = '|'.join(filter(str.isdigit, issn_list))
-            logger.debug(f'{issn_list_as_str = }')
-            if issn_list_as_str != '':
-                search_query = f'in:{issn_list_as_str}'
-
-        # Hard code the search query to test a broad search (title
-        # contains 'test'). Best to test this with an input file containing only
-        # one record.
-        # search_query = 'ti:test'
+                and (issn := libraries.record.split_and_join_valid_record_identifiers(
+                    self.record_list[0].issn,
+                    identifier_name='issn',
+                    split_separator=';')) != ''):
+            search_query = f'in:{issn}'
 
         assert search_query is not None, ('Cannot build a valid search query. '
             'All record identifiers are either empty or invalid.')

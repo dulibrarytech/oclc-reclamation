@@ -195,10 +195,10 @@ def get_subfield_a_with_oclc_num(
 
 def get_valid_record_identifier(record_identifier: str,
         identifier_name: str) -> str:
-    """Checks the validity of the given record identifier.
+    """Checks the validity of the given record identifier and returns it.
 
-    If valid, returns the record identifier with leading and trailing whitespace
-    removed (if applicable).
+    If valid, returns the record identifier with any leading or trailing
+    whitespace removed.
     If invalid, raises AssertionError.
 
     Parameters
@@ -234,6 +234,59 @@ def get_valid_record_identifier(record_identifier: str,
     return record_identifier
 
 
+def is_valid_record_identifier(record_identifier: str,
+        identifier_name: str) -> bool:
+    """Determines whether the given record identifier is valid.
+
+    Before the validity check, the record identifier is stripped of any leading
+    or trailing whitespace.
+
+    - Unless otherwise specified, an identifier is considered invalid if it
+    contains any non-digit character.
+    - However, ISBNs and ISSNs may end in the letter 'X', case-insensitive (but
+    must otherwise contain only digits).
+
+    Parameters
+    ----------
+    record_identifier: str
+        The record identifier to check
+    identifier_name: str
+        The name of the record identifier (e.g. 'isbn')
+
+    Returns
+    -------
+    bool
+        True if the record identifier is valid; otherwise, False
+    """
+    record_identifier = record_identifier.strip()
+
+    invalid_identifier_error_msg = (f"Invalid {identifier_name}: "
+        f"'{record_identifier}'")
+
+    if record_identifier == '':
+        logger.exception(f"{invalid_identifier_error_msg}. It cannot be empty.")
+        return False
+
+    if record_identifier.isdigit():
+        return True
+
+    # Consider as valid any ISBN or ISSN with a single trailing 'X' character
+    # (case-insensitive).
+    if identifier_name.lower().startswith(('isbn', 'issn')):
+        if (record_identifier.endswith(('X', 'x'))
+                and record_identifier[:-1].isdigit()):
+            return True
+
+        logger.exception(f"{invalid_identifier_error_msg}. Must contain only "
+            f"digits with or without a single trailing 'X'.")
+        return False
+
+    # All validity checks failed, so record identifier is invalid
+    logger.exception(f"{invalid_identifier_error_msg}. Must contain only "
+        f"digits.")
+    return False
+
+
 def remove_leading_zeros(string: str) -> str:
     """Removes leading zeros from the given string, if applicable.
 
@@ -255,7 +308,7 @@ def remove_leading_zeros(string: str) -> str:
 def remove_oclc_org_code_prefix(full_oclc_string: str) -> str:
     """Removes the OCLC org code prefix from the given string, if applicable.
 
-    Also strips trailing whitespace from the end of the string, if applicable.
+    Also strips whitespace from the end of the string, if applicable.
 
     Parameters
     ----------
@@ -270,3 +323,56 @@ def remove_oclc_org_code_prefix(full_oclc_string: str) -> str:
     return (full_oclc_string[len(oclc_org_code_prefix):].rstrip()
         if full_oclc_string.startswith(oclc_org_code_prefix)
         else full_oclc_string.rstrip())
+
+
+def split_and_join_valid_record_identifiers(
+        str_with_record_identifiers: str,
+        identifier_name: str,
+        split_separator: Optional[str] = None,
+        join_separator: str = '|') -> str:
+    """Splits and then joins all valid record identifiers from the given string.
+
+    1) The given string is split based on the split_separator. Each resulting
+    element is stripped of any leading or trailing whitespace.
+    2) All invalid identifiers are removed.
+    3) The remaining identifiers are joined based on the join_separator.
+
+    Parameters
+    ----------
+    str_with_record_identifiers: str
+        The string containing record identifiers that needs to be split
+    identifier_name: str
+        The name of the record identifier (e.g. 'isbn')
+    split_separator: Optional[str], default is None
+        The separator to use when splitting the string
+    join_separator: str, default is '|'
+        The separator to use when joining the string
+
+    Returns
+    -------
+    str
+        A string joining all valid record identifiers
+    """
+    str_with_record_identifiers = str_with_record_identifiers.strip()
+
+    if str_with_record_identifiers == '':
+        return ''
+
+    identifiers_list = None
+    if split_separator is None:
+        identifiers_list = (
+            element.strip() for element in str_with_record_identifiers.split())
+    else:
+        identifiers_list = (
+            element.strip() for element in str_with_record_identifiers.split(
+                split_separator))
+
+    identifiers_list_as_str = join_separator.join(filter(
+        lambda identifier: is_valid_record_identifier(
+            identifier,
+            identifier_name),
+        identifiers_list))
+    logger.debug(f"String after joining valid {identifier_name} values: "
+        f"'{identifiers_list_as_str}'")
+
+    return identifiers_list_as_str
