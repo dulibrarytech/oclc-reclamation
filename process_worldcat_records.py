@@ -117,8 +117,6 @@ def main() -> None:
             f'Must be a CSV file (.csv).')
 
     records_already_processed = set()
-    logger.debug(f'{records_already_processed=}\n')
-
     results = None
     filename_for_records_to_update = None
     filename_for_records_with_no_update_needed = None
@@ -177,21 +175,14 @@ def main() -> None:
             records_buffer = libraries.records_buffer.AlmaRecordsBuffer(
                 records_with_no_update_needed,
                 records_to_update,
-                records_with_errors
-            )
+                records_with_errors)
         else:
             records_buffer = libraries.records_buffer.WorldCatRecordsBuffer(
                 set_or_unset_choice,
                 args.cascade,
                 records_with_no_update_needed,
                 records_to_update,
-                records_with_errors
-            )
-
-        logger.debug(f'{type(records_buffer)=}')
-        logger.debug(records_buffer)
-        logger.debug(f'{type(records_buffer.contents)=}')
-        logger.debug(f'{len(records_buffer)=}\n')
+                records_with_errors)
 
         # Loop over each row in DataFrame and check whether OCLC number is the
         # current one
@@ -302,9 +293,6 @@ def main() -> None:
         # If records_buffer is not empty, process remaining records
         if len(records_buffer) > 0:
             records_buffer.process_records(results)
-
-    # logger.debug(f'{records_already_processed=}\n')
-    logger.debug(f'{len(records_already_processed)=}\n')
 
     print(f'\nEnd of script. Processed {len(data.index)} rows from input file:')
 

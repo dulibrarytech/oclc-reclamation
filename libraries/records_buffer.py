@@ -56,20 +56,16 @@ class RecordsBuffer:
     def __init__(self) -> None:
         """Initializes a RecordsBuffer object by creating its OAuth2Session."""
 
-        logger.debug('Started RecordsBuffer constructor...')
         self.contents = None
-        logger.debug(f'{type(self.contents)=}')
 
         # Create OAuth2Session for WorldCat Metadata API
-        logger.debug('Creating OAuth2Session...')
-
         self.auth = HTTPBasicAuth(os.environ['WORLDCAT_METADATA_API_KEY'],
             os.environ['WORLDCAT_METADATA_API_SECRET'])
-        logger.debug(f'{type(self.auth)=}')
 
         client = BackendApplicationClient(
             client_id=os.environ['WORLDCAT_METADATA_API_KEY'],
             scope=['WorldCatMetadataAPI refresh_token'])
+
         token = {
             'access_token': os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN'],
             'expires_at': float(
@@ -77,9 +73,6 @@ class RecordsBuffer:
             'token_type': os.environ['WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE']}
 
         self.oauth_session = OAuth2Session(client=client, token=token)
-        logger.debug(f'{type(self.oauth_session)=}')
-        logger.debug('OAuth2Session created.')
-        logger.debug('Completed RecordsBuffer constructor.')
 
     def __len__(self) -> int:
         """Returns the number of records in this records buffer.
@@ -225,7 +218,6 @@ class RecordsBuffer:
                     'WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT',
                     token['refresh_token_expires_at'])
 
-            logger.debug(f'{token=}')
             logger.debug(f'New access token granted: '
                 f'{self.oauth_session.access_token}')
 
@@ -238,8 +230,6 @@ class RecordsBuffer:
             libraries.handle_file.set_env_var(
                 'WORLDCAT_METADATA_API_ACCESS_TOKEN_TYPE',
                 token['token_type'])
-
-            logger.debug(f"{token['expires_at']=}")
 
             libraries.handle_file.set_env_var(
                 'WORLDCAT_METADATA_API_ACCESS_TOKEN_EXPIRES_AT',
@@ -301,10 +291,7 @@ class AlmaRecordsBuffer(RecordsBuffer):
             encountered
         """
 
-        logger.debug('Started AlmaRecordsBuffer constructor...')
-
         self.oclc_num_dict = {}
-        logger.debug(f'{type(self.oclc_num_dict)=}')
 
         self.records_with_current_oclc_num = records_with_current_oclc_num
         self.records_with_current_oclc_num_writer = \
@@ -321,9 +308,6 @@ class AlmaRecordsBuffer(RecordsBuffer):
         super().__init__()
 
         self.contents = self.oclc_num_dict
-        logger.debug(f'{type(self.contents)=}')
-
-        logger.debug('Completed AlmaRecordsBuffer constructor.\n')
 
     def __str__(self) -> str:
         """Returns a string listing the contents of this records buffer.
@@ -562,16 +546,14 @@ class WorldCatRecordsBuffer(RecordsBuffer):
             encountered
         """
 
-        logger.debug('Started WorldCatRecordsBuffer constructor...')
-
         self.oclc_num_set = set()
-        logger.debug(f'{type(self.oclc_num_set)=}')
 
         self.set_or_unset_choice = set_or_unset_choice
-        logger.debug(f'{self.set_or_unset_choice=}')
+        logger.debug(f'{self.set_or_unset_choice=}\n')
 
         self.cascade = cascade
-        logger.debug(f'{self.cascade=}')
+        if self.set_or_unset_choice == 'unset':
+            logger.debug(f'{self.cascade=}\n')
 
         self.records_with_no_update_needed = records_with_no_update_needed
         self.records_with_no_update_needed_writer = \
@@ -587,9 +569,6 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         super().__init__()
 
         self.contents = self.oclc_num_set
-        logger.debug(f'{type(self.contents)=}')
-
-        logger.debug('Completed WorldCatRecordsBuffer constructor.\n')
 
     def __str__(self) -> str:
         """Returns a string listing the contents of this records buffer.
@@ -814,20 +793,13 @@ class WorldCatSearchBuffer(RecordsBuffer):
             The pandas DataFrame created from the input file
         """
 
-        logger.debug('Started WorldCatSearchBuffer constructor...')
-
         self.record_list = []
-        logger.debug(f'{type(self.record_list)=}')
-
         self.dataframe_for_input_file = dataframe_for_input_file
 
         # Create OAuth2Session for WorldCat Metadata API
         super().__init__()
 
         self.contents = self.record_list
-        logger.debug(f'{type(self.contents)=}')
-
-        logger.debug('Completed WorldCatSearchBuffer constructor.\n')
 
     def __str__(self) -> str:
         """Returns a string listing the contents of this records buffer.

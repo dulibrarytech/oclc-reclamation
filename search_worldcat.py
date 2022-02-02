@@ -93,18 +93,12 @@ def main() -> None:
     data['num_records_total'] = np.nan
     data['error'] = np.nan
 
-    logger.debug(f'DataFrame dtypes:\n{data.dtypes}\n')
-    logger.debug(f'DataFrame memory usage:\n{data.memory_usage()}\n')
-
     records_already_processed = set()
-    logger.debug(f'{records_already_processed=}\n')
-
     records_buffer = libraries.records_buffer.WorldCatSearchBuffer(data)
 
     # Loop over rows in DataFrame
     for row in data.itertuples(name='Record_from_input_file'):
         logger.debug(f'Started processing row {row.Index + 2} of input file...')
-        logger.debug(row)
         error_occurred = False
         error_msg = None
 
@@ -146,9 +140,6 @@ def main() -> None:
             records_buffer.remove_all_records()
 
     logger.debug(f'Updated DataFrame:\n{data}\n')
-
-    logger.debug(f'Updated DataFrame dtypes:\n{data.dtypes}\n')
-    logger.debug(f'Updated DataFrame memory usage:\n{data.memory_usage()}\n')
 
     # Create CSV output files
     records_with_oclc_num = data.dropna(subset=['oclc_num'])
