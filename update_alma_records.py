@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 from csv import writer
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Tuple
 
 load_dotenv()
 
@@ -41,13 +41,19 @@ class Record_confirmation(NamedTuple):
     error_msg: Optional[str]
         Message explaining the error(s) and/or warning(s) encountered by the
         update_alma_record function call, if applicable; otherwise, None
+    num_api_requests_made: int
+        The number of Ex Libris API requests made for this particular record
+    num_api_requests_remaining: int
+        The number of allowed Ex Libris API requests remaining for today
     """
     was_updated: bool
     orig_oclc_nums: Optional[str]
     error_msg: Optional[str]
+    num_api_requests_made: int
+    num_api_requests_remaining: int
 
 
-def get_alma_record(mms_id: str) -> ET.Element:
+def get_alma_record(mms_id: str) -> Tuple[ET.Element, int]:
     """GETs the Alma record with the given MMS ID.
 
     Sends a GET request to the Ex Libris Alma BIBs API:
@@ -60,8 +66,10 @@ def get_alma_record(mms_id: str) -> ET.Element:
 
     Returns
     -------
-    ET.Element
-        The root element of the parsed XML tree
+    Tuple[ET.Element, int]
+        A tuple containing two items:
+        - the root element of the parsed XML tree
+        - the number of Ex Libris API requests remaining for today
     """
 
     response = requests.get(
@@ -79,8 +87,10 @@ def get_alma_record(mms_id: str) -> ET.Element:
             'wb') as file:
         file.write(xml_as_pretty_printed_bytes_obj)
 
-    # Return root element of XML tree
-    return ET.fromstring(response.text)
+    # Return root element of XML tree and number of Ex Libris API requests
+    # remaining for today (as a tuple)
+    return (ET.fromstring(response.text),
+        int(response.headers['X-Exl-Api-Remaining']))
 
 
 def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
@@ -107,7 +117,12 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     -------
     Record_confirmation
         NamedTuple with details about the update attempt. Includes the
-        following fields: was_updated, orig_oclc_nums, error_msg
+        following fields:
+        - was_updated
+        - orig_oclc_nums
+        - error_msg
+        - num_api_requests_made
+        - num_api_requests_remaining
     """
 
     logger.debug(f"Attempting to update MMS ID '{mms_id}'...")
@@ -124,7 +139,11 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     logger.debug(f'Full OCLC number: {full_oclc_num}')
 
     # Access XML elements of Alma record
-    root = get_alma_record(mms_id)
+    root, num_api_requests_remaining = get_alma_record(mms_id)
+    logger.debug(f"After GET request for MMS ID '{mms_id}', there are "
+        f"{num_api_requests_remaining} Ex Libris API requests remaining for "
+        f"today.")
+    logger.debug(f'{type(num_api_requests_remaining)=}')
     record_element = root.find('./record')
 
     need_to_update_record = False
@@ -229,9 +248,14 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     # with an invalid prefix.
     if record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
         logger.debug(f"Did not update MMS ID '{mms_id}' because it contains at "
-            f"least one potentially-valid OCLC number with an invalid prefix.")
+            f"least one potentially-valid OCLC number with an invalid prefix.\n")
 
-        return Record_confirmation(False, oclc_nums_from_record_str, error_msg)
+        return Record_confirmation(
+            False,
+            oclc_nums_from_record_str,
+            error_msg,
+            1,
+            num_api_requests_remaining)
 
     # Only add or edit the 019 field if oclc_nums_for_019_field set is non-empty
     if oclc_nums_for_019_field:
@@ -292,16 +316,31 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
         xml_as_pretty_printed_bytes_obj = libraries.xml.prettify_and_log_xml(
             put_response, 'Modified record')
 
+        logger.debug(f"After PUT request for MMS ID '{mms_id}', there are "
+            f"{put_response.headers['X-Exl-Api-Remaining']} Ex Libris API "
+            f"requests remaining for today.")
+        logger.debug(f"{type(int(put_response.headers['X-Exl-Api-Remaining']))=}")
+
         # Create XML file
         with open(f'outputs/update_alma_records/xml/{mms_id}_modified.xml',
                 'wb') as file:
             file.write(xml_as_pretty_printed_bytes_obj)
 
-        logger.debug(f"MMS ID '{mms_id}' has been updated.")
-        return Record_confirmation(True, oclc_nums_from_record_str, None)
+        logger.debug(f"MMS ID '{mms_id}' has been updated.\n")
+        return Record_confirmation(
+            True,
+            oclc_nums_from_record_str,
+            None,
+            2,
+            int(put_response.headers['X-Exl-Api-Remaining']))
 
-    logger.debug(f"No update needed for MMS ID '{mms_id}'.")
-    return Record_confirmation(False, oclc_nums_from_record_str, None)
+    logger.debug(f"No update needed for MMS ID '{mms_id}'.\n")
+    return Record_confirmation(
+        False,
+        oclc_nums_from_record_str,
+        None,
+        1,
+        num_api_requests_remaining)
 
 
 def init_argparse() -> argparse.ArgumentParser:
@@ -418,6 +457,8 @@ def main() -> None:
 
     # Loop over rows in DataFrame and update the corresponding Alma record
     num_records_updated = 0
+    num_api_requests_made = 0
+    num_api_requests_remaining = None
     with open('outputs/update_alma_records/records_updated.csv', mode='a',
             newline='') as records_updated, \
         open('outputs/update_alma_records/records_with_no_update_needed.csv',
@@ -431,6 +472,16 @@ def main() -> None:
         records_with_errors_writer = writer(records_with_errors)
 
         for index, row in data.iterrows():
+            if (num_api_requests_remaining is not None
+                    and num_api_requests_remaining < 10):
+                logger.exception(f"The daily request threshold for the Ex "
+                    f"Libris API is about to be reached. There are only "
+                    f"{num_api_requests_remaining} API requests remaining for "
+                    f"today. Aborting script at row {index + 2} "
+                    f"(MMS ID '{row['MMS ID']}') of input file "
+                    f"({args.input_file}).")
+                break
+
             error_occurred = True
             error_msg = None
             record = None
@@ -441,6 +492,11 @@ def main() -> None:
                 # - If the was_updated field is True, then the error_msg field
                 # will be None.
                 record = update_alma_record(row['MMS ID'], row['OCLC Number'])
+
+                if record.num_api_requests_remaining is not None:
+                    num_api_requests_remaining = \
+                        record.num_api_requests_remaining
+
                 if record.error_msg is None:
                     error_occurred = False
                 else:
@@ -514,9 +570,16 @@ def main() -> None:
                         error_msg
                     ])
 
-    print(f'\nEnd of script. {num_records_updated} of {len(data.index)} '
-        f'records updated.')
+                if (record is not None
+                        and record.num_api_requests_made is not None):
+                    num_api_requests_made += record.num_api_requests_made
 
+    print(f'\nEnd of script. {num_records_updated} of {len(data.index)} '
+        f'records updated.\n'
+        f'The script made {num_api_requests_made} API requests.')
+    if num_api_requests_remaining is not None:
+        print(f'Ex Libris API requests remaining for today: '
+            f'{num_api_requests_remaining}')
 
 if __name__ == "__main__":
     main()
