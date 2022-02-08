@@ -247,8 +247,9 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     # Don't update the record if it contains a potentially-valid OCLC number
     # with an invalid prefix.
     if record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
-        logger.debug(f"Did not update MMS ID '{mms_id}' because it contains at "
-            f"least one potentially-valid OCLC number with an invalid prefix.\n")
+        logger.error(f"Did not update MMS ID '{mms_id}' because it contains at "
+            f"least one potentially-valid OCLC number with an invalid prefix."
+            f"\n")
 
         return Record_confirmation(
             False,
@@ -474,8 +475,8 @@ def main() -> None:
         for index, row in data.iterrows():
             if (num_api_requests_remaining is not None
                     and num_api_requests_remaining < 10):
-                logger.exception(f"The daily request threshold for the Ex "
-                    f"Libris API is about to be reached. There are only "
+                logger.error(f"The daily request threshold for the Ex Libris "
+                    f"API is about to be reached. There are only "
                     f"{num_api_requests_remaining} API requests remaining for "
                     f"today. Aborting script at row {index + 2} "
                     f"(MMS ID '{row['MMS ID']}') of input file "
