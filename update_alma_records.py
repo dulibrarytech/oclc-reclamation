@@ -79,8 +79,11 @@ def get_alma_record(mms_id: str) -> Tuple[ET.Element, int]:
         timeout=45)
     libraries.api.log_response_and_raise_for_status(response)
 
-    xml_as_pretty_printed_bytes_obj = \
-        libraries.xml.prettify_and_log_xml(response, 'Original record')
+    xml_as_pretty_printed_bytes_obj = libraries.xml.prettify(response)
+    # To also log the record's XML to the console, use the following code
+    # instead:
+    # xml_as_pretty_printed_bytes_obj = \
+    #     libraries.xml.prettify_and_log_xml(response, 'Original record')
 
     # Create XML file
     with open(f'outputs/update_alma_records/xml/{mms_id}_original.xml',
@@ -143,9 +146,8 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
     logger.debug(f"After GET request for MMS ID '{mms_id}', there are "
         f"{num_api_requests_remaining} Ex Libris API requests remaining for "
         f"today.")
-    logger.debug(f'{type(num_api_requests_remaining)=}')
-    record_element = root.find('./record')
 
+    record_element = root.find('./record')
     need_to_update_record = False
     oclc_nums_from_record = list()
     oclc_nums_for_019_field = set()
@@ -314,13 +316,15 @@ def update_alma_record(mms_id: str, oclc_num: str) -> Record_confirmation:
             timeout=45)
         libraries.api.log_response_and_raise_for_status(put_response)
 
-        xml_as_pretty_printed_bytes_obj = libraries.xml.prettify_and_log_xml(
-            put_response, 'Modified record')
+        xml_as_pretty_printed_bytes_obj = libraries.xml.prettify(put_response)
+        # To also log the updated record's XML to the console, use the following
+        # code instead:
+        # xml_as_pretty_printed_bytes_obj = libraries.xml.prettify_and_log_xml(
+        #     put_response, 'Modified record')
 
         logger.debug(f"After PUT request for MMS ID '{mms_id}', there are "
             f"{put_response.headers['X-Exl-Api-Remaining']} Ex Libris API "
             f"requests remaining for today.")
-        logger.debug(f"{type(int(put_response.headers['X-Exl-Api-Remaining']))=}")
 
         # Create XML file
         with open(f'outputs/update_alma_records/xml/{mms_id}_modified.xml',
