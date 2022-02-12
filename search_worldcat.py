@@ -169,8 +169,10 @@ def main() -> None:
         # columns=['mms_id', 'lccn_fixed', 'lccn', 'isbn', 'issn', 'error'],
         index=False)
 
-    print(f'End of script. Completed in: {datetime.now() - start_time} ' \
+    print(f'End of script. Completed in: {datetime.now() - start_time} '
         f'(hours:minutes:seconds.microseconds).\n'
+        f'The script made {records_buffer.num_api_requests_made} API '
+        f'request(s).\n'
         f'Processed {len(data.index)} rows from input file:\n'
         f'- {len(records_with_oclc_num.index)} record(s) with OCLC Number\n'
         f'- {len(records_with_zero_or_multiple_worldcat_matches.index)} '

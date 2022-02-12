@@ -40,15 +40,19 @@ class RecordsBuffer:
         The HTTP Basic Auth object used when requesting an access token
     contents: Union[Dict[str, str], Set[str], List[NamedTuple]]
         The contents of the buffer (this attribute is defined in the subclass)
+    num_api_requests_made: int
+        The total number of WorldCat Metadata API requests made using this
+        records buffer
     oauth_session: OAuth2Session
-        The OAuth 2 Session object used to request an access token and make HTTP
+        The OAuth2Session object used to request an access token and make HTTP
         requests to the WorldCat Metadata API (note that the OAuth2Session class
         is a subclass of requests.Session)
 
     Methods
     -------
     get_transaction_id()
-        Builds transaction_id to include with WorldCat Metadata API request
+        Builds the transaction_id to include with the WorldCat Metadata API
+        request
     make_api_request(api_request, api_url)
         Makes the specified API request to the WorldCat Metadata API
     """
@@ -57,6 +61,7 @@ class RecordsBuffer:
         """Initializes a RecordsBuffer object by creating its OAuth2Session."""
 
         self.contents = None
+        self.num_api_requests_made = 0
 
         # Create OAuth2Session for WorldCat Metadata API
         self.auth = HTTPBasicAuth(os.environ['WORLDCAT_METADATA_API_KEY'],
@@ -237,6 +242,7 @@ class RecordsBuffer:
 
             response = api_request(api_url, headers=headers)
 
+        self.num_api_requests_made += 1
         libraries.api.log_response_and_raise_for_status(response)
         return response
 

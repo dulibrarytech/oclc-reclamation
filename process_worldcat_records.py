@@ -7,6 +7,7 @@ import logging.config
 import os
 import pandas as pd
 from csv import writer
+from datetime import datetime
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -100,6 +101,8 @@ def main() -> None:
            records_with_errors_when_unsetting_holding.csv
     """
 
+    start_time = datetime.now()
+
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
@@ -161,6 +164,8 @@ def main() -> None:
             f'outputs/process_worldcat_records/{set_or_unset_choice}_holding/'
             f'records_with_errors_when_{set_or_unset_choice}ting_holding.csv')
 
+    records_buffer = None
+
     with open(filename_for_records_to_update, mode='a',
             newline='') as records_to_update, \
         open(filename_for_records_with_no_update_needed, mode='a',
@@ -170,7 +175,6 @@ def main() -> None:
 
         records_with_errors_writer = writer(records_with_errors)
 
-        records_buffer = None
         if args.operation == 'get_current_oclc_number':
             records_buffer = libraries.records_buffer.AlmaRecordsBuffer(
                 records_with_no_update_needed,
@@ -294,7 +298,11 @@ def main() -> None:
         if len(records_buffer) > 0:
             records_buffer.process_records(results)
 
-    print(f'\nEnd of script. Processed {len(data.index)} rows from input file:')
+    print(f'\nEnd of script. Completed in: {datetime.now() - start_time} '
+        f'(hours:minutes:seconds.microseconds).\n'
+        f'The script made {records_buffer.num_api_requests_made} API '
+        f'request(s).\n'
+        f'Processed {len(data.index)} rows from input file:')
 
     if args.operation == 'get_current_oclc_number':
         print(f'- {results["num_records_with_current_oclc_num"]} record(s) '
