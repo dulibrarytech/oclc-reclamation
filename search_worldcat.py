@@ -130,9 +130,6 @@ def main() -> None:
                 # Update Error column of input file for the given row
                 data.loc[row.Index, 'error'] = error_msg
 
-            logger.debug(f"After processing row {row.Index + 2}:\n"
-                f"{data.loc[row.Index]}")
-
             logger.debug(f'Finished processing row {row.Index + 2} of input '
                 f'file.\n')
 
