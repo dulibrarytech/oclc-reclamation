@@ -56,6 +56,8 @@ def main() -> None:
     - outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv
         The OCLC numbers found in the worldcat_records_directory but not the
         alma_records_file
+    - If any of the above output files already exists in the directory, then it
+      is overwritten.
     """
     start_time = datetime.now()
 

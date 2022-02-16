@@ -10,6 +10,7 @@
   - [Local Environment Setup](#local-environment-setup)
   - [Using the Scripts](#using-the-scripts)
     - [Preventing your system from going to sleep while the scripts are running](#preventing-your-system-from-going-to-sleep-while-the-scripts-are-running)
+    - [`search_worldcat.py`](#search_worldcatpy)
     - [`update_alma_records.py`](#update_alma_recordspy)
     - [`extract_record_identifiers.py`](#extract_record_identifierspy)
     - [`process_worldcat_records.py`](#process_worldcat_recordspy)
@@ -46,8 +47,9 @@ When you click the "Add Permission" button, choose "Bibs" for Area, either
 
 #### OCLC Web Service Key
 
-For the `process_worldcat_records.py` script, you will need an OCLC web service
-key (aka WSKey) with access to the WorldCat Metadata API service. Follow these
+For the `search_worldcat.py` and `process_worldcat_records.py` scripts, you will
+need an OCLC web service key (aka WSKey) with access to the WorldCat Metadata
+API service. Follow these
 [instructions to request one](https://www.oclc.org/developer/develop/authentication/how-to-request-a-wskey.en.html).
 
 When filling out the request form, be sure to choose "WorldCat Metadata API"
@@ -97,7 +99,9 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
       the base URL for your geographic region
     - `ALMA_API_KEY`
       - See [Alma API Key](#alma-api-key) section for how to request one.
-  - To use the `process_worldcat_records.py` script, initialize these variables:
+  - To use the `search_worldcat.py` and `process_worldcat_records.py` scripts,
+  initialize these variables:
+    - `OCLC_INSTITUTION_SYMBOL`
     - `WORLDCAT_METADATA_API_KEY`
     - `WORLDCAT_METADATA_API_SECRET`
       - Your OCLC WSKey for the WorldCat Metadata API service will include both
@@ -120,6 +124,43 @@ to the desired script command. For example:
 caffeinate -i python update_alma_records.py inputs/update_alma_records/filename.csv
 ```
 With this approach, you won't have to adjust your sleep settings.
+
+#### `search_worldcat.py`
+
+##### Usage notes
+
+```
+usage: search_worldcat.py [option] input_file
+
+positional arguments:
+  input_file     the name and path of the input file, which must be in either
+                 CSV (.csv) or Excel (.xlsx or .xls) format (e.g.
+                 inputs/search_worldcat/filename.csv)
+
+example: python search_worldcat.py inputs/search_worldcat/filename.csv
+```
+
+For required format of input file, see either:
+- `inputs/search_worldcat/example.csv`
+- `inputs/search_worldcat/example.xlsx`
+
+##### Description and script outputs
+
+Searches WorldCat for each record in the input file and saves the OCLC Number.
+
+For each row in the input file, a WorldCat search is performed using each
+available record identifier (LCCN, ISBN, and ISSN), stopping as soon as search
+results are found for a given identifier.
+
+Outputs the following files:
+- `outputs/search_worldcat/records_with_oclc_num.csv`: Records with one WorldCat
+match; hence, the OCLC Number has been found
+- `outputs/search_worldcat/records_with_zero_or_multiple_worldcat_matches.csv`:
+Records whose search returned zero or multiple WorldCat matches
+- `outputs/search_worldcat/records_with_errors_when_searching_worldcat.csv`:
+Records where an error was encountered
+- If any of the above output files already exists in the directory, then it is
+overwritten.
 
 #### `update_alma_records.py`
 
@@ -162,6 +203,9 @@ then it is added to:
 `outputs/update_alma_records/records_with_no_update_needed.csv`
 - If an error is encountered, then the record is added to:
 `outputs/update_alma_records/records_with_errors.csv`
+- For the above output files, if an XML file with the same name already exists
+in the directory, then it is overwritten. If a CSV file with the same name
+already exists, then it is appended to.
 
 See `main()` function's docstring (within `update_alma_records.py`) to learn
 about:
@@ -214,9 +258,7 @@ For required format of the `alma_records_with_current_oclc_num` input file, see:
 
 For each XML file in the specified directory, the MMS ID and OCLC Number(s)
 from each Alma record are extracted and appended to the appropriate
-`outputs/extract_record_identifiers/master_list_records` CSV file.
-
-When processing each Alma record:
+`outputs/extract_record_identifiers/master_list_records` CSV file:
 - If an error is encountered, then the record is added to:
 `outputs/extract_record_identifiers/master_list_records_with_errors.csv`
 - If the record's MMS ID appears in the optional
@@ -224,6 +266,8 @@ When processing each Alma record:
 `outputs/extract_record_identifiers/master_list_records_with_current_oclc_num.csv`
 - Otherwise, the record is added to:
 `outputs/extract_record_identifiers/master_list_records_with_potentially_old_oclc_num.csv`
+- If any of the above output files already exists in the directory, then it is
+appended to (not overwritten).
 
 ---
 
@@ -307,6 +351,8 @@ is the current one.
   `DELETE` request on the `/ih/datalist` endpoint), `cascade` with value `1`
   will unset the holding and
   *delete the local holdings record and local bibliographic record (if one exists).*
+- If any of the above output files already exists in the directory, then it is
+appended to (not overwritten).
 
 ---
 
@@ -367,6 +413,8 @@ The OCLC numbers found in the `alma_records_file` but not the
 - `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv`:
 The OCLC numbers found in the `worldcat_records_directory` but not the
 `alma_records_file`
+- If any of the above output files already exists in the directory, then it is
+overwritten.
 
 ### Maintainers
 

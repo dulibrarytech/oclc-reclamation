@@ -23,7 +23,8 @@ def init_argparse() -> argparse.ArgumentParser:
         usage='%(prog)s [option] input_file',
         description=("For each row in the input file, find the record's OCLC "
             "Number by searching WorldCat using the available record "
-            "identifiers. Then update the input file accordingly.")
+            "identifiers. Script results are saved to the following directory: "
+            "outputs/search_worldcat/")
     )
     parser.add_argument(
         '-v', '--version', action='version',
@@ -43,22 +44,18 @@ def main() -> None:
     """Searches WorldCat for each record in input file and saves OCLC Number.
 
     For each row in the input file, a WorldCat search is performed using each
-    available record identifier (LCCN, ISBN, ISSN, and Government Document
-    Number), stopping as soon as search results are found for a given
-    identifier.
+    available record identifier (LCCN, ISBN, and ISSN), stopping as soon as
+    search results are found for a given identifier.
 
-    The following columns of the input file are then updated:
-    - OCLC Number
-        If the search returns one record, its OCLC Number is added here
-    - OCLC Number possibilities
-        If the search returns multiple records, each record's OCLC Number is
-        added here (separated by a comma)
-    - Multiple OCLC Numbers?
-        A value of "1" is added if the search returns multiple records;
-        otherwise, this field will be blank (and any existing value will be
-        removed)
-    - Error
-        If any errors are encountered, relevant error info is added here
+    Outputs the following files:
+    - outputs/search_worldcat/records_with_oclc_num.csv
+        Records with one WorldCat match; hence, the OCLC Number has been found
+    - outputs/search_worldcat/records_with_zero_or_multiple_worldcat_matches.csv
+        Records whose search returned zero or multiple WorldCat matches
+    - outputs/search_worldcat/records_with_errors_when_searching_worldcat.csv
+        Records where an error was encountered
+    - If any of the above output files already exists in the directory, then it
+      is overwritten.
     """
 
     start_time = datetime.now()

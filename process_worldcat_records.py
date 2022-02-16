@@ -99,6 +99,9 @@ def main() -> None:
         -- If an error is encountered, then add the record to
            outputs/process_worldcat_records/unset_holding/
            records_with_errors_when_unsetting_holding.csv
+
+    - If any of the above output files already exists in the directory, then it
+      is appended to (not overwritten).
     """
 
     start_time = datetime.now()

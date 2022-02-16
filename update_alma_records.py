@@ -392,6 +392,9 @@ def main() -> None:
       outputs/update_alma_records/records_with_no_update_needed.csv
     - If an error is encountered, then the record is added to:
       outputs/update_alma_records/records_with_errors.csv
+    - For the above output files, if an XML file with the same name already
+      exists in the directory, then it is overwritten. If a CSV file with the
+      same name already exists, then it is appended to.
 
     How OCLC numbers are recognized within an Alma record:
     - The 035 fields of the Alma record are checked.
