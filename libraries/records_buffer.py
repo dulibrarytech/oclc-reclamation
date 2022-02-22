@@ -871,115 +871,136 @@ class WorldCatSearchBuffer(RecordsBuffer):
             f'process buffer.')
 
         # Build search query
-        search_query = None
+        search_query_list = []
         if (hasattr(self.record_list[0], 'lccn_fixed')
                 and (lccn_fixed := self.record_list[0].lccn_fixed.strip())
                     != ''):
-            search_query = f'nl:{lccn_fixed}'
+            search_query_list.append(f'nl:{lccn_fixed}')
         elif (hasattr(self.record_list[0], 'lccn')
                 and (lccn := self.record_list[0].lccn.strip()) != ''):
-            search_query = f'nl:{lccn}'
+            search_query_list.append(f'nl:{lccn}')
         elif (hasattr(self.record_list[0], 'isbn')
                 and (isbn := libraries.record.split_and_join_valid_record_identifiers(
                     self.record_list[0].isbn,
                     identifier_name='isbn',
                     split_separator=';')) != ''):
-            search_query = f'bn:{isbn}'
+            search_query_list.append(f'bn:{isbn}')
         elif (hasattr(self.record_list[0], 'issn')
                 and (issn := libraries.record.split_and_join_valid_record_identifiers(
                     self.record_list[0].issn,
                     identifier_name='issn',
                     split_separator=';')) != ''):
-            search_query = f'in:{issn}'
+            search_query_list.append(f'in:{issn}')
+        elif (hasattr(self.record_list[0], 'gov_doc_class_num_086')
+                and (gov_doc_class_num_086 := self.record_list[0].gov_doc_class_num_086.strip())
+                    != ''):
+            # If value exists for 074 field, then combine 074 and 086 values
+            gpo_item_num_074 = self.record_list[0].gpo_item_num_074.strip()
+            if gpo_item_num_074 != '':
+                search_query_list.append(f'gn:{gov_doc_class_num_086}'
+                    f' AND gn:{gpo_item_num_074}')
 
-        assert search_query is not None, ('Cannot build a valid search query. '
-            'All record identifiers are either empty or invalid.')
+            search_query_list.append(f'gn:{gov_doc_class_num_086}')
 
-        # Build URL for API request
-        url = (f"{os.environ['WORLDCAT_METADATA_API_URL_FOR_SEARCH']}"
-            f"/brief-bibs"
-            f"?q={search_query}"
-            f"&limit=2")
+        # If search_query_list is empty (i.e. it evaluates to false), then no
+        # search can be performed.
+        assert search_query_list, ('Cannot build a valid search query. All '
+            'record identifiers are either empty or invalid.')
 
-        try:
-            api_response = super().make_api_request(
-                self.oauth_session.get,
-                f"{url}&heldBySymbol={os.environ['OCLC_INSTITUTION_SYMBOL']}")
-            json_response = api_response.json()
-            logger.debug(f"Search Brief Bibliographic Resources API response "
-                f"(records held by {os.environ['OCLC_INSTITUTION_SYMBOL']}):\n"
-                f"{json.dumps(json_response, indent=2)}")
+        for search_query in search_query_list:
+            # Build URL for API request
+            url = (f"{os.environ['WORLDCAT_METADATA_API_URL_FOR_SEARCH']}"
+                f"/brief-bibs"
+                f"?q={search_query}"
+                f"&limit=2")
 
-            if json_response['numberOfRecords'] == 1:
-                # Found a single WorldCat search result, so save the OCLC Number
-                oclc_num = json_response['briefRecords'][0]['oclcNumber']
-
-                logger.debug(f"For row {self.record_list[0].Index + 2}, the "
-                    f"OCLC Number is {oclc_num}")
-
-                # Add OCLC Number to DataFrame
-                self.dataframe_for_input_file.loc[
-                    self.record_list[0].Index,
-                    'oclc_num'
-                ] = oclc_num
-            elif json_response['numberOfRecords'] > 1:
-                # Found multiple WorldCat search results held by your library
-                logger.debug(f"For row {self.record_list[0].Index + 2}, found "
-                    f"{json_response['numberOfRecords']} records held by "
-                    f"{os.environ['OCLC_INSTITUTION_SYMBOL']}.")
-
-                # Add number of records found to DataFrame
-                self.dataframe_for_input_file.loc[
-                    self.record_list[0].Index,
-                    f"num_records_held_by_{os.environ['OCLC_INSTITUTION_SYMBOL']}"
-                ] = json_response['numberOfRecords']
-            else:
-                # Found no WorldCat search results held by your library, so
-                # search WorldCat WITHOUT a "held by" filter.
-                logger.debug(f'Found no records held by '
-                    f"{os.environ['OCLC_INSTITUTION_SYMBOL']}. Searching "
-                    f'without the "held by" filter...')
-
+            api_response = None
+            try:
                 api_response = super().make_api_request(
                     self.oauth_session.get,
-                    url)
+                    f"{url}&heldBySymbol={os.environ['OCLC_INSTITUTION_SYMBOL']}")
                 json_response = api_response.json()
-                logger.debug(f'Search Brief Bibliographic Resources API '
-                    f'response (all records; no "held by" filter):\n'
-                    f'{json.dumps(json_response, indent=2)}')
+                logger.debug(f"Search Brief Bibliographic Resources API response "
+                    f"(records held by {os.environ['OCLC_INSTITUTION_SYMBOL']}):\n"
+                    f"{json.dumps(json_response, indent=2)}")
 
                 if json_response['numberOfRecords'] == 1:
-                    # Found a single WorldCat search result, so save the OCLC
-                    # Number
+                    # Found a single WorldCat search result, so save the OCLC Number
                     oclc_num = json_response['briefRecords'][0]['oclcNumber']
 
-                    logger.debug(f"For row {self.record_list[0].Index + 2}, "
-                        f"the OCLC Number is {oclc_num}")
+                    logger.debug(f"For row {self.record_list[0].Index + 2}, the "
+                        f"OCLC Number is {oclc_num}")
 
                     # Add OCLC Number to DataFrame
                     self.dataframe_for_input_file.loc[
                         self.record_list[0].Index,
                         'oclc_num'
                     ] = oclc_num
-                else:
-                    # Found zero or multiple WorldCat search results
-                    logger.debug(f"For row {self.record_list[0].Index + 2}, "
-                        f"found {json_response['numberOfRecords']} records.")
+                elif json_response['numberOfRecords'] > 1:
+                    # Found multiple WorldCat search results held by your library
+                    logger.debug(f"For row {self.record_list[0].Index + 2}, found "
+                        f"{json_response['numberOfRecords']} records held by "
+                        f"{os.environ['OCLC_INSTITUTION_SYMBOL']}.")
 
                     # Add number of records found to DataFrame
                     self.dataframe_for_input_file.loc[
                         self.record_list[0].Index,
-                        'num_records_total'
+                        f"num_records_held_by_{os.environ['OCLC_INSTITUTION_SYMBOL']}"
                     ] = json_response['numberOfRecords']
-        except json.decoder.JSONDecodeError:
-        # except (requests.exceptions.JSONDecodeError,
-        #         json.decoder.JSONDecodeError):
-            logger.exception(f'{api_response_error_msg}: Error decoding JSON')
-            logger.exception(f'{api_response.text=}')
+                else:
+                    # Found no WorldCat search results held by your library, so
+                    # search WorldCat WITHOUT a "held by" filter.
+                    logger.debug(f'Found no records held by '
+                        f"{os.environ['OCLC_INSTITUTION_SYMBOL']}. Searching "
+                        f'without the "held by" filter...')
 
-            # Re-raise exception so that the script is halted (since future API
-            # requests may result in the same error)
-            raise
+                    api_response = super().make_api_request(
+                        self.oauth_session.get,
+                        url)
+                    json_response = api_response.json()
+                    logger.debug(f'Search Brief Bibliographic Resources API '
+                        f'response (all records; no "held by" filter):\n'
+                        f'{json.dumps(json_response, indent=2)}')
+
+                    if json_response['numberOfRecords'] == 1:
+                        # Found a single WorldCat search result, so save the OCLC
+                        # Number
+                        oclc_num = json_response['briefRecords'][0]['oclcNumber']
+
+                        logger.debug(f"For row {self.record_list[0].Index + 2}, "
+                            f"the OCLC Number is {oclc_num}")
+
+                        # Add OCLC Number to DataFrame
+                        self.dataframe_for_input_file.loc[
+                            self.record_list[0].Index,
+                            'oclc_num'
+                        ] = oclc_num
+                    else:
+                        # Found zero or multiple WorldCat search results
+                        logger.debug(f"For row {self.record_list[0].Index + 2}, "
+                            f"found {json_response['numberOfRecords']} records.")
+
+                        # Add number of records found to DataFrame
+                        self.dataframe_for_input_file.loc[
+                            self.record_list[0].Index,
+                            'num_records_total'
+                        ] = json_response['numberOfRecords']
+
+                        # Only continue searching WorldCat (i.e. proceed to the
+                        # next search_query element) if the current search
+                        # returned 0 results.
+                        if json_response['numberOfRecords'] != 0:
+                            break
+
+            except json.decoder.JSONDecodeError:
+            # except (requests.exceptions.JSONDecodeError,
+            #         json.decoder.JSONDecodeError):
+                logger.exception(f'{api_response_error_msg}: Error decoding JSON')
+                logger.exception(f'{api_response.text=}')
+
+                # Re-raise exception so that the script is halted (since future API
+                # requests may result in the same error)
+                raise
 
         logger.debug('Finished processing records buffer.')
 
