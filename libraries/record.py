@@ -1,6 +1,7 @@
 import logging
 import logging.config
 import re
+import string
 import xml.etree.ElementTree as ET
 from typing import NamedTuple, Optional, Tuple
 
@@ -197,6 +198,9 @@ def get_valid_record_identifier(record_identifier: str,
         identifier_name: str) -> str:
     """Checks the validity of the given record identifier and returns it.
 
+    An identifier is considered invalid if it is empty or contains any non-digit
+    character (after removing leading or trailing whitespace).
+
     If valid, returns the record identifier with any leading or trailing
     whitespace removed.
     If invalid, raises AssertionError.
@@ -217,8 +221,8 @@ def get_valid_record_identifier(record_identifier: str,
     Raises
     ------
     AssertionError
-        If the record identifier is invalid (i.e. it is empty or contains
-        non-digit characters)
+        If the record identifier is invalid (i.e. it is empty or contains any
+        non-digit character)
     """
     empty_identifier_error_msg = (f"Invalid {identifier_name}: "
         f"'{record_identifier}'. It cannot be empty.")
@@ -287,12 +291,12 @@ def is_valid_record_identifier(record_identifier: str,
     return False
 
 
-def remove_leading_zeros(string: str) -> str:
+def remove_leading_zeros(orig_str: str) -> str:
     """Removes leading zeros from the given string, if applicable.
 
     Parameters
     ----------
-    string: str
+    orig_str: str
         The string to remove leading zeros from. This string must represent an
         integer value (i.e. it cannot contain a decimal point or any other
         non-digit character).
@@ -302,7 +306,7 @@ def remove_leading_zeros(string: str) -> str:
     str
         The string without leading zeros
     """
-    return str(int(string))
+    return str(int(orig_str))
 
 
 def remove_oclc_org_code_prefix(full_oclc_string: str) -> str:
@@ -323,6 +327,25 @@ def remove_oclc_org_code_prefix(full_oclc_string: str) -> str:
     return (full_oclc_string[len(oclc_org_code_prefix):].rstrip()
         if full_oclc_string.startswith(oclc_org_code_prefix)
         else full_oclc_string.rstrip())
+
+
+def remove_punctuation_and_spaces(orig_str: str) -> str:
+    """Removes punctuation and spaces from the given string, if applicable.
+
+    Also converts uppercase characters into lowercase.
+
+    Parameters
+    ----------
+    orig_str: str
+        The string to remove punctuation and spaces from (and make lowercase)
+
+    Returns
+    -------
+    str
+        The lowercase string without punctuation and spaces
+    """
+    return orig_str.translate(
+        str.maketrans('', '', string.punctuation + ' ')).lower()
 
 
 def split_and_join_valid_record_identifiers(

@@ -891,17 +891,23 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     identifier_name='issn',
                     split_separator=';')) != ''):
             search_query = f'in:{issn}'
-        elif (hasattr(self.record_list[0], 'gov_doc_class_num_086')
-                and (gov_doc_class_num_086 := self.record_list[0].gov_doc_class_num_086.strip())
-                    != ''):
-            search_query = f'gn:{gov_doc_class_num_086}'
+        elif hasattr(self.record_list[0], 'gov_doc_class_num_086'):
+            gov_doc_class_num_086 = \
+                libraries.record.remove_punctuation_and_spaces(
+                    self.record_list[0].gov_doc_class_num_086.strip())
 
-            # If 074 field exists and has a nonempty value, then combine 086 and
-            # 074 values
-            if (hasattr(self.record_list[0], 'gpo_item_num_074')
-                    and (gpo_item_num_074 := self.record_list[0].gpo_item_num_074.strip())
-                        != ''):
-                search_query += f' AND gn:{gpo_item_num_074}'
+            if gov_doc_class_num_086 != '':
+                search_query = f'gn:{gov_doc_class_num_086}'
+
+                # If 074 field exists and has a nonempty value, then combine 086
+                # and 074 values
+                if hasattr(self.record_list[0], 'gpo_item_num_074'):
+                    gpo_item_num_074 = \
+                        libraries.record.remove_punctuation_and_spaces(
+                            self.record_list[0].gpo_item_num_074.strip())
+
+                    if gpo_item_num_074 != '':
+                        search_query += f' AND gn:{gpo_item_num_074}'
 
         assert search_query is not None, ('Cannot build a valid search query. '
             'Record from input file must include at least one of the following '
