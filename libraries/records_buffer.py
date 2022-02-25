@@ -844,9 +844,17 @@ class WorldCatSearchBuffer(RecordsBuffer):
     def process_records(self) -> None:
         """Searches WorldCat using the record data in record_list.
 
-        The WorldCat search is performed using each available record identifier
-        (LCCN, ISBN, ISSN, and Government Document Number), stopping as soon as
-        search results are found for a given identifier.
+        The WorldCat search is performed using the first available record
+        identifier (in this order):
+        - lccn_fixed (i.e. a corrected version of the lccn value)
+        - lccn
+        - isbn (accepts multiple values separated by a semicolon)
+        - issn (accepts multiple values separated by a semicolon)
+        - gov_doc_class_num_086 (i.e. MARC field 086: Government Document
+          Classification Number): If the gpo_item_num_074 (i.e. MARC field 074:
+          GPO Item Number) is also available, then a combined search is
+          performed (gov_doc_class_num_086 AND gpo_item_num_074). If only
+          gpo_item_num_074 is available, then no search is performed.
 
         This is done by making a GET request to the WorldCat Metadata API v1.1:
         https://americas.metadata.api.oclc.org/worldcat/search/v1/brief-bibs?q={search_query}

@@ -43,9 +43,17 @@ def init_argparse() -> argparse.ArgumentParser:
 def main() -> None:
     """Searches WorldCat for each record in input file and saves OCLC Number.
 
-    For each row in the input file, a WorldCat search is performed using each
-    available record identifier (LCCN, ISBN, and ISSN), stopping as soon as
-    search results are found for a given identifier.
+    For each row in the input file, a WorldCat search is performed using the
+    first available record identifier (in this order):
+    - lccn_fixed (i.e. a corrected version of the lccn value)
+    - lccn
+    - isbn (accepts multiple values separated by a semicolon)
+    - issn (accepts multiple values separated by a semicolon)
+    - gov_doc_class_num_086 (i.e. MARC field 086: Government Document
+      Classification Number): If the gpo_item_num_074 (i.e. MARC field 074:
+      GPO Item Number) is also available, then a combined search is
+      performed (gov_doc_class_num_086 AND gpo_item_num_074). If only
+      gpo_item_num_074 is available, then no search is performed.
 
     Outputs the following files:
     - outputs/search_worldcat/records_with_oclc_num.csv
