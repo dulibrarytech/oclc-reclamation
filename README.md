@@ -436,20 +436,20 @@ record identifiers: LCCN, ISBN, ISSN, Government Document Classification Number
 (MARC field 086).
 2. Run `search_worldcat.py` script using the input spreadsheet(s) created in the
 previous step.
-  1. Review the 3 spreadsheets output by the script.
-  2. If relevant, send the following 2 spreadsheets to your Cataloging Team
-  (they'll need to manually add the OCLC Number to these Alma records):
-    1. `outputs/search_worldcat/records_with_zero_or_multiple_worldcat_matches.csv`
-    2. `outputs/search_worldcat/records_with_errors_when_searching_worldcat.csv`
+    1. Review the 3 spreadsheets output by the script.
+    2. If relevant, send the following 2 spreadsheets to your Cataloging Team
+    (they'll need to manually add the OCLC Number to these Alma records):
+        1. `outputs/search_worldcat/records_with_zero_or_multiple_worldcat_matches.csv`
+        2. `outputs/search_worldcat/records_with_errors_when_searching_worldcat.csv`
 3. Run `update_alma_records.py` script using the following input file:
 `outputs/search_worldcat/records_with_oclc_num.csv` (one of the spreadsheets
 output by `search_worldcat.py`).
-  1. Review the 3 spreadsheets output by script, and then rename them (that way,
-  when you run this script again later, it will output new spreadsheets rather
-  than append to these existing spreadsheets).
-  2. If relevant, send the following spreadsheet to your Cataloging Team (they'll
-  need to manually add the OCLC Number to these Alma records):
-  `outputs/update_alma_records/records_with_errors.csv`
+    1. Review the 3 spreadsheets output by script, and then rename them (that way,
+    when you run this script again later, it will output new spreadsheets rather
+    than append to these existing spreadsheets).
+    2. If relevant, send the following spreadsheet to your Cataloging Team (they'll
+    need to manually add the OCLC Number to these Alma records):
+    `outputs/update_alma_records/records_with_errors.csv`
 4. Run `extract_record_identifiers.py` script.
   1. For the `directory_with_xml_files` input, follow
   [these instructions](#extract_record_identifierspy). You'll have to finalize
