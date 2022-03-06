@@ -158,10 +158,11 @@ value from the Alma record)
 - `isbn` (accepts multiple values separated by a semicolon)
 - `issn` (accepts multiple values separated by a semicolon)
 - `gov_doc_class_num_086` (i.e. MARC field 086: Government Document
-Classification Number): If the `gpo_item_num_074` (i.e. MARC field 074: GPO Item
-Number) is also available, then a combined search is performed
-(`gov_doc_class_num_086` AND `gpo_item_num_074`). If only `gpo_item_num_074` is
-available, then no search is performed.
+Classification Number)
+  - If `gpo_item_num_074` (i.e. MARC field 074: GPO Item Number) is also
+available, then a combined search is performed (`gov_doc_class_num_086` AND
+`gpo_item_num_074`).
+  - If only `gpo_item_num_074` is available, then no search is performed.
 
 Outputs the following files:
 - `outputs/search_worldcat/records_with_oclc_num.csv`: Records with one WorldCat
@@ -436,6 +437,8 @@ spreadsheet(s) for `search_worldcat.py` script.
     1. Each row of the input spreadsheet must contain the record's MMS ID and at
     least one of the following record identifiers: LCCN, ISBN, ISSN, Government
     Document Classification Number (MARC field 086).
+    2. For the correct column headings, see
+    `inputs/search_worldcat/example.csv`.
 2. Run `search_worldcat.py` script using the input spreadsheet(s) created in the
 previous step.
     1. Review the 3 spreadsheets output by the script.
@@ -521,12 +524,11 @@ records you truly want to unset.
     contain records that *should not be unset*.
     3. There are different reasons why the `alma_records_file` might be missing
     relevant records (e.g. earlier scripts may have encountered errors with
-    certain records, or some records might have had zero or multiple OCLC
-    numbers).
+    certain records).
 12. If you have a `records_to_unset_in_worldcat.csv` file that you are
 comfortable is accurate, then run the `process_worldcat_records.py` script using
 the `unset_holding` operation with this input file.
-    1. [See these instructions](#extract_record_identifierspy) for more details.
+    1. [See these instructions](#process_worldcat_recordspy) for more details.
     2. Review the 3 spreadsheets output by the script.
 
 ### Maintainers
