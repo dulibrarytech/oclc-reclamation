@@ -523,8 +523,8 @@ records you truly want to unset.
     `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv` will
     contain records that *should not be unset*.
     3. There are different reasons why the `alma_records_file` might be missing
-    relevant records (e.g. earlier scripts may have encountered errors with
-    certain records).
+    relevant records. For example, scripts may have encountered errors with
+    certain records.
 12. If you have a `records_to_unset_in_worldcat.csv` file that you are
 comfortable is accurate, then run the `process_worldcat_records.py` script using
 the `unset_holding` operation with this input file.
