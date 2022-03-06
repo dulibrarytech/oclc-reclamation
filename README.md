@@ -451,74 +451,74 @@ output by `search_worldcat.py`).
     need to manually add the OCLC Number to these Alma records):
     `outputs/update_alma_records/records_with_errors.csv`
 4. Run `extract_record_identifiers.py` script.
-  1. For the `directory_with_xml_files` input, follow
-  [these instructions](#extract_record_identifierspy). You'll have to finalize
-  the reclamation project sets (i.e. the sets containing all the Alma records
-  that should be in WorldCat) before you export them as XML files.
-  2. For the `alma_records_with_current_oclc_num` input file, combine the MMS ID
-  column from `outputs/update_alma_records/records_updated.csv` and
-  `outputs/update_alma_records/records_with_no_update_needed.csv` (the resulting
-  CSV file should have a single column named "MMS ID").
-  3. Review the 3 spreadsheets output by script.
+    1. For the `directory_with_xml_files` input, follow
+    [these instructions](#extract_record_identifierspy). You'll have to finalize
+    the reclamation project sets (i.e. the sets containing all the Alma records
+    that should be in WorldCat) before you export them as XML files.
+    2. For the `alma_records_with_current_oclc_num` input file, combine the MMS ID
+    column from `outputs/update_alma_records/records_updated.csv` and
+    `outputs/update_alma_records/records_with_no_update_needed.csv` (the resulting
+    CSV file should have a single column named "MMS ID").
+    3. Review the 3 spreadsheets output by script.
 5. Run `process_worldcat_records.py` script using the `get_current_oclc_number`
 operation and the following input spreadsheet:
 `outputs/extract_record_identifiers/master_list_records_with_potentially_old_oclc_num.csv`
 (one of the spreadsheets output by `extract_record_identifiers.py`).
-  1. You'll need to make sure that this input spreadsheet adheres to
-  `inputs/process_worldcat_records/get_current_oclc_number/example.csv` (in
-  terms of the column headings).
-  2. Review the 3 spreadsheets output by script.
+    1. You'll need to make sure that this input spreadsheet adheres to
+    `inputs/process_worldcat_records/get_current_oclc_number/example.csv` (in
+    terms of the column headings).
+    2. Review the 3 spreadsheets output by script.
 6. Run `update_alma_records.py` script using the following input file:
 `outputs/process_worldcat_records/get_current_oclc_number/needs_current_oclc_number.csv`
 (one of the spreadsheets output by `process_worldcat_records.py` in the previous
 step).
-  1. Review the 3 spreadsheets output by script.
-  2. If relevant, send `outputs/update_alma_records/records_with_errors.csv` to
-  your Cataloging Team. They'll need to manually add the OCLC Number to these
-  Alma records.
+    1. Review the 3 spreadsheets output by script.
+    2. If relevant, send `outputs/update_alma_records/records_with_errors.csv` to
+    your Cataloging Team. They'll need to manually add the OCLC Number to these
+    Alma records.
 7. Create the Alma Master List spreadsheet, which contains the OCLC number of
 each Alma record whose holding *should be set in WorldCat* for your institution
 (this CSV file should have a single column named "OCLC Number"). Populate this
 spreadsheet as follows:
-  1. Add all OCLC numbers from
-  `outputs/extract_record_identifiers/master_list_records_with_current_oclc_num.csv`
-  (one of the spreadsheets output by `extract_record_identifiers.py`).
-  2. Add all OCLC numbers from
-  `outputs/process_worldcat_records/get_current_oclc_number/already_has_current_oclc_number.csv`
-  (one of the spreadsheets output by `process_worldcat_records.py` using the
-  `get_current_oclc_number` operation).
-  3. Add all OCLC numbers from the following spreadsheets (which were output by
-  `update_alma_records.py` in the previous step):
-    1. `outputs/update_alma_records/records_updated.csv`
-    2. `outputs/update_alma_records/records_with_no_update_needed.csv`
+    1. Add all OCLC numbers from
+    `outputs/extract_record_identifiers/master_list_records_with_current_oclc_num.csv`
+    (one of the spreadsheets output by `extract_record_identifiers.py`).
+    2. Add all OCLC numbers from
+    `outputs/process_worldcat_records/get_current_oclc_number/already_has_current_oclc_number.csv`
+    (one of the spreadsheets output by `process_worldcat_records.py` using the
+    `get_current_oclc_number` operation).
+    3. Add all OCLC numbers from the following spreadsheets (which were output by
+    `update_alma_records.py` in the previous step):
+        1. `outputs/update_alma_records/records_updated.csv`
+        2. `outputs/update_alma_records/records_with_no_update_needed.csv`
 8. Create the WorldCat Holdings List, a directory of `.txt` files containing the
 OCLC number for all records whose holdings *are currently set in WorldCat* for
 your institution (each file should contain a single column named "035$a").
-  1. To do this, use OCLC WorldShare to export the bibliographic records for all
-  your institution's holdings.
-  [See these instructions](https://help.oclc.org/Metadata_Services/WorldShare_Collection_Manager/Choose_your_Collection_Manager_workflow/Query_collections/Create_a_query_collection_to_get_a_spreadsheet_of_your_holdings/Create_a_spreadsheet_of_your_WorldCat_holdings)
-  for more details.
+    1. To do this, use OCLC WorldShare to export the bibliographic records for all
+    your institution's holdings.
+    [See these instructions](https://help.oclc.org/Metadata_Services/WorldShare_Collection_Manager/Choose_your_Collection_Manager_workflow/Query_collections/Create_a_query_collection_to_get_a_spreadsheet_of_your_holdings/Create_a_spreadsheet_of_your_WorldCat_holdings)
+    for more details.
 9. Run `compare_alma_to_worldcat.py` script using the Alma Master List
 spreadsheet as the `alma_records_file` input and the WorldCat Holdings List
 directory as the `worldcat_records_directory` input.
-  1. Review the 3 spreadsheets output by script.
+    1. Review the 3 spreadsheets output by script.
 10. Run `process_worldcat_records.py` script using the `set_holding` operation
 and the following input spreadsheet:
 `outputs/compare_alma_to_worldcat/records_to_set_in_worldcat.csv`
 11. Decide whether `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv`
 (one of the spreadsheets output by `compare_alma_to_worldcat.py`) represents the
 records you truly want to unset.
-  1. This spreadsheet represents the OCLC numbers found in the
-  `worldcat_records_directory` but not the `alma_records_file`. So you have to
-  be sure that the `alma_records_file` (i.e. the Alma Master List) contains *all*
-  records whose holdings should be set in WorldCat for your institution.
-  2. There are different reasons why the `alma_records_file` might be missing
-  relevant records (e.g. earlier scripts may have encountered errors with
-  certain records, or some records might have had zero or multiple OCLC numbers).
+    1. This spreadsheet represents the OCLC numbers found in the
+    `worldcat_records_directory` but not the `alma_records_file`. So you have to
+    be sure that the `alma_records_file` (i.e. the Alma Master List) contains *all*
+    records whose holdings should be set in WorldCat for your institution.
+    2. There are different reasons why the `alma_records_file` might be missing
+    relevant records (e.g. earlier scripts may have encountered errors with
+    certain records, or some records might have had zero or multiple OCLC numbers).
 12. If you have a `records_to_unset_in_worldcat.csv` file that you are
 comfortable is accurate, run `process_worldcat_records.py` script using the
 `unset_holding` operation with this input file.
-  1. Review the 3 spreadsheets output by script.
+    1. Review the 3 spreadsheets output by script.
 
 ### Maintainers
 
