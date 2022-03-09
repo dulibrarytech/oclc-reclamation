@@ -449,7 +449,7 @@ previous step.
 3. Run `update_alma_records.py` script using the following input file:
 `outputs/search_worldcat/records_with_oclc_num.csv` (one of the spreadsheets
 output by `search_worldcat.py`).
-    1. Review the 3 spreadsheets output by the script, and then rename them
+    1. Review the 3 spreadsheets output by the script, and then *rename them*
     (that way, when you run this script again later, it will output new
     spreadsheets rather than append to these existing spreadsheets).
     2. If relevant, send `outputs/update_alma_records/records_with_errors.csv`
@@ -466,6 +466,11 @@ output by `search_worldcat.py`).
     spreadsheets output by `update_alma_records.py`). The resulting CSV file
     should have a single column named "MMS ID".
     3. Review the 3 spreadsheets output by the script.
+    4. If relevant, send
+    `outputs/extract_record_identifiers/master_list_records_with_errors.csv` to
+    your Cataloging Team. They'll need to manually fix these Alma records (some
+    possible problems might include multiple OCLC Numbers, invalid OCLC Numbers,
+    or no OCLC Number at all).
 5. Run `process_worldcat_records.py` script using the `get_current_oclc_number`
 operation and the following input spreadsheet:
 `outputs/extract_record_identifiers/master_list_records_with_potentially_old_oclc_num.csv`
@@ -474,6 +479,9 @@ operation and the following input spreadsheet:
     `inputs/process_worldcat_records/get_current_oclc_number/example.csv` (in
     terms of the column headings).
     2. Review the 3 spreadsheets output by the script.
+    3. If relevant, send
+    `outputs/process_worldcat_records/get_current_oclc_number/records_with_errors_when_getting_current_oclc_number.csv`
+    to your Cataloging Team. They'll need to manually fix these Alma records.
 6. Run `update_alma_records.py` script using the following input file:
 `outputs/process_worldcat_records/get_current_oclc_number/needs_current_oclc_number.csv`
 (one of the spreadsheets output by `process_worldcat_records.py` in the previous
@@ -512,6 +520,12 @@ directory as the `worldcat_records_directory` input.
 and the following input spreadsheet:
 `outputs/compare_alma_to_worldcat/records_to_set_in_worldcat.csv` (one of the
 spreadsheets output by `compare_alma_to_worldcat.py`).
+    1. Review the 3 spreadsheets output by the script.
+    2. If relevant, send
+    `outputs/process_worldcat_records/set_holding/records_with_errors_when_setting_holding.csv`
+    to your Cataloging Team. For each record:
+        1. They may need to manually set the holding in WorldCat.
+        2. They may also want to find the corresponding Alma record and fix it.
 11. Decide whether `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv`
 (one of the spreadsheets output by `compare_alma_to_worldcat.py`) represents the
 records you truly want to unset.
@@ -519,17 +533,27 @@ records you truly want to unset.
     `worldcat_records_directory` but not the `alma_records_file`. So you have to
     be sure that the `alma_records_file` (i.e. the Alma Master List) contains *all*
     records whose holdings should be set in WorldCat for your institution.
-    2. If the `alma_records_file` is missing relevant records, then
+    2. If the `alma_records_file` is missing relevant records (perhaps because
+    your Cataloging Team is manually fixing these Alma records), then
     `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv` will
     contain records that *should not be unset*.
     3. There are different reasons why the `alma_records_file` might be missing
     relevant records. For example, scripts may have encountered errors with
     certain records.
+    4. So in addition to reviewing
+    `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv`, you may
+    want to manually review the other scripts' outputs (especially the error
+    spreadsheets).
 12. If you have a `records_to_unset_in_worldcat.csv` file that you are
 comfortable is accurate, then run the `process_worldcat_records.py` script using
 the `unset_holding` operation with this input file.
     1. [See these instructions](#process_worldcat_recordspy) for more details.
     2. Review the 3 spreadsheets output by the script.
+    3. If relevant, send
+    `outputs/process_worldcat_records/unset_holding/records_with_errors_when_unsetting_holding.csv`
+    to your Cataloging Team. For each record:
+        1. They may need to manually unset the holding in WorldCat.
+        2. They may also want to find the corresponding Alma record and fix it.
 
 ### Maintainers
 
