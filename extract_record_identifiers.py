@@ -8,7 +8,10 @@ import xml.etree.ElementTree as ET
 from csv import writer
 from datetime import datetime
 
-logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logging.config.fileConfig(
+    'logging.conf',
+    defaults={'log_filename': 'logs/extract_record_identifiers.log'},
+    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -60,16 +63,20 @@ def main() -> None:
     - If any of the above output files already exists in the directory, then it
       is appended to (not overwritten).
     """
+
     start_time = datetime.now()
 
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
+
     directory_with_xml_files = args.directory_with_xml_files.rstrip('/')
-    logger.debug(f'Command-line args:\n'
-        f'{directory_with_xml_files = }\n'
+    command_line_args_str = (f'command-line args:\n'
+        f'directory_with_xml_files = {directory_with_xml_files}\n'
         f'alma_records_with_current_oclc_num = '
-        f'{args.alma_records_with_current_oclc_num}\n')
+        f'{args.alma_records_with_current_oclc_num}')
+
+    logger.info(f'Started {parser.prog} script with {command_line_args_str}')
 
     # Create sets
     mms_ids_already_processed = set()
@@ -278,8 +285,10 @@ def main() -> None:
     # logger.debug(f'{mms_ids_already_processed=}\n')
     logger.debug(f'{len(mms_ids_already_processed)=}\n')
 
+    logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
+
     print(f'End of script. Completed in: {datetime.now() - start_time} ' \
-        f'(hours:minutes:seconds.microseconds)')
+        f'(hours:minutes:seconds.microseconds)\n')
 
 
 if __name__ == "__main__":

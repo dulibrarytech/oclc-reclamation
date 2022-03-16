@@ -9,13 +9,17 @@ import pandas as pd
 import requests
 import xml.etree.ElementTree as ET
 from csv import writer
+from datetime import datetime
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
 from typing import NamedTuple, Optional, Tuple
 
 load_dotenv()
 
-logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logging.config.fileConfig(
+    'logging.conf',
+    defaults={'log_filename': 'logs/update_alma_records.log'},
+    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 alma_bibs_api_url = os.environ["ALMA_BIBS_API_URL"]
@@ -440,6 +444,8 @@ def main() -> None:
       035 __ $a (OCoLC)ABC01234567def
     """
 
+    start_time = datetime.now()
+
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
@@ -462,6 +468,11 @@ def main() -> None:
         raise ValueError(f'Invalid format for input file ({args.input_file}). '
             f'Must be one of the following file formats: CSV (.csv) or Excel '
             f'(.xlsx or .xls).')
+
+    command_line_args_str = (f'command-line arg:\n'
+        f'input_file = {args.input_file}')
+
+    logger.info(f'Started {parser.prog} script with {command_line_args_str}')
 
     # Loop over rows in DataFrame and update the corresponding Alma record
     num_records_updated = 0
@@ -582,12 +593,16 @@ def main() -> None:
                         and record.num_api_requests_made is not None):
                     num_api_requests_made += record.num_api_requests_made
 
-    print(f'\nEnd of script. {num_records_updated} of {len(data.index)} '
-        f'records updated.\n'
-        f'The script made {num_api_requests_made} API requests.')
+    logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
+
+    print(f'End of script. Completed in: {datetime.now() - start_time} '
+        f'(hours:minutes:seconds.microseconds).\n'
+        f'{num_records_updated} of {len(data.index)} records updated.\n'
+        f'The script made {num_api_requests_made} API request(s).')
     if num_api_requests_remaining is not None:
         print(f'Ex Libris API requests remaining for today: '
-            f'{num_api_requests_remaining}')
+            f'{num_api_requests_remaining}\n')
+
 
 if __name__ == "__main__":
     main()

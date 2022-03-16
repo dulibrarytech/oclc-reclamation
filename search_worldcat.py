@@ -12,7 +12,10 @@ from datetime import datetime
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
 
-logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logging.config.fileConfig(
+    'logging.conf',
+    defaults={'log_filename': 'logs/search_worldcat.log'},
+    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -90,6 +93,11 @@ def main() -> None:
         raise ValueError(f'Invalid format for input file ({args.input_file}). '
             f'Must be one of the following file formats: CSV (.csv) or Excel '
             f'(.xlsx or .xls).')
+
+    command_line_args_str = (f'command-line arg:\n'
+        f'input_file = {args.input_file}')
+
+    logger.info(f'Started {parser.prog} script with {command_line_args_str}')
 
     # Add results columns to DataFrame
     data['oclc_num'] = np.nan
@@ -171,6 +179,8 @@ def main() -> None:
         # columns=['mms_id', 'lccn_fixed', 'lccn', 'isbn', 'issn', 'error'],
         index=False)
 
+    logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
+
     print(f'End of script. Completed in: {datetime.now() - start_time} '
         f'(hours:minutes:seconds.microseconds).\n'
         f'The script made {records_buffer.num_api_requests_made} API '
@@ -179,7 +189,7 @@ def main() -> None:
         f'- {len(records_with_oclc_num.index)} record(s) with OCLC Number\n'
         f'- {len(records_with_zero_or_multiple_worldcat_matches.index)} '
         f'record(s) with zero or multiple WorldCat matches\n'
-        f'- {len(records_with_errors.index)} record(s) with errors')
+        f'- {len(records_with_errors.index)} record(s) with errors\n')
 
     total_records_in_output_files = (
         len(records_with_oclc_num.index)
@@ -188,7 +198,7 @@ def main() -> None:
 
     assert len(data.index) == total_records_in_output_files, (f'Total records '
         f'in input file ({len(data.index)}) does not equal total records in '
-        f'output files ({total_records_in_output_files}).')
+        f'output files ({total_records_in_output_files}).\n')
 
 
 if __name__ == "__main__":

@@ -6,7 +6,10 @@ import os
 from csv import writer
 from datetime import datetime
 
-logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logging.config.fileConfig(
+    'logging.conf',
+    defaults={'log_filename': 'logs/compare_alma_to_worldcat.log'},
+    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -59,15 +62,19 @@ def main() -> None:
     - If any of the above output files already exists in the directory, then it
       is overwritten.
     """
+
     start_time = datetime.now()
 
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
+
     worldcat_records_directory = args.worldcat_records_directory.rstrip('/')
-    logger.debug(f'Command-line args:\n'
+    command_line_args_str = (f'command-line args:\n'
         f'alma_records_file = {args.alma_records_file}\n'
-        f'{worldcat_records_directory = }\n')
+        f'worldcat_records_directory = {worldcat_records_directory}')
+
+    logger.info(f'Started {parser.prog} script with {command_line_args_str}')
 
     # Populate alma_records_set from input file
     alma_records_set = set()
@@ -140,8 +147,10 @@ def main() -> None:
             records_in_worldcat_not_alma_writer,
             'OCLC Number')
 
+    logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
+
     print(f'End of script. Completed in: {datetime.now() - start_time} ' \
-        f'(hours:minutes:seconds.microseconds)')
+        f'(hours:minutes:seconds.microseconds)\n')
 
 
 if __name__ == "__main__":

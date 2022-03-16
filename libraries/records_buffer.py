@@ -5,7 +5,7 @@ import libraries.api
 import libraries.handle_file
 import libraries.record
 import logging
-import logging.config
+# import logging.config
 import os
 import pandas as pd
 import requests
@@ -19,7 +19,7 @@ from typing import Callable, Dict, List, NamedTuple, Set, TextIO, Union
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
 
-logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+# logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -372,6 +372,9 @@ class AlmaRecordsBuffer(RecordsBuffer):
         """
 
         logger.debug('Started processing records buffer...')
+
+        # DELETE THIS AFTER TESTING
+        logger.info('This is a test from libraries.records_buffer.AlmaRecordsBuffer.process_records.')
 
         api_response_error_msg = ('Problem with Get Current OCLC Number API '
             'response')
@@ -870,6 +873,9 @@ class WorldCatSearchBuffer(RecordsBuffer):
         """
 
         logger.debug('Started processing records buffer...')
+
+        # DELETE THIS AFTER TESTING
+        logger.info('This is a test from libraries.records_buffer.WorldCatSearchBuffer.process_records.')
 
         api_response_error_msg = ('Problem with Search Brief Bibliographic '
             'Resources API response')

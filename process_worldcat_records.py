@@ -12,7 +12,10 @@ from datetime import datetime
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
 
-logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
+logging.config.fileConfig(
+    'logging.conf',
+    defaults={'log_filename': 'logs/process_worldcat_records.log'},
+    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -109,10 +112,6 @@ def main() -> None:
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
-    logger.debug(f'Command-line args:\n'
-        f'operation = {args.operation}\n'
-        f'input_file = {args.input_file}\n'
-        f'cascade = {args.cascade}\n')
 
     # Convert input file into pandas DataFrame
     data = None
@@ -121,6 +120,13 @@ def main() -> None:
     else:
         raise ValueError(f'Invalid format for input file ({args.input_file}). '
             f'Must be a CSV file (.csv).')
+
+    command_line_args_str = (f'command-line args:\n'
+        f'operation = {args.operation}\n'
+        f'input_file = {args.input_file}\n'
+        f'cascade = {args.cascade}')
+
+    logger.info(f'Started {parser.prog} script with {command_line_args_str}')
 
     records_already_processed = set()
     results = None
@@ -301,7 +307,9 @@ def main() -> None:
         if len(records_buffer) > 0:
             records_buffer.process_records(results)
 
-    print(f'\nEnd of script. Completed in: {datetime.now() - start_time} '
+    logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
+
+    print(f'End of script. Completed in: {datetime.now() - start_time} '
         f'(hours:minutes:seconds.microseconds).\n'
         f'The script made {records_buffer.num_api_requests_made} API '
         f'request(s).\n'
@@ -318,7 +326,7 @@ def main() -> None:
             f'i.e. holding was successfully {set_or_unset_choice}\n'
             f'- {results["num_records_with_no_update_needed"]} record(s) not '
             f'updated because holding was already {set_or_unset_choice}\n'
-            f'- {results["num_records_with_errors"]} record(s) with errors')
+            f'- {results["num_records_with_errors"]} record(s) with errors\n')
 
 if __name__ == "__main__":
     main()
