@@ -1,11 +1,9 @@
 import logging
-# import logging.config
 import re
 import string
 import xml.etree.ElementTree as ET
 from typing import NamedTuple, Optional, Tuple
 
-# logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 oclc_org_code_prefix = '(OCoLC)'
@@ -160,9 +158,6 @@ def get_subfield_a_with_oclc_num(
     subfield_a_elements = field_035_element.findall('./subfield[@code="a"]')
     subfield_a_strings = list()
 
-    # DELETE THIS AFTER TESTING
-    logger.info('This is a test from libraries.record.get_subfield_a_with_oclc_num.')
-
     for subfield_a_element_index, subfield_a_element in enumerate(
             subfield_a_elements, start=1):
         subfield_a_text = ('<empty>' if subfield_a_element.text is None
@@ -229,9 +224,6 @@ def get_valid_record_identifier(record_identifier: str,
     """
     empty_identifier_error_msg = (f"Invalid {identifier_name}: "
         f"'{record_identifier}'. It cannot be empty.")
-
-    # DELETE THIS AFTER TESTING
-    logger.error(f'This is a test from libraries.record.get_valid_record_identifier for {identifier_name}.')
 
     assert record_identifier is not None, empty_identifier_error_msg
 

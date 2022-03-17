@@ -8,11 +8,6 @@ import xml.etree.ElementTree as ET
 from csv import writer
 from datetime import datetime
 
-logging.config.fileConfig(
-    'logging.conf',
-    defaults={'log_filename': f'logs/extract_record_identifiers_'
-        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
-    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -70,6 +65,13 @@ def main() -> None:
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
+
+    # Configure logging
+    logging.config.fileConfig(
+        'logging.conf',
+        defaults={'log_filename': f'logs/extract_record_identifiers_'
+            f'{start_time.strftime("%Y-%m-%d_%H-%M-%S")}.log'},
+        disable_existing_loggers=False)
 
     directory_with_xml_files = args.directory_with_xml_files.rstrip('/')
     command_line_args_str = (f'command-line args:\n'

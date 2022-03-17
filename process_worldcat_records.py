@@ -12,11 +12,6 @@ from datetime import datetime
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
 
-logging.config.fileConfig(
-    'logging.conf',
-    defaults={'log_filename': f'logs/process_worldcat_records_'
-        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
-    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -121,6 +116,13 @@ def main() -> None:
     else:
         raise ValueError(f'Invalid format for input file ({args.input_file}). '
             f'Must be a CSV file (.csv).')
+
+    # Configure logging
+    logging.config.fileConfig(
+        'logging.conf',
+        defaults={'log_filename': f'logs/process_worldcat_records_'
+            f'{start_time.strftime("%Y-%m-%d_%H-%M-%S")}.log'},
+        disable_existing_loggers=False)
 
     command_line_args_str = (f'command-line args:\n'
         f'operation = {args.operation}\n'

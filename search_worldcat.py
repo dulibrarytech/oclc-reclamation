@@ -12,11 +12,6 @@ from datetime import datetime
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
 
-logging.config.fileConfig(
-    'logging.conf',
-    defaults={'log_filename': f'logs/search_worldcat_'
-        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
-    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -94,6 +89,13 @@ def main() -> None:
         raise ValueError(f'Invalid format for input file ({args.input_file}). '
             f'Must be one of the following file formats: CSV (.csv) or Excel '
             f'(.xlsx or .xls).')
+
+    # Configure logging
+    logging.config.fileConfig(
+        'logging.conf',
+        defaults={'log_filename': f'logs/search_worldcat_'
+            f'{start_time.strftime("%Y-%m-%d_%H-%M-%S")}.log'},
+        disable_existing_loggers=False)
 
     command_line_args_str = (f'command-line arg:\n'
         f'input_file = {args.input_file}')

@@ -16,11 +16,6 @@ from typing import NamedTuple, Optional, Tuple
 
 load_dotenv()
 
-logging.config.fileConfig(
-    'logging.conf',
-    defaults={'log_filename': f'logs/update_alma_records_'
-        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
-    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 alma_bibs_api_url = os.environ["ALMA_BIBS_API_URL"]
@@ -470,6 +465,13 @@ def main() -> None:
             f'Must be one of the following file formats: CSV (.csv) or Excel '
             f'(.xlsx or .xls).')
 
+    # Configure logging
+    logging.config.fileConfig(
+        'logging.conf',
+        defaults={'log_filename': f'logs/update_alma_records_'
+            f'{start_time.strftime("%Y-%m-%d_%H-%M-%S")}.log'},
+        disable_existing_loggers=False)
+
     command_line_args_str = (f'command-line arg:\n'
         f'input_file = {args.input_file}')
 
@@ -499,7 +501,7 @@ def main() -> None:
                     f"{num_api_requests_remaining} API requests remaining for "
                     f"today. Aborting script at row {index + 2} "
                     f"(MMS ID '{row['MMS ID']}') of input file "
-                    f"({args.input_file}).")
+                    f"({args.input_file}).\n")
                 break
 
             error_occurred = True

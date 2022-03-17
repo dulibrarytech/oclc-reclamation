@@ -6,11 +6,6 @@ import os
 from csv import writer
 from datetime import datetime
 
-logging.config.fileConfig(
-    'logging.conf',
-    defaults={'log_filename': f'logs/compare_alma_to_worldcat_'
-        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
-    disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
@@ -69,6 +64,13 @@ def main() -> None:
     # Initialize parser and parse command-line args
     parser = init_argparse()
     args = parser.parse_args()
+
+    # Configure logging
+    logging.config.fileConfig(
+        'logging.conf',
+        defaults={'log_filename': f'logs/compare_alma_to_worldcat_'
+            f'{start_time.strftime("%Y-%m-%d_%H-%M-%S")}.log'},
+        disable_existing_loggers=False)
 
     worldcat_records_directory = args.worldcat_records_directory.rstrip('/')
     command_line_args_str = (f'command-line args:\n'

@@ -2,14 +2,12 @@ import csv
 import dotenv
 import libraries.record
 import logging
-# import logging.config
 import os
 from typing import Set
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
 
-# logging.config.fileConfig('logging.conf', disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 col_headings = {'MMS ID', 'OCLC Number', '035$a'}
@@ -45,9 +43,6 @@ def csv_column_to_set(path_to_csv: str, target_set: Set[str], col_num: int,
     elif not path_to_csv.endswith(('.csv', '.txt')):
         raise ValueError(f'Invalid file format ({path_to_csv}). Must be one of '
             f'the following file formats: CSV (.csv) or text (.txt).')
-
-    # DELETE THIS AFTER TESTING
-    logger.info('This is a test from libraries.handle_file.csv_column_to_set.')
 
     with open(path_to_csv, mode='r', newline='') as file:
         file_reader = csv.reader(file)
