@@ -8,7 +8,8 @@ from datetime import datetime
 
 logging.config.fileConfig(
     'logging.conf',
-    defaults={'log_filename': 'logs/compare_alma_to_worldcat.log'},
+    defaults={'log_filename': f'logs/compare_alma_to_worldcat_'
+        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
     disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 

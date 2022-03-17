@@ -10,7 +10,8 @@ from datetime import datetime
 
 logging.config.fileConfig(
     'logging.conf',
-    defaults={'log_filename': 'logs/extract_record_identifiers.log'},
+    defaults={'log_filename': f'logs/extract_record_identifiers_'
+        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
     disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 

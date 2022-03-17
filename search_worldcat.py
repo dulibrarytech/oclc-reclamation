@@ -14,7 +14,8 @@ dotenv.load_dotenv(dotenv_file)
 
 logging.config.fileConfig(
     'logging.conf',
-    defaults={'log_filename': 'logs/search_worldcat.log'},
+    defaults={'log_filename': f'logs/search_worldcat_'
+        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
     disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 

@@ -18,7 +18,8 @@ load_dotenv()
 
 logging.config.fileConfig(
     'logging.conf',
-    defaults={'log_filename': 'logs/update_alma_records.log'},
+    defaults={'log_filename': f'logs/update_alma_records_'
+        f'{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'},
     disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
