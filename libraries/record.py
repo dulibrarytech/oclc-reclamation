@@ -386,12 +386,13 @@ def split_and_join_record_identifiers(
 
     identifiers_list = None
     if split_separator is None:
-        identifiers_list = (
-            element.strip() for element in str_with_record_identifiers.split())
+        identifiers_list = [
+            element.strip() for element in str_with_record_identifiers.split()]
     else:
-        identifiers_list = (
+        identifiers_list = [
             element.strip() for element in str_with_record_identifiers.split(
-                split_separator))
+                split_separator)]
+    logger.info(f'{type(identifiers_list) = }') # delete after testing
 
     identifiers_list_as_str = ''
     identifier_name_lowercase = identifier_name.lower()
@@ -411,6 +412,10 @@ def split_and_join_record_identifiers(
         identifiers_list_as_str = join_separator.join(map(
             lambda identifier: remove_punctuation_and_spaces(identifier),
             identifiers_list))
+
+        # Wrap string with multiple identifiers in parentheses
+        if len(identifiers_list) > 1:
+            identifiers_list_as_str = f'({identifiers_list_as_str})'
     else:
         # Just join the elements (no extra processing needed)
         identifiers_list_as_str = join_separator.join(identifiers_list)
