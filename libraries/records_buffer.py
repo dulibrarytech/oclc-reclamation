@@ -401,7 +401,7 @@ class AlmaRecordsBuffer(RecordsBuffer):
                 logger.debug(f'{is_current_oclc_num=}')
 
                 if not found_requested_oclc_num:
-                    logger.exception(f'{api_response_error_msg}: OCLC number '
+                    logger.error(f'{api_response_error_msg}: OCLC number '
                         f'{record["requestedOclcNumber"]} not found')
 
                     results['num_records_with_errors'] += 1
@@ -721,7 +721,7 @@ class WorldCatRecordsBuffer(RecordsBuffer):
                             f"{oclc_num_msg}")
                     ])
                 else:
-                    logger.exception(f"{api_response_error_msg} for OCLC "
+                    logger.error(f"{api_response_error_msg} for OCLC "
                         f"Number {record['requestedOclcNumber']}: "
                         f"{record['errorDetail']} ({record['httpStatusCode']})."
                     )

@@ -266,7 +266,7 @@ def is_valid_record_identifier(record_identifier: str,
         f"'{record_identifier}'")
 
     if record_identifier == '':
-        logger.exception(f"{invalid_identifier_error_msg}. It cannot be empty.")
+        logger.error(f"{invalid_identifier_error_msg}. It cannot be empty.")
         return False
 
     if record_identifier.isdigit():
@@ -279,12 +279,12 @@ def is_valid_record_identifier(record_identifier: str,
                 and record_identifier[:-1].isdigit()):
             return True
 
-        logger.exception(f"{invalid_identifier_error_msg}. Must contain only "
+        logger.error(f"{invalid_identifier_error_msg}. Must contain only "
             f"digits with or without a single trailing 'X'.")
         return False
 
     # All validity checks failed, so record identifier is invalid
-    logger.exception(f"{invalid_identifier_error_msg}. Must contain only "
+    logger.error(f"{invalid_identifier_error_msg}. Must contain only "
         f"digits.")
     return False
 
