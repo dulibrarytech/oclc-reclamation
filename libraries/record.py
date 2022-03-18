@@ -342,20 +342,25 @@ def remove_punctuation_and_spaces(orig_str: str) -> str:
     str
         The lowercase string without punctuation and spaces
     """
+    logger.info(f'{orig_str = }') # delete after testing
     return orig_str.translate(
         str.maketrans('', '', string.punctuation + ' ')).lower()
 
 
-def split_and_join_valid_record_identifiers(
+def split_and_join_record_identifiers(
         str_with_record_identifiers: str,
         identifier_name: str,
         split_separator: Optional[str] = None,
         join_separator: str = '|') -> str:
-    """Splits and then joins all valid record identifiers from the given string.
+    """Splits and then joins all record identifiers from the given string.
 
     1) The given string is split based on the split_separator. Each resulting
     element is stripped of any leading or trailing whitespace.
-    2) All invalid identifiers are removed.
+    2) Depending on the identifier_name, a filter or mapping operation may
+    occur:
+        - If ISBN or ISSN: All invalid identifiers are removed.
+        - If Government Document Number (e.g. MARC field 074 or 086):
+        punctuation and spaces are removed from each identifier.
     3) The remaining identifiers are joined based on the join_separator.
 
     Parameters
@@ -388,12 +393,29 @@ def split_and_join_valid_record_identifiers(
             element.strip() for element in str_with_record_identifiers.split(
                 split_separator))
 
-    identifiers_list_as_str = join_separator.join(filter(
-        lambda identifier: is_valid_record_identifier(
-            identifier,
-            identifier_name),
-        identifiers_list))
-    logger.debug(f"String after joining valid {identifier_name} values: "
-        f"'{identifiers_list_as_str}'")
+    identifiers_list_as_str = ''
+    identifier_name_lowercase = identifier_name.lower()
+    checked_validity = False
+
+    if identifier_name_lowercase.startswith(('isbn', 'issn')):
+        # Remove invalid identifiers from identifiers_list before joining
+        identifiers_list_as_str = join_separator.join(filter(
+            lambda identifier: is_valid_record_identifier(
+                identifier,
+                identifier_name),
+            identifiers_list))
+        checked_validity = True
+    elif identifier_name_lowercase.startswith(
+            ('gov_doc_class_num_086', 'gpo_item_num_074')):
+        # Remove punctuation and spaces from each identifier before joining
+        identifiers_list_as_str = join_separator.join(map(
+            lambda identifier: remove_punctuation_and_spaces(identifier),
+            identifiers_list))
+    else:
+        # Just join the elements (no extra processing needed)
+        identifiers_list_as_str = join_separator.join(identifiers_list)
+
+    logger.debug(f"String after joining {'valid ' if checked_validity else ''}"
+        f"{identifier_name} values: '{identifiers_list_as_str}'")
 
     return identifiers_list_as_str

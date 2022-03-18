@@ -886,22 +886,26 @@ class WorldCatSearchBuffer(RecordsBuffer):
                 and (lccn := self.record_list[0].lccn.strip()) != ''):
             search_query = f'nl:{lccn}'
         elif (hasattr(self.record_list[0], 'isbn')
-                and (isbn := libraries.record.split_and_join_valid_record_identifiers(
+                and (isbn := libraries.record.split_and_join_record_identifiers(
                     self.record_list[0].isbn,
                     identifier_name='isbn',
                     split_separator=';')) != ''):
             search_query = f'bn:{isbn}'
         elif (hasattr(self.record_list[0], 'issn')
-                and (issn := libraries.record.split_and_join_valid_record_identifiers(
+                and (issn := libraries.record.split_and_join_record_identifiers(
                     self.record_list[0].issn,
                     identifier_name='issn',
                     split_separator=';')) != ''):
             search_query = f'in:{issn}'
         elif hasattr(self.record_list[0], 'gov_doc_class_num_086'):
-            gov_doc_class_num_086 = \
-                libraries.record.remove_punctuation_and_spaces(
-                    self.record_list[0].gov_doc_class_num_086.strip())
-
+            logger.info(f'{self.record_list[0].gov_doc_class_num_086 = }') # delete after testing
+            gov_doc_class_num_086 = (
+                libraries.record.split_and_join_record_identifiers(
+                    self.record_list[0].gov_doc_class_num_086,
+                    identifier_name='gov_doc_class_num_086',
+                    split_separator=';',
+                    join_separator=' OR '))
+            logger.info(f'{gov_doc_class_num_086 = }') # delete after testing
             if gov_doc_class_num_086 != '':
                 search_query = f'gn:{gov_doc_class_num_086}'
 
