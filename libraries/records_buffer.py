@@ -907,7 +907,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     join_separator=' OR '))
             logger.info(f'{gov_doc_class_num_086 = }') # delete after testing
             if gov_doc_class_num_086 != '':
-                search_query = f'gn:{gov_doc_class_num_086}'
+                search_query = gov_doc_class_num_086
 
                 # If 074 field exists and has a nonempty value, then combine 086
                 # and 074 values
@@ -922,7 +922,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     logger.info(f'{gpo_item_num_074 = }') # delete after testing
 
                     if gpo_item_num_074 != '':
-                        search_query += f' AND gn:{gpo_item_num_074}'
+                        search_query += f' AND {gpo_item_num_074}'
 
         assert search_query is not None, ('Cannot build a valid search query. '
             'Record from input file must include at least one of the following '

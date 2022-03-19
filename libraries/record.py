@@ -327,24 +327,31 @@ def remove_oclc_org_code_prefix(full_oclc_string: str) -> str:
         else full_oclc_string.rstrip())
 
 
-def remove_punctuation_and_spaces(orig_str: str) -> str:
+def remove_punctuation_and_spaces(
+        orig_str: str,
+        prefix: Optional[str] = None) -> str:
     """Removes punctuation and spaces from the given string, if applicable.
 
-    Also converts uppercase characters into lowercase.
+    Also converts uppercase characters into lowercase and, if applicable, adds
+    prefix.
 
     Parameters
     ----------
     orig_str: str
         The string to remove punctuation and spaces from (and make lowercase)
+    prefix: Optional[str], default is None
+        The prefix to be added
 
     Returns
     -------
     str
-        The lowercase string without punctuation and spaces
+        The lowercase string without punctuation and spaces (and with prefix, if
+        applicable)
     """
     logger.info(f'{orig_str = }') # delete after testing
-    return orig_str.translate(
-        str.maketrans('', '', string.punctuation + ' ')).lower()
+    logger.info(f'{prefix = }') # delete after testing
+    return (f"{prefix if prefix is not None else ''}"
+        f"{orig_str.translate(str.maketrans('', '', string.punctuation + ' ')).lower()}")
 
 
 def split_and_join_record_identifiers(
@@ -408,9 +415,10 @@ def split_and_join_record_identifiers(
         checked_validity = True
     elif identifier_name_lowercase.startswith(
             ('gov_doc_class_num_086', 'gpo_item_num_074')):
-        # Remove punctuation and spaces from each identifier before joining
+        # Before joining, add 'gn:' prefix and remove punctuation and spaces
+        # from each identifier
         identifiers_list_as_str = join_separator.join(map(
-            lambda identifier: remove_punctuation_and_spaces(identifier),
+            lambda identifier: remove_punctuation_and_spaces(identifier, 'gn:'),
             identifiers_list))
 
         # Wrap string with multiple identifiers in parentheses
