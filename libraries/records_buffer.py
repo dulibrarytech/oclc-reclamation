@@ -898,28 +898,24 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     split_separator=';')) != ''):
             search_query = f'in:{issn}'
         elif hasattr(self.record_list[0], 'gov_doc_class_num_086'):
-            logger.info(f'{self.record_list[0].gov_doc_class_num_086 = }') # delete after testing
             gov_doc_class_num_086 = (
                 libraries.record.split_and_join_record_identifiers(
                     self.record_list[0].gov_doc_class_num_086,
                     identifier_name='gov_doc_class_num_086',
                     split_separator=';',
                     join_separator=' OR '))
-            logger.info(f'{gov_doc_class_num_086 = }') # delete after testing
             if gov_doc_class_num_086 != '':
                 search_query = gov_doc_class_num_086
 
                 # If 074 field exists and has a nonempty value, then combine 086
                 # and 074 values
                 if hasattr(self.record_list[0], 'gpo_item_num_074'):
-                    logger.info(f'{self.record_list[0].gpo_item_num_074 = }') # delete after testing
                     gpo_item_num_074 = (
                         libraries.record.split_and_join_record_identifiers(
                             self.record_list[0].gpo_item_num_074,
                             identifier_name='gpo_item_num_074',
                             split_separator=';',
                             join_separator=' OR '))
-                    logger.info(f'{gpo_item_num_074 = }') # delete after testing
 
                     if gpo_item_num_074 != '':
                         search_query += f' AND {gpo_item_num_074}'

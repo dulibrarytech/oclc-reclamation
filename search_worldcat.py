@@ -123,7 +123,6 @@ def main() -> None:
                 row.mms_id,
                 'MMS ID'
             )
-            logger.info(f'{mms_id = }') # delete after testing
 
             assert mms_id not in records_already_processed, (f'Record with MMS '
                 f'ID {mms_id} has already been processed.')

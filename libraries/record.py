@@ -348,8 +348,6 @@ def remove_punctuation_and_spaces(
         The lowercase string without punctuation and spaces (and with prefix, if
         applicable)
     """
-    logger.info(f'{orig_str = }') # delete after testing
-    logger.info(f'{prefix = }') # delete after testing
     return (f"{prefix if prefix is not None else ''}"
         f"{orig_str.translate(str.maketrans('', '', string.punctuation + ' ')).lower()}")
 
@@ -366,8 +364,10 @@ def split_and_join_record_identifiers(
     2) Depending on the identifier_name, a filter or mapping operation may
     occur:
         - If ISBN or ISSN: All invalid identifiers are removed.
-        - If Government Document Number (e.g. MARC field 074 or 086):
-        punctuation and spaces are removed from each identifier.
+        - If Government Document Number (e.g. MARC field 074 or 086): the
+        following is done for each identifier:
+            - punctuation and spaces are removed
+            - the 'gn:' prefix is added
     3) The remaining identifiers are joined based on the join_separator.
 
     Parameters
@@ -399,7 +399,6 @@ def split_and_join_record_identifiers(
         identifiers_list = [
             element.strip() for element in str_with_record_identifiers.split(
                 split_separator)]
-    logger.info(f'{type(identifiers_list) = }') # delete after testing
 
     identifiers_list_as_str = ''
     identifier_name_lowercase = identifier_name.lower()
