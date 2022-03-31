@@ -1031,16 +1031,13 @@ class WorldCatSearchBuffer(RecordsBuffer):
                 # Delete after testing
                 logger.info(f'{num_records_held_by_your_library = }')
 
-                if num_records_held_by_your_library['value'] == 1:
-                    # Found single WorldCat search result, so save OCLC Number
-                    num_records_held_by_your_library['oclc_num'] = \
-                        json_response['briefRecords'][0]['oclcNumber']
+                if num_records_held_by_your_library['value'] > 0:
+                    if num_records_held_by_your_library['value'] == 1:
+                        # Found a single WorldCat search result, so save the
+                        # OCLC Number
+                        num_records_held_by_your_library['oclc_num'] = \
+                            json_response['briefRecords'][0]['oclcNumber']
 
-                    self.update_dataframe_for_input_file(
-                        num_records_held_by_your_library)
-                elif num_records_held_by_your_library['value'] > 1:
-                    # Found multiple WorldCat search results held by your
-                    # library
                     self.update_dataframe_for_input_file(
                         num_records_held_by_your_library)
                 else:
@@ -1070,13 +1067,14 @@ class WorldCatSearchBuffer(RecordsBuffer):
                         # OCLC Number
                         num_records_total['oclc_num'] = \
                             json_response['briefRecords'][0]['oclcNumber']
-
-                        self.update_dataframe_for_input_file(num_records_total)
                     else:
                         # Found zero or multiple WorldCat search results
-                        self.update_dataframe_for_input_file(num_records_total)
                         self.update_dataframe_for_input_file(
                             num_records_held_by_your_library)
+
+                    # Either way, update the input file's DataFrame with data
+                    # from num_records_total
+                    self.update_dataframe_for_input_file(num_records_total)
         except json.decoder.JSONDecodeError:
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):
