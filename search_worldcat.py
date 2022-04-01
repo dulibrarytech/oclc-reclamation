@@ -36,6 +36,19 @@ def init_argparse() -> argparse.ArgumentParser:
             'CSV (.csv) or Excel (.xlsx or .xls) format (e.g. inputs/'
             'search_worldcat/filename.csv)')
     )
+    parser.add_argument(
+        '--search_my_library_holdings_first',
+        action='store_true',
+        help=("whether to first search WorldCat for your library's holdings. "
+            'Use this option if you want to search in the following order: '
+            '1) Search with "held by" filter. '
+            '2) If there are no WorldCat search results held by your library, '
+            'then search without "held by" filter. '
+            'Without this option, the default search order is as follows: '
+            '1) Search without "held by" filter. '
+            '2) If there is more than one WorldCat search result, then search '
+            'with "held by" filter.')
+    )
     return parser
 
 
@@ -98,7 +111,9 @@ def main() -> None:
         disable_existing_loggers=False)
 
     command_line_args_str = (f'command-line arg:\n'
-        f'input_file = {args.input_file}')
+        f'input_file = {args.input_file}\n'
+        f'search_my_library_holdings_first = '
+        f'{args.search_my_library_holdings_first}')
 
     logger.info(f'Started {parser.prog} script with {command_line_args_str}')
 
@@ -134,7 +149,8 @@ def main() -> None:
 
             # Add current row's data to the empty buffer and process that record
             records_buffer.add(row)
-            records_buffer.process_records()
+            records_buffer.process_records(
+                args.search_my_library_holdings_first)
         except AssertionError as assert_err:
             logger.exception(f"An assertion error occurred when processing MMS "
                 f"ID '{row.mms_id}' (at row {row.Index + 2} of input file): "

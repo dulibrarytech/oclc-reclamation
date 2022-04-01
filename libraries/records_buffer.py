@@ -912,7 +912,9 @@ class WorldCatSearchBuffer(RecordsBuffer):
             'log_msg': log_msg
         }
 
-    def process_records(self) -> None:
+    def process_records(
+            self,
+            search_my_library_holdings_first: bool = False) -> None:
         """Searches WorldCat using the record data in record_list.
 
         The WorldCat search is performed using the first available record
@@ -929,6 +931,23 @@ class WorldCatSearchBuffer(RecordsBuffer):
 
         This is done by making a GET request to the WorldCat Metadata API v1.1:
         https://americas.metadata.api.oclc.org/worldcat/search/v1/brief-bibs?q={search_query}
+
+        Makes up to two searches:
+        - with "held by" filter (search your library's holdings only)
+        - without "held by" filter (search all Worldat records)
+
+        Parameters
+        ----------
+        search_my_library_holdings_first: bool, default is False
+            Whether to first search WorldCat for your library's holdings only.
+            - True:
+                1) Search with "held by" filter.
+                2) If there are no WorldCat search results held by your library,
+                   then search without "held by" filter.
+            - False:
+                1) Search without "held by" filter.
+                2) If there is more than one WorldCat search result, then
+                   search with "held by" filter.
 
         Raises
         ------
@@ -1012,11 +1031,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                 f"{os.environ['OCLC_INSTITUTION_SYMBOL']}")
             num_records_total = None
 
-            # Delete after testing (must add this as a function parameter)
-            search_your_library_holdings_first = True
-
-            if search_your_library_holdings_first:
-
+            if search_my_library_holdings_first:
                 api_response, json_response = \
                     super().search_worldcat_and_log_response(
                         self.oauth_session.get,
@@ -1042,7 +1057,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                         num_records_held_by_your_library)
                 else:
                     # Found no WorldCat search results held by your library, so
-                    # search WorldCat WITHOUT a "held by" filter.
+                    # search WorldCat WITHOUT the "held by" filter
                     logger.debug(f'Found no {num_records_label}. Searching '
                         f'without the "held by" filter...')
 
@@ -1075,6 +1090,67 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     # Either way, update the input file's DataFrame with data
                     # from num_records_total
                     self.update_dataframe_for_input_file(num_records_total)
+            else:
+                # First search WITHOUT "held by" filter
+                api_response, json_response = \
+                    super().search_worldcat_and_log_response(
+                        self.oauth_session.get,
+                        url,
+                        (f'{api_response_label} (all records; no "held by" '
+                            f'filter)'))
+
+                num_records_total = self.get_num_records_dict(
+                    json_response['numberOfRecords'])
+
+                # Delete after testing
+                logger.info(f'{num_records_total = }')
+
+                if num_records_total['value'] <= 1:
+                    if num_records_total['value'] == 1:
+                        # Found a single WorldCat search result, so save the
+                        # OCLC Number
+                        num_records_total['oclc_num'] = \
+                            json_response['briefRecords'][0]['oclcNumber']
+
+                    self.update_dataframe_for_input_file(num_records_total)
+                else:
+                    # Found multiple WorldCat search results, so search WorldCat
+                    # WITH a "held by" filter
+                    logger.debug(f"Found {num_records_total['value']} total "
+                        f'records. Searching with a "held by" filter to '
+                        f'narrow down the results...')
+
+                    api_response = None
+                    json_response = None
+
+                    api_response, json_response = \
+                        super().search_worldcat_and_log_response(
+                            self.oauth_session.get,
+                            (f"{url}&heldBySymbol="
+                                f"{os.environ['OCLC_INSTITUTION_SYMBOL']}"),
+                            (f"{api_response_label} ({num_records_label})"))
+
+                    num_records_held_by_your_library = \
+                        self.get_num_records_dict(
+                            json_response['numberOfRecords'],
+                            records_label=num_records_label)
+
+                    # Delete after testing
+                    logger.info(f'{num_records_held_by_your_library = }')
+
+                    if num_records_held_by_your_library['value'] == 1:
+                        # Found a single WorldCat search result, so save the
+                        # OCLC Number
+                        num_records_held_by_your_library['oclc_num'] = \
+                            json_response['briefRecords'][0]['oclcNumber']
+                    else:
+                        # Found zero or multiple WorldCat search results
+                        self.update_dataframe_for_input_file(num_records_total)
+
+                    # Either way, update the input file's DataFrame with data
+                    # from num_records_held_by_your_library
+                    self.update_dataframe_for_input_file(
+                        num_records_held_by_your_library)
         except json.decoder.JSONDecodeError:
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):
