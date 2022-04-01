@@ -1051,9 +1051,6 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     json_response['numberOfRecords'],
                     records_label=num_records_label)
 
-                # Delete after testing
-                logger.info(f'{num_records_held_by_your_library = }')
-
                 if num_records_held_by_your_library['value'] > 0:
                     if num_records_held_by_your_library['value'] == 1:
                         # Found a single WorldCat search result, so save the
@@ -1082,9 +1079,6 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     num_records_total = self.get_num_records_dict(
                         json_response['numberOfRecords'])
 
-                    # Delete after testing
-                    logger.info(f'{num_records_total = }')
-
                     if num_records_total['value'] == 1:
                         # Found a single WorldCat search result, so save the
                         # OCLC Number
@@ -1109,9 +1103,6 @@ class WorldCatSearchBuffer(RecordsBuffer):
 
                 num_records_total = self.get_num_records_dict(
                     json_response['numberOfRecords'])
-
-                # Delete after testing
-                logger.info(f'{num_records_total = }')
 
                 if num_records_total['value'] <= 1:
                     if num_records_total['value'] == 1:
@@ -1142,9 +1133,6 @@ class WorldCatSearchBuffer(RecordsBuffer):
                         self.get_num_records_dict(
                             json_response['numberOfRecords'],
                             records_label=num_records_label)
-
-                    # Delete after testing
-                    logger.info(f'{num_records_held_by_your_library = }')
 
                     if num_records_held_by_your_library['value'] == 1:
                         # Found a single WorldCat search result, so save the

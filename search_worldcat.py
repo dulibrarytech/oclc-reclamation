@@ -110,7 +110,7 @@ def main() -> None:
             f'{start_time.strftime("%Y-%m-%d_%H-%M-%S")}.log'},
         disable_existing_loggers=False)
 
-    command_line_args_str = (f'command-line arg:\n'
+    command_line_args_str = (f'command-line args:\n'
         f'input_file = {args.input_file}\n'
         f'search_my_library_holdings_first = '
         f'{args.search_my_library_holdings_first}')
