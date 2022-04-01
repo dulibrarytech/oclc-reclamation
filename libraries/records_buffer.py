@@ -808,6 +808,10 @@ class WorldCatSearchBuffer(RecordsBuffer):
 
     Attributes
     ----------
+    api_request_analysis: Dict[str, int]
+        Dictionary storing the following data about WorldCat searches:
+        - number of Alma records that needed a single WorldCat API request
+        - number of Alma records that needed two WorldCat API requests
     dataframe_for_input_file: pd.DataFrame
         The pandas DataFrame created from the input file
     record_list: List[NamedTuple]
@@ -835,6 +839,10 @@ class WorldCatSearchBuffer(RecordsBuffer):
 
         self.record_list = []
         self.dataframe_for_input_file = dataframe_for_input_file
+        self.api_request_analysis = {
+            'num_records_needing_single_request': 0,
+            'num_records_needing_two_requests': 0
+        }
 
         # Create OAuth2Session for WorldCat Metadata API
         super().__init__()
@@ -1030,6 +1038,8 @@ class WorldCatSearchBuffer(RecordsBuffer):
             num_records_label = (f"records held by "
                 f"{os.environ['OCLC_INSTITUTION_SYMBOL']}")
             num_records_total = None
+            num_api_requests_made_before_current_search = \
+                self.num_api_requests_made
 
             if search_my_library_holdings_first:
                 api_response, json_response = \
@@ -1151,6 +1161,20 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     # from num_records_held_by_your_library
                     self.update_dataframe_for_input_file(
                         num_records_held_by_your_library)
+
+            num_api_requests_made_during_current_search = (
+                self.num_api_requests_made
+                    - num_api_requests_made_before_current_search)
+
+            if num_api_requests_made_during_current_search == 1:
+                (self.api_request_analysis['num_records_needing_single_request'] += 1)
+            elif num_api_requests_made_during_current_search == 2:
+                (self.api_request_analysis['num_records_needing_two_requests'] += 1)
+            else:
+                logger.warning(f'Row {self.record_list[0].Index + 2} made '
+                    f'{num_api_requests_made_during_current_search} API '
+                    f'requests when searching WorldCat. The number of '
+                    f'API requests per row should be either 1 or 2.')
         except json.decoder.JSONDecodeError:
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):

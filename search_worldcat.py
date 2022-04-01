@@ -201,9 +201,15 @@ def main() -> None:
     logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
 
     print(f'End of script. Completed in: {datetime.now() - start_time} '
-        f'(hours:minutes:seconds.microseconds).\n'
-        f'The script made {records_buffer.num_api_requests_made} API '
+        f'(hours:minutes:seconds.microseconds).\n\n'
+        f'The script made {records_buffer.num_api_requests_made} total API '
         f'request(s).\n'
+        f"- {records_buffer.api_request_analysis['num_records_needing_single_request']}"
+        f' Alma records needed a single WorldCat API request.\n'
+        f"- {records_buffer.api_request_analysis['num_records_needing_two_requests']}"
+        f' Alma records needed two WorldCat API requests (which totals '
+        f"{records_buffer.api_request_analysis['num_records_needing_two_requests'] * 2}"
+        f' API requests).\n\n'
         f'Processed {len(data.index)} rows from input file:\n'
         f'- {len(records_with_oclc_num.index)} record(s) with OCLC Number\n'
         f'- {len(records_with_zero_or_multiple_worldcat_matches.index)} '
