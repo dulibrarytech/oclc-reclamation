@@ -13,8 +13,8 @@ from csv import writer
 from oauthlib.oauth2 import BackendApplicationClient, TokenExpiredError
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth2Session
-from typing import (Any, Callable, Dict, List, NamedTuple, Optional, Set,
-    TextIO, Tuple, Union)
+from typing import (Any, Callable, Dict, List, NamedTuple, Set, TextIO, Tuple,
+    Union)
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -884,16 +884,16 @@ class WorldCatSearchBuffer(RecordsBuffer):
     def get_num_records_dict(
             self,
             num_records: int,
-            records_label: Optional[str] = None) -> Dict[str, Union[int, str]]:
+            used_held_by_filter: bool = False) -> Dict[str, Union[int, str]]:
         """Creates a dictionary with data about the WorldCat search results.
 
         Parameters
         ----------
         num_records: int
             The number of records returned by the WorldCat search
-        records_label: Optional[str]
-            String describing the records (e.g. that they are held by your
-            library)
+        used_held_by_filter: bool, default is False
+            Whether the WorldCat search used a "held by" filter (to limit
+            the results to your library's holdings only)
 
         Returns
         -------
@@ -904,13 +904,14 @@ class WorldCatSearchBuffer(RecordsBuffer):
         column_name = None
         log_msg = None
 
-        if records_label is None:
-            column_name = "num_records_total"
-            log_msg = f"found {num_records} total records"
-        else:
+        if used_held_by_filter:
             column_name = (f"num_records_held_by_"
                 f"{os.environ['OCLC_INSTITUTION_SYMBOL']}")
-            log_msg = f"found {num_records} {records_label}"
+            log_msg = (f"found {num_records} records held by "
+                f"{os.environ['OCLC_INSTITUTION_SYMBOL']}")
+        else:
+            column_name = "num_records_total"
+            log_msg = f"found {num_records} total records"
 
         return {
             'value': num_records,
@@ -1049,7 +1050,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
 
                 num_records_held_by_your_library = self.get_num_records_dict(
                     json_response['numberOfRecords'],
-                    records_label=num_records_label)
+                    used_held_by_filter=True)
 
                 if num_records_held_by_your_library['value'] > 0:
                     if num_records_held_by_your_library['value'] == 1:
@@ -1132,7 +1133,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     num_records_held_by_your_library = \
                         self.get_num_records_dict(
                             json_response['numberOfRecords'],
-                            records_label=num_records_label)
+                            used_held_by_filter=True)
 
                     if num_records_held_by_your_library['value'] == 1:
                         # Found a single WorldCat search result, so save the
