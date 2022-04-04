@@ -54,6 +54,8 @@ class RecordsBuffer:
         request
     make_api_request(api_request, api_url)
         Makes the specified API request to the WorldCat Metadata API
+    search_worldcat_and_log_response(api_request, api_url, api_response_label)
+        Makes the specified API request to search WorldCat and logs the response
     """
 
     def __init__(self) -> None:
@@ -416,13 +418,12 @@ class AlmaRecordsBuffer(RecordsBuffer):
             f"?oclcNumbers={','.join(self.oclc_num_dict.keys())}")
 
         try:
-            api_response = super().make_api_request(
-                self.oauth_session.get,
-                url
-            )
-            json_response = api_response.json()
-            logger.debug(f'Get Current OCLC Number API response:\n'
-                f'{json.dumps(json_response, indent=2)}')
+            api_response, json_response = \
+                super().search_worldcat_and_log_response(
+                    self.oauth_session.get,
+                    url,
+                    'Get Current OCLC Number API response'
+                )
 
             for record_index, record in enumerate(json_response['entry'],
                     start=1):
@@ -668,35 +669,31 @@ class WorldCatRecordsBuffer(RecordsBuffer):
 
         logger.debug('Started processing records buffer...')
 
-        api_name = None
-        if self.set_or_unset_choice == 'set':
-            api_name = 'Set Holding API'
-        else:
-            api_name = 'Unset Holding API'
-
-        api_response_error_msg = f'Problem with {api_name} response'
-
         # Build URL for API request
         url = (f"{os.environ['WORLDCAT_METADATA_API_URL']}"
             f"/ih/datalist?oclcNumbers={','.join(self.oclc_num_set)}")
 
+        api_name = None
+        api_request = None
+        if self.set_or_unset_choice == 'set':
+            api_name = 'Set Holding API'
+            api_request = self.oauth_session.post
+        else:
+            api_name = 'Unset Holding API'
+            api_request = self.oauth_session.delete
+
+            # Include "cascade" URL parameter for unset_holding operation
+            url += f'&cascade={self.cascade}'
+
+        api_response_error_msg = f'Problem with {api_name} response'
+
         try:
-            api_response = None
-            if self.set_or_unset_choice == 'set':
-                api_response = super().make_api_request(
-                    self.oauth_session.post,
-                    url
+            api_response, json_response = \
+                super().search_worldcat_and_log_response(
+                    api_request,
+                    url,
+                    f'{api_name} response'
                 )
-            else:
-                # Include "cascade" URL parameter for unset_holding operation
-                url += f'&cascade={self.cascade}'
-                api_response = super().make_api_request(
-                    self.oauth_session.delete,
-                    url
-                )
-            json_response = api_response.json()
-            logger.debug(f'{api_name} response:\n'
-                f'{json.dumps(json_response, indent=2)}')
 
             for record_index, record in enumerate(json_response['entry'],
                     start=1):
@@ -822,10 +819,15 @@ class WorldCatSearchBuffer(RecordsBuffer):
     -------
     add(record_data)
         Adds the given record to this buffer (i.e. to record_list)
+    get_num_records_dict(num_records, used_held_by_filter)
+        Creates a dictionary with data about the WorldCat search results
     process_records()
         Searches WorldCat using the record data in record_list
     remove_all_records()
         Removes all records from this buffer (i.e. clears record_list)
+    update_dataframe_for_input_file(num_records_dict)
+        Updates the input file's DataFrame (i.e. the dataframe_for_input_file
+        attribute) based on the given dictionary
     """
 
     def __init__(self, dataframe_for_input_file: pd.DataFrame) -> None:
