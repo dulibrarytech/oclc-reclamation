@@ -19,7 +19,6 @@ def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
-        usage='%(prog)s [option] input_file',
         description=("For each row in the input file, find the record's OCLC "
             "Number by searching WorldCat using the available record "
             "identifiers. Script results are saved to the following directory: "

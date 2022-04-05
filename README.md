@@ -131,7 +131,7 @@ With this approach, you won't have to adjust your sleep settings.
 ##### Usage notes
 
 ```
-usage: search_worldcat.py [option] input_file
+usage: search_worldcat.py [-h] [-v] [--search_my_library_holdings_first] input_file
 
 positional arguments:
   input_file     the name and path of the input file, which must be in either
@@ -154,7 +154,7 @@ optional arguments:
 
 examples:
   python search_worldcat.py inputs/search_worldcat/filename.csv
-  python search_worldcat.py inputs/search_worldcat/filename.csv --search_my_library_holdings_first
+  python search_worldcat.py --search_my_library_holdings_first inputs/search_worldcat/filename.csv
 ```
 
 For required format of input file, see either:
