@@ -47,7 +47,7 @@ def init_argparse() -> argparse.ArgumentParser:
             'Without this option, the default search order is as follows: '
             '1) Search without "held by" filter. '
             '2) If there is more than one WorldCat search result, then search '
-            'with "held by" filter.')
+            'with "held by" filter to narrow down the results.')
     )
     return parser
 

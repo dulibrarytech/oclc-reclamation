@@ -138,12 +138,39 @@ positional arguments:
                  CSV (.csv) or Excel (.xlsx or .xls) format (e.g.
                  inputs/search_worldcat/filename.csv)
 
-example: python search_worldcat.py inputs/search_worldcat/filename.csv
+optional arguments:
+  -h, --help     show this help message and exit
+  -v, --version  show program's version number and exit
+  --search_my_library_holdings_first
+                 whether to first search WorldCat for your library's holdings.
+                 - Use this option if you want to search in the following order:
+                   1) Search with "held by" filter.
+                   2) If there are no WorldCat search results held by your library,
+                      then search without "held by" filter.
+                 - Without this option, the default search order is as follows:
+                   1) Search without "held by" filter.
+                   2) If there is more than one WorldCat search result, then search with
+                      "held by" filter to narrow down the results.
+
+examples:
+  python search_worldcat.py inputs/search_worldcat/filename.csv
+  python search_worldcat.py inputs/search_worldcat/filename.csv --search_my_library_holdings_first
 ```
 
 For required format of input file, see either:
 - `inputs/search_worldcat/example.csv`
 - `inputs/search_worldcat/example.xlsx`
+
+Note that including the `--search_my_library_holdings_first` optional argument
+may increase or decrease the number of WorldCat Metadata API requests required
+by the script. If you have many records to process and wish to minimize the
+number of API requests made by the script, then consider running the script
+*with* and *without* the `--search_my_library_holdings_first` argument on an
+input file containing a *subset* of your records. The script results will tell
+you how many total API requests were made, as well as how many records needed a
+single WorldCat API request vs. two WorldCat API requests. Based on these
+results, you can decide whether the `--search_my_library_holdings_first`
+argument will result in fewer API requests for your entire dataset.
 
 ##### Description and script outputs
 
