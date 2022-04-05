@@ -169,7 +169,7 @@ number of API requests made by the script, then consider running the script
 input file containing a *subset* of your records. The script results will tell
 you how many total API requests were made, as well as how many records needed a
 single WorldCat API request vs. two WorldCat API requests. Based on these
-results, you can decide whether the `--search_my_library_holdings_first`
+results, you can predict whether the `--search_my_library_holdings_first`
 argument will result in fewer API requests for your entire dataset.
 
 ##### Description and script outputs
