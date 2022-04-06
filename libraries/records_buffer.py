@@ -22,14 +22,18 @@ dotenv.load_dotenv(dotenv_file)
 logger = logging.getLogger(__name__)
 
 
-class RecordsBuffer:
+class WorldCatRecordsBuffer:
     """
-    A buffer of records. DO NOT INSTANTIATE THIS CLASS DIRECTLY.
+    A buffer of records for WorldCat. DO NOT INSTANTIATE THIS CLASS DIRECTLY.
 
     Instead, instantiate one of its subclasses:
-    - AlmaRecordsBuffer: A buffer of records with MMS ID and OCLC number
-    - WorldCatRecordsBuffer: A buffer of records with OCLC number only
-    - WorldCatSearchBuffer: A buffer containing data to be searched for in
+    - OclcNumDictBuffer: A buffer containing a dictionary of OCLC Number (key),
+      MMS ID (value) pairs (use this subclass to find each record's current
+      OCLC Number; see process_worldcat_records.py for more details)
+    - OclcNumSetBuffer: A buffer containing a set of OCLC Numbers (use this
+      subclass to set or unset the WorldCat holding for each OCLC Number; see
+      process_worldcat_records.py for more details)
+    - RecordSearchBuffer: A buffer containing data to be searched for in
       WorldCat (use this subclass to find a record's OCLC Number given other
       record identifiers; see search_worldcat.py for more details)
 
@@ -54,12 +58,12 @@ class RecordsBuffer:
         request
     make_api_request(api_request, api_url)
         Makes the specified API request to the WorldCat Metadata API
-    search_worldcat_and_log_response(api_request, api_url, api_response_label)
-        Makes the specified API request to search WorldCat and logs the response
+    make_api_request_and_log_response(api_request, api_url, api_response_label)
+        Makes the specified API request and logs the response
     """
 
     def __init__(self) -> None:
-        """Initializes a RecordsBuffer object by creating its OAuth2Session."""
+        """Initializes a WorldCatRecordsBuffer object."""
 
         self.contents = None
         self.num_api_requests_made = 0
@@ -247,7 +251,7 @@ class RecordsBuffer:
         libraries.api.log_response_and_raise_for_status(response)
         return response
 
-    def search_worldcat_and_log_response(
+    def make_api_request_and_log_response(
             self,
             api_request: Callable[..., requests.models.Response],
             api_url: str,
@@ -283,9 +287,12 @@ class RecordsBuffer:
         return api_response, json_response
 
 
-class AlmaRecordsBuffer(RecordsBuffer):
+class OclcNumDictBuffer(WorldCatRecordsBuffer):
     """
-    A buffer of Alma records, each with an MMS ID and OCLC number.
+    A buffer containing a dictionary of OCLC Number (key), MMS ID (value) pairs.
+
+    Use this subclass to find each record's current OCLC Number. See
+    process_worldcat_records.py for more details.
 
     Attributes
     ----------
@@ -319,7 +326,7 @@ class AlmaRecordsBuffer(RecordsBuffer):
             records_with_current_oclc_num: TextIO,
             records_with_old_oclc_num: TextIO,
             records_with_errors: TextIO) -> None:
-        """Instantiates an AlmaRecordsBuffer object.
+        """Instantiates an OclcNumDictBuffer object.
 
         Parameters
         ----------
@@ -419,7 +426,7 @@ class AlmaRecordsBuffer(RecordsBuffer):
 
         try:
             api_response, json_response = \
-                super().search_worldcat_and_log_response(
+                super().make_api_request_and_log_response(
                     self.oauth_session.get,
                     url,
                     'Get Current OCLC Number API response'
@@ -511,9 +518,12 @@ class AlmaRecordsBuffer(RecordsBuffer):
         logger.debug(self.__str__() + '\n')
 
 
-class WorldCatRecordsBuffer(RecordsBuffer):
+class OclcNumSetBuffer(WorldCatRecordsBuffer):
     """
-    A buffer of WorldCat records, each with an OCLC number.
+    A buffer containing a set of OCLC Numbers.
+
+    Use this subclass to set or unset the WorldCat holding for each OCLC Number.
+    See process_worldcat_records.py for more details.
 
     Attributes
     ----------
@@ -561,7 +571,7 @@ class WorldCatRecordsBuffer(RecordsBuffer):
             records_with_no_update_needed: TextIO,
             records_updated: TextIO,
             records_with_errors: TextIO) -> None:
-        """Instantiates a WorldCatRecordsBuffer object.
+        """Instantiates an OclcNumSetBuffer object.
 
         Parameters
         ----------
@@ -689,7 +699,7 @@ class WorldCatRecordsBuffer(RecordsBuffer):
 
         try:
             api_response, json_response = \
-                super().search_worldcat_and_log_response(
+                super().make_api_request_and_log_response(
                     api_request,
                     url,
                     f'{api_name} response'
@@ -797,9 +807,12 @@ class WorldCatRecordsBuffer(RecordsBuffer):
         logger.debug(self.__str__() + '\n')
 
 
-class WorldCatSearchBuffer(RecordsBuffer):
+class RecordSearchBuffer(WorldCatRecordsBuffer):
     """
     A buffer containing data to be searched for in WorldCat.
+
+    Use this subclass to find a record's OCLC Number given other record
+    identifiers. See search_worldcat.py for more details.
 
     This buffer must contain only one record at a time.
 
@@ -831,7 +844,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
     """
 
     def __init__(self, dataframe_for_input_file: pd.DataFrame) -> None:
-        """Instantiates a WorldCatSearchBuffer object.
+        """Instantiates a RecordSearchBuffer object.
 
         Parameters
         ----------
@@ -1044,7 +1057,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
 
             if search_my_library_holdings_first:
                 api_response, json_response = \
-                    super().search_worldcat_and_log_response(
+                    super().make_api_request_and_log_response(
                         self.oauth_session.get,
                         (f"{url}&heldBySymbol="
                             f"{os.environ['OCLC_INSTITUTION_SYMBOL']}"),
@@ -1073,7 +1086,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     json_response = None
 
                     api_response, json_response = \
-                        super().search_worldcat_and_log_response(
+                        super().make_api_request_and_log_response(
                             self.oauth_session.get,
                             url,
                             (f'{api_response_label} (all records; no "held by" '
@@ -1098,7 +1111,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
             else:
                 # First search WITHOUT "held by" filter
                 api_response, json_response = \
-                    super().search_worldcat_and_log_response(
+                    super().make_api_request_and_log_response(
                         self.oauth_session.get,
                         url,
                         (f'{api_response_label} (all records; no "held by" '
@@ -1126,7 +1139,7 @@ class WorldCatSearchBuffer(RecordsBuffer):
                     json_response = None
 
                     api_response, json_response = \
-                        super().search_worldcat_and_log_response(
+                        super().make_api_request_and_log_response(
                             self.oauth_session.get,
                             (f"{url}&heldBySymbol="
                                 f"{os.environ['OCLC_INSTITUTION_SYMBOL']}"),

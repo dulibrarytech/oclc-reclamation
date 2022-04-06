@@ -124,7 +124,7 @@ def main() -> None:
     data['error'] = np.nan
 
     records_already_processed = set()
-    records_buffer = libraries.records_buffer.WorldCatSearchBuffer(data)
+    records_buffer = libraries.records_buffer.RecordSearchBuffer(data)
 
     # Loop over rows in DataFrame
     for row in data.itertuples(name='Record_from_input_file'):

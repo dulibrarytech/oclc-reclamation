@@ -188,12 +188,12 @@ def main() -> None:
         records_with_errors_writer = writer(records_with_errors)
 
         if args.operation == 'get_current_oclc_number':
-            records_buffer = libraries.records_buffer.AlmaRecordsBuffer(
+            records_buffer = libraries.records_buffer.OclcNumDictBuffer(
                 records_with_no_update_needed,
                 records_to_update,
                 records_with_errors)
         else:
-            records_buffer = libraries.records_buffer.WorldCatRecordsBuffer(
+            records_buffer = libraries.records_buffer.OclcNumSetBuffer(
                 set_or_unset_choice,
                 args.cascade,
                 records_with_no_update_needed,
