@@ -4,17 +4,19 @@ import json
 import libraries.api
 import libraries.handle_file
 import libraries.record
+import libraries.xml
 import logging
 import os
 import pandas as pd
 import requests
 import time
+import xml.etree.ElementTree as ET
 from csv import writer
 from oauthlib.oauth2 import BackendApplicationClient, TokenExpiredError
 from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth2Session
-from typing import (Any, Callable, Dict, List, NamedTuple, Set, TextIO, Tuple,
-    Union)
+from typing import (Any, Callable, Dict, List, NamedTuple, Optional, Set,
+    TextIO, Tuple, Union)
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -22,20 +24,619 @@ dotenv.load_dotenv(dotenv_file)
 logger = logging.getLogger(__name__)
 
 
+class AlmaRecordsBuffer:
+    """A buffer of Alma records.
+
+    Use this class to update each Alma record. See update_alma_records.py for
+    more details.
+
+    Contains a dictionary that maps MMS ID to OCLC Number.
+
+    Attributes
+    ----------
+    mms_id_to_oclc_num_dict: Dict[str, str]
+        A dictionary mapping MMS ID (key) to OCLC Number (value)
+    api_request_headers: Dict[str, str]
+        The HTTP headers to use when making Alma API requests
+    num_api_requests_made: int
+        The total number of Alma API requests made using this records buffer
+    num_api_requests_remaining: Optional[int]
+        The number of Alma Daily API requests remaining
+    num_records_updated: int
+        The number of records successfully updated
+    num_records_with_no_update_needed: int
+        The number of records with no update needed
+    num_records_with_errors: int
+        The number of records where an error was encountered
+    records_updated: TextIO
+        The CSV file object where updated records are added
+    records_updated_writer: writer
+        The writer object used to write to the records_updated CSV file object
+    records_with_no_update_needed: TextIO
+        The CSV file object where records with no update needed are added
+    records_with_no_update_needed_writer: writer
+        The writer object used to write to the
+        records_with_no_update_needed_writer CSV file object
+    records_with_errors: TextIO
+        The CSV file object where records are added if an error is encountered
+    records_with_errors_writer: writer
+        The writer object used to write to the records_with_errors CSV file
+        object
+
+    Methods
+    -------
+    add(mms_id, oclc_num)
+        Adds the given record to this buffer (i.e. mms_id_to_oclc_num_dict)
+    make_api_request(api_request)
+        Makes the specified Alma API request
+    process_records()
+        Updates each Alma record in buffer (if an update is needed)
+    remove_all_records()
+        Removes all records from this buffer
+    update_alma_record(mms_id, alma_record)
+        Updates the Alma record to have the given OCLC number (if needed)
+    """
+
+    def __init__(
+            self,
+            records_updated: TextIO,
+            records_with_no_update_needed: TextIO,
+            records_with_errors: TextIO) -> None:
+        """Initializes an AlmaRecordsBuffer object.
+
+        Parameters
+        ----------
+        records_updated: TextIO
+            The CSV file object where updated records are added
+        records_with_no_update_needed: TextIO
+            The CSV file object where records with no update needed are added
+        records_with_errors: TextIO
+            The CSV file object where records are added if an error is
+            encountered
+        """
+
+        self.mms_id_to_oclc_num_dict = {}
+
+        self.api_request_headers = {
+            'Authorization': f'apikey {os.environ["ALMA_API_KEY"]}'
+        }
+        self.num_api_requests_made = 0
+        self.num_api_requests_remaining = None
+
+        self.num_records_updated = 0
+        self.num_records_with_no_update_needed = 0
+        self.num_records_with_errors = 0
+
+        logger.info(f'{type(records_updated) = }') # delete after testing
+        logger.info(f'{type(records_with_no_update_needed) = }') # delete after testing
+        logger.info(f'{type(records_with_errors) = }') # delete after testing
+
+        self.records_updated = records_updated
+        self.records_with_no_update_needed = records_with_no_update_needed
+        self.records_with_errors = records_with_errors
+
+        self.records_updated_writer: writer = writer(self.records_updated) # delete after testing (type hint only)
+        self.records_with_no_update_needed_writer = \
+            writer(self.records_with_no_update_needed)
+        self.records_with_errors_writer = writer(self.records_with_errors)
+
+        logger.info(f'{type(self.records_updated_writer) = }') # delete after testing
+        logger.info(f'{type(self.records_with_no_update_needed_writer) = }') # delete after testing
+        logger.info(f'{type(self.records_with_errors_writer) = }') # delete after testing
+
+    def __len__(self) -> int:
+        """Returns the number of records in this records buffer.
+
+        Returns
+        -------
+        int
+            The number of records in this records buffer
+        """
+
+        return len(self.mms_id_to_oclc_num_dict)
+
+    def __str__(self) -> str:
+        """Returns a string listing the contents of this records buffer.
+
+        In specific, this method lists the contents of the MMS ID to OCLC Number
+        dictionary (mms_id_to_oclc_num_dict).
+
+        Returns
+        -------
+        str
+            The contents of this records buffer
+        """
+
+        return (f'Records buffer contents ({{MMS ID: OCLC Number}}): '
+            f'{self.mms_id_to_oclc_num_dict}')
+
+    def add(self, mms_id: str, oclc_num: str) -> None:
+        """Adds the given record to this buffer (i.e. mms_id_to_oclc_num_dict).
+
+        Parameters
+        ----------
+        mms_id: str
+            The record's MMS ID
+        oclc_num: str
+            The record's OCLC Number
+
+        Raises
+        ------
+        AssertionError
+            If the MMS ID is already in the buffer, i.e. mms_id_to_oclc_num_dict
+        """
+
+        assert mms_id not in self.mms_id_to_oclc_num_dict, (f'MMS ID {mms_id} '
+            f'already exists in records buffer with OCLC Number '
+            f'{self.mms_id_to_oclc_num_dict[mms_id]}')
+        self.mms_id_to_oclc_num_dict[mms_id] = oclc_num
+        logger.debug(f'Added {mms_id} to records buffer.')
+
+    def update_num_api_requests(
+            self,
+            num_api_requests_remaining: int) -> None:
+        """Updates the number of API requests made/remaining.
+
+        Only call this method after making an Alma API request.
+
+        Parameters
+        ----------
+        num_api_requests_remaining: int
+            The number of daily Ex Libris API requests remaining
+        """
+
+        self.num_api_requests_made += 1
+        self.num_api_requests_remaining = num_api_requests_remaining
+
+        logger.debug(f'After API request, there are '
+            f'{self.num_api_requests_remaining} Ex Libris API requests '
+            f'remaining for today.')
+
+    def process_records(self) -> None:
+        """Updates each Alma record in buffer (if an update is needed).
+
+        Sends a GET request to the Ex Libris Alma BIBs API:
+        https://developers.exlibrisgroup.com/alma/apis/bibs/
+
+        Raises
+        ------
+        requests.exceptions.HTTPError
+            If the API request results in a 4XX client error or 5XX server error
+            response
+        """
+
+        mms_id = None
+        api_response = None
+        updated_record_confirmation = None
+        error_occurred = True
+        try:
+            logger.debug('Started processing records buffer...')
+
+            params = {
+                'view': 'full',
+                'mms_id': ','.join(self.mms_id_to_oclc_num_dict.keys())
+            }
+
+            # Make GET request to retrieve all Alma records in buffer
+            api_response = requests.get(
+                f'{os.environ["ALMA_BIBS_API_URL"]}',
+                params=params,
+                headers=self.api_request_headers,
+                timeout=45
+            )
+            self.update_num_api_requests(
+                int(api_response.headers['X-Exl-Api-Remaining'])
+            )
+            libraries.api.log_response_and_raise_for_status(api_response)
+
+            root = ET.fromstring(api_response.text)
+            num_records = int(root.attrib['total_record_count'])
+
+            # Loop through each Alma record (i.e. each 'bib' element)
+            for record_index, bib_element in enumerate(root, start=1):
+                mms_id = bib_element.find('mms_id').text
+                logger.info(f'{type(mms_id) = }') # delete after testing
+                logger.debug(f'Started processing MMS ID {mms_id}, (record '
+                    f'#{record_index} of {num_records} in buffer)...')
+
+                xml_as_pretty_printed_bytes_obj = libraries.xml.prettify(
+                    ET.tostring(bib_element, encoding='UTF-8')
+                )
+                # To also log the record's XML to the console, use the following
+                # code instead:
+                # xml_as_pretty_printed_bytes_obj = \
+                #     libraries.xml.prettify_and_log_xml(
+                #         ET.tostring(bib_element, encoding='UTF-8'),
+                #         'Original record'
+                #     )
+
+                # Create XML file
+                with open(
+                        f'outputs/update_alma_records/xml/{mms_id}_original.xml',
+                        'wb') as file:
+                    file.write(xml_as_pretty_printed_bytes_obj)
+
+                # Note: The update_alma_record() method returns a
+                # Record_confirmation NamedTuple (see libraries/record.py) which
+                # should adhere to the following rule:
+                # - If the was_updated field is True, then the error_msg field
+                # will be None.
+                updated_record_confirmation = self.update_alma_record(
+                    mms_id,
+                    bib_element
+                )
+
+                if updated_record_confirmation.error_msg is None:
+                    error_occurred = False
+                else:
+                    error_occurred = True
+
+                if updated_record_confirmation.was_updated:
+                    self.num_records_updated += 1
+
+                    # Add record to records_updated spreadsheet
+                    if self.records_updated.tell() == 0:
+                        # Write header row
+                        self.records_updated_writer.writerow([
+                            'MMS ID',
+                            (f'Original OCLC Number(s) '
+                                f'[{libraries.record.subfield_a_disclaimer}]'),
+                            'New OCLC Number'
+                        ])
+
+                    self.records_updated_writer.writerow([
+                        mms_id,
+                        updated_record_confirmation.orig_oclc_nums,
+                        self.mms_id_to_oclc_num_dict[mms_id]
+                    ])
+                elif updated_record_confirmation.error_msg is None:
+                    self.num_records_with_no_update_needed += 1
+
+                    # Add record to records_with_no_update_needed spreadsheet
+                    if self.records_with_no_update_needed.tell() == 0:
+                        # Write header row
+                        self.records_with_no_update_needed_writer.writerow([
+                            'MMS ID',
+                            'OCLC Number'
+                        ])
+
+                    self.records_with_no_update_needed_writer.writerow([
+                        mms_id,
+                        self.mms_id_to_oclc_num_dict[mms_id]
+                    ])
+
+                logger.debug(f'Finished processing MMS ID {mms_id} (record '
+                    f'#{record_index} of {num_records} in buffer).\n')
+
+                mms_id = None
+                updated_record_confirmation = None
+
+            logger.debug('Finished processing records buffer.')
+        except requests.exceptions.HTTPError:
+            logger.error(
+                libraries.xml.prettify_and_log_xml(
+                    api_response.text,
+                    'Alma API response'
+                )
+            )
+
+            # Re-raise exception so that it can be handled by the main script
+            # (which will include a more complete stack trace)
+            raise
+        finally:
+            if error_occurred:
+                self.num_records_with_errors += 1
+
+                # Add record to records_with_errors spreadsheet
+                if self.records_with_errors.tell() == 0:
+                    # Write header row
+                    self.records_with_errors_writer.writerow([
+                        'MMS ID',
+                        (f'OCLC Number(s) from Alma Record '
+                            f'[{libraries.record.subfield_a_disclaimer}]'),
+                        'Current OCLC Number',
+                        'Error'
+                    ])
+
+                self.records_with_errors_writer.writerow([
+                    mms_id
+                        if mms_id is not None
+                        else '<could not retrieve MMS ID from Alma record>',
+                    updated_record_confirmation.orig_oclc_nums
+                        if updated_record_confirmation is not None
+                        and updated_record_confirmation.orig_oclc_nums is not None
+                        else '<record not fully checked>',
+                    self.mms_id_to_oclc_num_dict[mms_id]
+                        if mms_id is not None
+                        else '<record not fully checked>',
+                    updated_record_confirmation.error_msg
+                        if updated_record_confirmation is not None
+                        and updated_record_confirmation.error_msg is not None
+                        else '<record not fully checked>',
+                ])
+
+    def remove_all_records(self) -> None:
+        """Removes all records from this buffer.
+
+        In specific, clears mms_id_to_oclc_num_dict.
+        """
+
+        self.mms_id_to_oclc_num_dict.clear()
+        logger.debug(f'Cleared records buffer.')
+        logger.debug(self.__str__() + '\n')
+
+    def update_alma_record(
+            self,
+            mms_id: str,
+            alma_record: ET.Element) -> libraries.record.Record_confirmation:
+        """Updates the Alma record to have the given OCLC Number (if needed).
+
+        Note that the OCLC Number is stored in mms_id_to_oclc_num_dict (with the
+        Alma record's MMS ID as its key).
+
+        Compares all 035 fields containing an OCLC number (in the subfield $a)
+        to the given OCLC Number (oclc_num) in the records buffer (i.e. in
+        mms_id_to_oclc_num_dict). If needed, updates the Alma record such that:
+        - the record contains the given OCLC number (oclc_num)
+        - any non-matching OCLC numbers from an 035 field (in the subfield $a)
+          are moved to the 019 field (and that 035 field is removed, along with
+          any data in its subfields)
+
+        Updates the Alma record by sending a PUT request to the Ex Libris Alma
+        BIBs API: https://developers.exlibrisgroup.com/alma/apis/bibs/
+
+        Parameters
+        ----------
+        mms_id: str
+            The MMS ID of the Alma record to be updated
+        alma_record: ET.Element
+            The Alma record's top-level element (i.e. bib element) from the
+            parsed XML tree
+
+        Returns
+        -------
+        libraries.record.Record_confirmation
+            NamedTuple with details about the update attempt. Includes the
+            following fields:
+            - was_updated
+            - orig_oclc_nums
+            - error_msg
+
+        Raises
+        ------
+        requests.exceptions.HTTPError
+            If the API request results in a 4XX client error or 5XX server error
+            response
+        """
+
+        logger.debug(f"Attempting to update MMS ID '{mms_id}'...")
+
+        oclc_num = self.mms_id_to_oclc_num_dict[mms_id]
+        full_oclc_num = f'{libraries.record.oclc_org_code_prefix}{oclc_num}'
+        logger.debug(f'Full OCLC number: {full_oclc_num}')
+
+        # Access XML elements of Alma record
+        record_element = alma_record.find('./record')
+        need_to_update_record = False
+        oclc_nums_from_record = list()
+        oclc_nums_for_019_field = set()
+        found_035_field_with_current_oclc_num = False
+        record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix = False
+        error_msg = None
+        found_error_in_record = False
+
+        # Iterate over each 035 field
+        for field_035_element_index, field_035_element in enumerate(
+                record_element.findall('./datafield[@tag="035"]')):
+            # Extract subfield a (which would contain the OCLC number if present)
+            subfield_a_data = libraries.record.get_subfield_a_with_oclc_num(
+                field_035_element,
+                field_035_element_index)
+
+            # Add or append to error message
+            if subfield_a_data.error_msg is not None:
+                if error_msg is None:
+                    error_msg = subfield_a_data.error_msg
+                else:
+                    error_msg += '. ' + subfield_a_data.error_msg
+
+            if subfield_a_data.string_with_oclc_num is None:
+                # This 035 field either has no subfield $a or its first subfield $a
+                # does not contain an OCLC number. So skip it.
+                continue
+
+            (subfield_a_without_oclc_org_code_prefix,
+                    extracted_oclc_num,
+                    found_valid_oclc_prefix,
+                    found_valid_oclc_num,
+                    found_error_in_record) = \
+                libraries.record.extract_oclc_num_from_subfield_a(
+                    subfield_a_data.string_with_oclc_num,
+                    field_035_element_index,
+                    found_error_in_record)
+
+            oclc_nums_from_record.append(subfield_a_without_oclc_org_code_prefix)
+
+            # Check for potentially-valid OCLC number with invalid prefix
+            found_potentially_valid_oclc_num_with_invalid_oclc_prefix = \
+                found_valid_oclc_num and not found_valid_oclc_prefix
+
+            if found_potentially_valid_oclc_num_with_invalid_oclc_prefix:
+                invalid_prefix_msg = (f'035 field #{field_035_element_index + 1} '
+                    f'contains an OCLC number with an invalid prefix: '
+                    f'{extracted_oclc_num}. '
+                    f'{libraries.record.valid_oclc_number_prefixes_str}')
+                if error_msg is None:
+                    error_msg = invalid_prefix_msg
+                else:
+                    error_msg += '. ' + invalid_prefix_msg
+
+            record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix = \
+                (record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix
+                 or found_potentially_valid_oclc_num_with_invalid_oclc_prefix)
+
+            if not record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
+                # Compare the extracted OCLC number to the current OCLC number
+                extracted_oclc_num_matches_current_oclc_num = \
+                    extracted_oclc_num == oclc_num
+                logger.debug(f'Does the extracted OCLC number '
+                    f'({extracted_oclc_num}) match the current OCLC number '
+                    f'({oclc_num})? {extracted_oclc_num_matches_current_oclc_num}')
+
+                if (not extracted_oclc_num_matches_current_oclc_num
+                        or found_035_field_with_current_oclc_num):
+                    # This 035 field either (1) contains an old, empty or invalid
+                    # OCLC number or (2) is a duplicate of another 035 field with
+                    # the current OCLC number. In either case, remove this 035
+                    # field.
+                    record_element.remove(field_035_element)
+                    logger.debug(f'Removed 035 field #'
+                        f'{field_035_element_index + 1}, whose (first) subfield a '
+                        f'is: {subfield_a_data.string_with_oclc_num}')
+
+                    if (not extracted_oclc_num_matches_current_oclc_num
+                            and len(extracted_oclc_num) > 0
+                            and found_valid_oclc_num):
+                        oclc_nums_for_019_field.add(extracted_oclc_num)
+
+                    need_to_update_record = True
+                else:
+                    found_035_field_with_current_oclc_num = True
+
+        logger.debug(f'{oclc_nums_for_019_field=}')
+        logger.debug(f'{len(oclc_nums_for_019_field)=}')
+
+        oclc_nums_from_record_list_length = len(oclc_nums_from_record)
+        oclc_nums_from_record_str = None
+        if oclc_nums_from_record_list_length > 0:
+            oclc_nums_from_record_str = ', '.join(oclc_nums_from_record)
+
+        logger.debug(f'{oclc_nums_from_record=}')
+        logger.debug(f'{oclc_nums_from_record_list_length=}')
+        logger.debug(f'{oclc_nums_from_record_str=}')
+
+        # Don't update the record if it contains a potentially-valid OCLC number
+        # with an invalid prefix.
+        if record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
+            logger.error(f"Did not update MMS ID '{mms_id}' because it contains at "
+                f"least one potentially-valid OCLC number with an invalid prefix."
+                f"\n")
+
+            return libraries.record.Record_confirmation(
+                False,
+                oclc_nums_from_record_str,
+                error_msg
+            )
+
+        # Only add or edit the 019 field if oclc_nums_for_019_field set is non-empty
+        if oclc_nums_for_019_field:
+            # Search record for 019 field
+            first_019_element = record_element.find('./datafield[@tag="019"]')
+
+            # If the record has no 019 field, create one
+            if not first_019_element:
+                logger.debug(f'Original record does not have an 019 field.')
+                first_019_element = ET.SubElement(record_element, 'datafield')
+                first_019_element.set('ind1', ' ')
+                first_019_element.set('ind2', ' ')
+                first_019_element.set('tag', '019')
+
+            first_019_element_as_str = \
+                ET.tostring(first_019_element, encoding="unicode")
+            logger.debug(f'First 019 element:\n{first_019_element_as_str}')
+
+            # Add old OCLC numbers to 019 field
+            for old_oclc_num in oclc_nums_for_019_field:
+                sub_element = ET.SubElement(first_019_element, 'subfield')
+                sub_element.set('code', 'a')
+                sub_element.text = old_oclc_num
+
+                first_019_element_as_str = \
+                    ET.tostring(first_019_element, encoding="unicode")
+                logger.debug(f'First 019 element after adding {old_oclc_num}:\n'
+                    f'{first_019_element_as_str}')
+
+        if not found_035_field_with_current_oclc_num:
+            # Create new 035 element with OCLC number
+            new_035_element = ET.SubElement(record_element, 'datafield')
+            new_035_element.set('ind1', ' ')
+            new_035_element.set('ind2', ' ')
+            new_035_element.set('tag', '035')
+            sub_element = ET.SubElement(new_035_element, 'subfield')
+            sub_element.set('code', 'a')
+            sub_element.text = full_oclc_num
+
+            new_035_element_as_str = \
+                ET.tostring(new_035_element, encoding="unicode")
+            logger.debug(f'New 035 element:\n{new_035_element_as_str}')
+
+            need_to_update_record = True
+
+        if need_to_update_record:
+            # Send PUT request
+            headers = self.api_request_headers
+            logger.info(f'headers before adding Content-Type: {headers}') # delete after testing
+            headers['Content-Type'] = 'application/xml'
+            logger.info(f'headers after adding Content-Type: {headers}') # delete after testing
+            logger.info(f'Make sure this attribute does not have a Content-Type: {self.api_request_headers = }')
+            payload = ET.tostring(alma_record, encoding='UTF-8')
+
+            # Make PUT request to update Alma record
+            api_response = requests.put(
+                f'{os.environ["ALMA_BIBS_API_URL"]}{mms_id}',
+                headers=headers,
+                data=payload,
+                timeout=45
+            )
+            self.update_num_api_requests(
+                int(api_response.headers['X-Exl-Api-Remaining'])
+            )
+            libraries.api.log_response_and_raise_for_status(api_response)
+
+            xml_as_pretty_printed_bytes_obj = \
+                libraries.xml.prettify(api_response.text)
+            # To also log the updated record's XML to the console, use the
+            # following code instead:
+            # xml_as_pretty_printed_bytes_obj = \
+            #     libraries.xml.prettify_and_log_xml(
+            #         api_response.text,
+            #         'Modified record'
+            #     )
+
+            # Create XML file
+            with open(f'outputs/update_alma_records/xml/{mms_id}_modified.xml',
+                    'wb') as file:
+                file.write(xml_as_pretty_printed_bytes_obj)
+
+            logger.debug(f"MMS ID '{mms_id}' has been updated.\n")
+            return libraries.record.Record_confirmation(
+                True,
+                oclc_nums_from_record_str,
+                None
+            )
+
+        logger.debug(f"No update needed for MMS ID '{mms_id}'.\n")
+        return libraries.record.Record_confirmation(
+            False,
+            oclc_nums_from_record_str,
+            None
+        )
+
+
 class WorldCatRecordsBuffer:
     """
     A buffer of records for WorldCat. DO NOT INSTANTIATE THIS CLASS DIRECTLY.
 
     Instead, instantiate one of its subclasses:
-    - OclcNumDictBuffer: A buffer containing a dictionary of OCLC Number (key),
-      MMS ID (value) pairs (use this subclass to find each record's current
-      OCLC Number; see process_worldcat_records.py for more details)
-    - OclcNumSetBuffer: A buffer containing a set of OCLC Numbers (use this
-      subclass to set or unset the WorldCat holding for each OCLC Number; see
-      process_worldcat_records.py for more details)
+    - OclcNumDictBuffer: A buffer containing a dictionary that maps OCLC Number
+      (key) to MMS ID (value). Use this subclass to find each record's current
+      OCLC Number. See process_worldcat_records.py for more details.
+    - OclcNumSetBuffer: A buffer containing a set of OCLC Numbers. Use this
+      subclass to set or unset the WorldCat holding for each OCLC Number. See
+      process_worldcat_records.py for more details.
     - RecordSearchBuffer: A buffer containing data to be searched for in
-      WorldCat (use this subclass to find a record's OCLC Number given other
-      record identifiers; see search_worldcat.py for more details)
+      WorldCat. Use this subclass to find a record's OCLC Number given other
+      record identifiers. See search_worldcat.py for more details.
 
     Attributes
     ----------
@@ -288,8 +889,7 @@ class WorldCatRecordsBuffer:
 
 
 class OclcNumDictBuffer(WorldCatRecordsBuffer):
-    """
-    A buffer containing a dictionary of OCLC Number (key), MMS ID (value) pairs.
+    """A buffer containing a dictionary mapping OCLC Number to MMS ID.
 
     Use this subclass to find each record's current OCLC Number. See
     process_worldcat_records.py for more details.
@@ -297,7 +897,7 @@ class OclcNumDictBuffer(WorldCatRecordsBuffer):
     Attributes
     ----------
     oclc_num_dict: Dict[str, str]
-        A dictionary containing each record's original OCLC number (key) and its
+        A dictionary that maps each record's original OCLC Number (key) to its
         MMS ID (value)
     records_with_current_oclc_num: TextIO
         The CSV file object where records with a current OCLC number are added

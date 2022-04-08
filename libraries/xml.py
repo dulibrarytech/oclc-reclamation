@@ -6,18 +6,18 @@ logger = logging.getLogger(__name__)
 
 
 def prettify_and_log_xml(
-        response: requests.models.Response,
+        xml_str: str,
         heading: str) -> bytes:
-    xml_as_pretty_printed_bytes_obj = prettify(response)
+    xml_as_pretty_printed_bytes_obj = prettify(xml_str)
 
     log_xml_string(xml_as_pretty_printed_bytes_obj, heading)
 
     return xml_as_pretty_printed_bytes_obj
 
 
-def prettify(response: requests.models.Response) -> bytes:
-    xml_as_pretty_printed_bytes_obj = minidom.parseString(
-        response.text).toprettyxml(indent='  ', encoding='UTF-8')
+def prettify(xml_str: str) -> bytes:
+    xml_as_pretty_printed_bytes_obj = \
+        minidom.parseString(xml_str).toprettyxml(indent='  ', encoding='UTF-8')
 
     return xml_as_pretty_printed_bytes_obj
 

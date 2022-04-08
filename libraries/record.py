@@ -18,6 +18,33 @@ subfield_a_disclaimer = ('if an 035 field contains multiple $a values, then '
     'only its first $a value is listed here')
 
 
+class Record_confirmation(NamedTuple):
+    """Details about an attempt to update an Alma record.
+
+    Used as the return type for the update_alma_record() method of the
+    AlmaRecordsBuffer class (see libraries/records_buffer.py for more details).
+
+    Instances should adhere to the following rule:
+    - If the was_updated field is True, then the error_msg field should be None.
+
+    Fields
+    ------
+    was_updated: bool
+        True if the update_alma_record function call resulted in the record
+        actually being updated; otherwise, False
+    orig_oclc_nums: Optional[str]
+        A comma-separated listing of the original OCLC Number(s) from the Alma
+        record's 035 $a field(s), provided that no errors caused the process to
+        abort; otherwise, None
+    error_msg: Optional[str]
+        Message explaining the error(s) and/or warning(s) encountered by the
+        update_alma_record function call, if applicable; otherwise, None
+    """
+    was_updated: bool
+    orig_oclc_nums: Optional[str]
+    error_msg: Optional[str]
+
+
 class Subfield_a(NamedTuple):
     """Data returned by the get_subfield_a_with_oclc_num function.
 
