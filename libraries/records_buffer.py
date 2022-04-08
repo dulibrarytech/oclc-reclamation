@@ -183,12 +183,15 @@ class AlmaRecordsBuffer:
         updated_record_confirmation = None
         error_occurred = True
         try:
-            logger.debug('Started processing records buffer...')
+            logger.debug('Started processing records buffer...\n')
 
             params = {
                 'view': 'full',
                 'mms_id': ','.join(self.mms_id_to_oclc_num_dict.keys())
             }
+
+            logger.debug(f'Making GET request for '
+                f'{len(self.mms_id_to_oclc_num_dict)} Alma record(s)...')
 
             # Make GET request to retrieve all Alma records in buffer
             api_response = requests.get(
@@ -204,6 +207,9 @@ class AlmaRecordsBuffer:
 
             root = ET.fromstring(api_response.text)
             num_records = int(root.attrib['total_record_count'])
+
+            logger.debug(f'The GET request retrieved {num_records} Alma '
+                f'record(s).\n')
 
             # Loop through each Alma record (i.e. each 'bib' element)
             for record_index, bib_element in enumerate(root, start=1):
