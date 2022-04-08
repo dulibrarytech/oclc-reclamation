@@ -4,6 +4,7 @@ import libraries.records_buffer
 import logging
 import logging.config
 import pandas as pd
+from csv import writer
 from datetime import datetime
 from dotenv import load_dotenv
 from requests.exceptions import HTTPError
@@ -162,6 +163,8 @@ def main() -> None:
         open('outputs/update_alma_records/records_with_errors.csv', mode='a',
             newline='') as records_with_errors:
 
+        records_with_errors_writer = writer(records_with_errors)
+
         records_buffer = libraries.records_buffer.AlmaRecordsBuffer(
             records_updated,
             records_with_no_update_needed,
@@ -169,6 +172,11 @@ def main() -> None:
         )
 
         for index, row in data.iterrows():
+            mms_id = None
+            oclc_num = None
+            error_occurred = False
+            error_msg = None
+
             if (records_buffer.num_api_requests_remaining is not None
                     and records_buffer.num_api_requests_remaining < 10):
                 logger.error(f"The daily request threshold for the Ex Libris "
@@ -213,14 +221,43 @@ def main() -> None:
                 logger.exception(f"An assertion error occurred when "
                     f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}"
                     f" of input file): {assert_err}")
+                error_msg = f"Assertion Error: {assert_err}"
+                error_occurred = True
             except HTTPError as http_err:
                 logger.exception(f"An HTTP error occurred when processing "
                     f"MMS ID '{row['MMS ID']}' (at row {index + 2} of input "
                     f"file): {http_err}")
+                error_msg = f"HTTP Error: {http_err}"
+                error_occurred = True
             except Exception as err:
                 logger.exception(f"An error occurred when processing MMS ID "
                     f"'{row['MMS ID']}' (at row {index + 2} of input file): "
                     f"{err}")
+                error_msg = err
+                error_occurred = True
+            finally:
+                if error_occurred:
+                    # Add record to records_with_errors spreadsheet
+                    if records_with_errors.tell() == 0:
+                        # Write header row
+                        records_with_errors_writer.writerow([
+                            'MMS ID',
+                            (f'OCLC Number(s) from Alma Record '
+                                f'[{libraries.record.subfield_a_disclaimer}]'),
+                            'Current OCLC Number',
+                            'Error'
+                        ])
+
+                    records_with_errors_writer.writerow([
+                        mms_id
+                            if mms_id is not None
+                            else row['MMS ID'],
+                        '<record not fully checked>',
+                        oclc_num
+                            if oclc_num is not None
+                            else row['OCLC Number'],
+                        error_msg
+                    ])
 
         # If records buffer is not empty, process remaining records
         if len(records_buffer) > 0:

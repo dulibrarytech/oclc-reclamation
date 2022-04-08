@@ -178,13 +178,13 @@ class AlmaRecordsBuffer:
             response
         """
 
-        mms_id = None
-        api_response = None
-        updated_record_confirmation = None
-        error_occurred = True
-        try:
-            logger.debug('Started processing records buffer...\n')
+        assert len(self.mms_id_to_oclc_num_dict) != 0, ('Cannot process '
+            'records because records buffer is empty.')
 
+        logger.debug('Started processing records buffer...\n')
+
+        api_response = None
+        try:
             params = {
                 'view': 'full',
                 'mms_id': ','.join(self.mms_id_to_oclc_num_dict.keys())
@@ -245,11 +245,6 @@ class AlmaRecordsBuffer:
                     bib_element
                 )
 
-                if updated_record_confirmation.error_msg is None:
-                    error_occurred = False
-                else:
-                    error_occurred = True
-
                 if updated_record_confirmation.was_updated:
                     self.num_records_updated += 1
 
@@ -283,14 +278,34 @@ class AlmaRecordsBuffer:
                         mms_id,
                         self.mms_id_to_oclc_num_dict[mms_id]
                     ])
+                else:
+                    self.num_records_with_errors += 1
+
+                    # Add record to records_with_errors spreadsheet
+                    if self.records_with_errors.tell() == 0:
+                        # Write header row
+                        self.records_with_errors_writer.writerow([
+                            'MMS ID',
+                            (f'OCLC Number(s) from Alma Record '
+                                f'[{libraries.record.subfield_a_disclaimer}]'),
+                            'Current OCLC Number',
+                            'Error'
+                        ])
+
+                    self.records_with_errors_writer.writerow([
+                        mms_id,
+                        updated_record_confirmation.orig_oclc_nums
+                            if updated_record_confirmation.orig_oclc_nums is not None
+                            else '<record not fully checked>',
+                        self.mms_id_to_oclc_num_dict.get(
+                            mms_id,
+                            '<error retrieving OCLC Number>'
+                        ),
+                        updated_record_confirmation.error_msg
+                    ])
 
                 logger.debug(f'Finished processing MMS ID {mms_id} (record '
                     f'#{record_index} of {num_records} in buffer).\n')
-
-                mms_id = None
-                updated_record_confirmation = None
-
-            logger.debug('Finished processing records buffer.\n')
         except requests.exceptions.HTTPError:
             logger.error(
                 libraries.xml.prettify_and_log_xml(
@@ -302,37 +317,8 @@ class AlmaRecordsBuffer:
             # Re-raise exception so that it can be handled by the main script
             # (which will include a more complete stack trace)
             raise
-        finally:
-            if error_occurred:
-                self.num_records_with_errors += 1
 
-                # Add record to records_with_errors spreadsheet
-                if self.records_with_errors.tell() == 0:
-                    # Write header row
-                    self.records_with_errors_writer.writerow([
-                        'MMS ID',
-                        (f'OCLC Number(s) from Alma Record '
-                            f'[{libraries.record.subfield_a_disclaimer}]'),
-                        'Current OCLC Number',
-                        'Error'
-                    ])
-
-                self.records_with_errors_writer.writerow([
-                    mms_id
-                        if mms_id is not None
-                        else '<could not retrieve MMS ID from Alma record>',
-                    updated_record_confirmation.orig_oclc_nums
-                        if updated_record_confirmation is not None
-                        and updated_record_confirmation.orig_oclc_nums is not None
-                        else '<record not fully checked>',
-                    self.mms_id_to_oclc_num_dict[mms_id]
-                        if mms_id is not None
-                        else '<record not fully checked>',
-                    updated_record_confirmation.error_msg
-                        if updated_record_confirmation is not None
-                        and updated_record_confirmation.error_msg is not None
-                        else '<record not fully checked>',
-                ])
+        logger.debug('Finished processing records buffer.\n')
 
     def remove_all_records(self) -> None:
         """Removes all records from this buffer.
