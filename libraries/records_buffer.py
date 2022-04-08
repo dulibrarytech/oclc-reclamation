@@ -108,22 +108,14 @@ class AlmaRecordsBuffer:
         self.num_records_with_no_update_needed = 0
         self.num_records_with_errors = 0
 
-        logger.info(f'{type(records_updated) = }') # delete after testing
-        logger.info(f'{type(records_with_no_update_needed) = }') # delete after testing
-        logger.info(f'{type(records_with_errors) = }') # delete after testing
-
         self.records_updated = records_updated
         self.records_with_no_update_needed = records_with_no_update_needed
         self.records_with_errors = records_with_errors
 
-        self.records_updated_writer: writer = writer(self.records_updated) # delete after testing (type hint only)
+        self.records_updated_writer = writer(self.records_updated)
         self.records_with_no_update_needed_writer = \
             writer(self.records_with_no_update_needed)
         self.records_with_errors_writer = writer(self.records_with_errors)
-
-        logger.info(f'{type(self.records_updated_writer) = }') # delete after testing
-        logger.info(f'{type(self.records_with_no_update_needed_writer) = }') # delete after testing
-        logger.info(f'{type(self.records_with_errors_writer) = }') # delete after testing
 
     def __len__(self) -> int:
         """Returns the number of records in this records buffer.
@@ -216,8 +208,8 @@ class AlmaRecordsBuffer:
             # Loop through each Alma record (i.e. each 'bib' element)
             for record_index, bib_element in enumerate(root, start=1):
                 mms_id = bib_element.find('mms_id').text
-                logger.info(f'{type(mms_id) = }') # delete after testing
-                logger.debug(f'Started processing MMS ID {mms_id}, (record '
+
+                logger.debug(f'Started processing MMS ID {mms_id} (record '
                     f'#{record_index} of {num_records} in buffer)...')
 
                 xml_as_pretty_printed_bytes_obj = libraries.xml.prettify(
@@ -292,7 +284,7 @@ class AlmaRecordsBuffer:
                 mms_id = None
                 updated_record_confirmation = None
 
-            logger.debug('Finished processing records buffer.')
+            logger.debug('Finished processing records buffer.\n')
         except requests.exceptions.HTTPError:
             logger.error(
                 libraries.xml.prettify_and_log_xml(

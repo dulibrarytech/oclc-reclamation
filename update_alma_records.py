@@ -179,20 +179,20 @@ def main() -> None:
                     f"({args.input_file}).\n")
                 break
 
-            # Make sure that mms_id and oclc_num are valid
-            mms_id = libraries.record.get_valid_record_identifier(
-                row['MMS ID'],
-                'MMS ID'
-            )
-            oclc_num = libraries.record.get_valid_record_identifier(
-                row['OCLC Number'],
-                'OCLC number'
-            )
-
-            # Remove leading zeros from OCLC Number
-            oclc_num = libraries.record.remove_leading_zeros(oclc_num)
-
             try:
+                # Make sure that mms_id and oclc_num are valid
+                mms_id = libraries.record.get_valid_record_identifier(
+                    row['MMS ID'],
+                    'MMS ID'
+                )
+                oclc_num = libraries.record.get_valid_record_identifier(
+                    row['OCLC Number'],
+                    'OCLC number'
+                )
+
+                # Remove leading zeros from OCLC Number
+                oclc_num = libraries.record.remove_leading_zeros(oclc_num)
+
                 assert mms_id not in records_already_processed, (f'Record with '
                     f'MMS ID {mms_id} has already been processed.')
                 records_already_processed.add(mms_id)
