@@ -67,14 +67,15 @@ class AlmaRecordsBuffer:
     -------
     add(mms_id, oclc_num)
         Adds the given record to this buffer (i.e. mms_id_to_oclc_num_dict)
-    make_api_request(api_request)
-        Makes the specified Alma API request
     process_records()
         Updates each Alma record in buffer (if an update is needed)
     remove_all_records()
         Removes all records from this buffer
     update_alma_record(mms_id, alma_record)
         Updates the Alma record to have the given OCLC number (if needed)
+    update_num_api_requests(num_api_requests_remaining)
+        Updates the number of Alma API requests made/remaining. Only call this
+        method after making an Alma API request.
     """
 
     def __init__(
@@ -171,26 +172,6 @@ class AlmaRecordsBuffer:
             f'{self.mms_id_to_oclc_num_dict[mms_id]}')
         self.mms_id_to_oclc_num_dict[mms_id] = oclc_num
         logger.debug(f'Added {mms_id} to records buffer.')
-
-    def update_num_api_requests(
-            self,
-            num_api_requests_remaining: int) -> None:
-        """Updates the number of API requests made/remaining.
-
-        Only call this method after making an Alma API request.
-
-        Parameters
-        ----------
-        num_api_requests_remaining: int
-            The number of daily Ex Libris API requests remaining
-        """
-
-        self.num_api_requests_made += 1
-        self.num_api_requests_remaining = num_api_requests_remaining
-
-        logger.debug(f'After API request, there are '
-            f'{self.num_api_requests_remaining} Ex Libris API requests '
-            f'remaining for today.')
 
     def process_records(self) -> None:
         """Updates each Alma record in buffer (if an update is needed).
@@ -621,6 +602,26 @@ class AlmaRecordsBuffer:
             oclc_nums_from_record_str,
             None
         )
+
+    def update_num_api_requests(
+            self,
+            num_api_requests_remaining: int) -> None:
+        """Updates the number of Alma API requests made/remaining.
+
+        Only call this method after making an Alma API request.
+
+        Parameters
+        ----------
+        num_api_requests_remaining: int
+            The number of daily Ex Libris API requests remaining
+        """
+
+        self.num_api_requests_made += 1
+        self.num_api_requests_remaining = num_api_requests_remaining
+
+        logger.debug(f'After API request, there are '
+            f'{self.num_api_requests_remaining} Ex Libris API requests '
+            f'remaining for today.')
 
 
 class WorldCatRecordsBuffer:
