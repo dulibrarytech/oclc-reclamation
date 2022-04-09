@@ -538,12 +538,10 @@ class AlmaRecordsBuffer:
             need_to_update_record = True
 
         if need_to_update_record:
-            # Send PUT request
-            headers = self.api_request_headers
-            logger.info(f'headers before adding Content-Type: {headers}') # delete after testing
-            headers['Content-Type'] = 'application/xml'
-            logger.info(f'headers after adding Content-Type: {headers}') # delete after testing
-            logger.info(f'Make sure this attribute does not have a Content-Type: {self.api_request_headers = }')
+            headers = {
+                'Authorization': self.api_request_headers['Authorization'],
+                'Content-Type': 'application/xml'
+            }
             payload = ET.tostring(alma_record, encoding='UTF-8')
 
             # Make PUT request to update Alma record
