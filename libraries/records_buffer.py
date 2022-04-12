@@ -247,6 +247,8 @@ class AlmaRecordsBuffer:
                     bib_element
                 )
 
+                logger.info(f'{updated_record_confirmation = }') # delete after testing
+
                 if updated_record_confirmation.was_updated:
                     self.num_records_updated += 1
 
@@ -282,6 +284,12 @@ class AlmaRecordsBuffer:
                     ])
                 else:
                     self.num_records_with_errors += 1
+
+                    logger.info('Error within process_records() method. Inside '
+                        '"else" block because updated_record_confirmation.was_update is False and '
+                        'updated_record_confirmation.error_msg is not None') # delete after testing
+
+                    logger.info(f'{type(updated_record_confirmation.error_msg) = }') # delete after testing
 
                     # Add record to records_with_errors spreadsheet
                     if self.records_with_errors.tell() == 0:
@@ -540,45 +548,69 @@ class AlmaRecordsBuffer:
             need_to_update_record = True
 
         if need_to_update_record:
-            headers = {
-                'Authorization': self.api_request_headers['Authorization'],
-                'Content-Type': 'application/xml'
-            }
-            payload = ET.tostring(alma_record, encoding='UTF-8')
+            api_response = None
+            try:
+                headers = {
+                    'Authorization': self.api_request_headers['Authorization'],
+                    'Content-Type': 'application/xml'
+                }
+                payload = ET.tostring(alma_record, encoding='UTF-8')
 
-            # Make PUT request to update Alma record
-            api_response = requests.put(
-                f'{os.environ["ALMA_BIBS_API_URL"]}{mms_id}',
-                headers=headers,
-                data=payload,
-                timeout=45
-            )
-            self.update_num_api_requests(
-                int(api_response.headers['X-Exl-Api-Remaining'])
-            )
-            libraries.api.log_response_and_raise_for_status(api_response)
+                # # delete after testing (entire 'if' block)
+                # # Code for testing how update_alma_record() method handles an HTTP Error
+                # if mms_id == '991027570199702766':
+                #     logger.info(f'{mms_id = }')
+                #     mms_id = '12345'
+                #     logger.info(f'Changed mms_id to {mms_id}')
 
-            xml_as_pretty_printed_bytes_obj = \
-                libraries.xml.prettify(api_response.text)
-            # To also log the updated record's XML to the console, use the
-            # following code instead:
-            # xml_as_pretty_printed_bytes_obj = \
-            #     libraries.xml.prettify_and_log_xml(
-            #         api_response.text,
-            #         'Modified record'
-            #     )
+                # Make PUT request to update Alma record
+                api_response = requests.put(
+                    f'{os.environ["ALMA_BIBS_API_URL"]}{mms_id}',
+                    headers=headers,
+                    data=payload,
+                    timeout=45
+                )
+                self.update_num_api_requests(
+                    int(api_response.headers['X-Exl-Api-Remaining'])
+                )
+                libraries.api.log_response_and_raise_for_status(api_response)
 
-            # Create XML file
-            with open(f'outputs/update_alma_records/xml/{mms_id}_modified.xml',
-                    'wb') as file:
-                file.write(xml_as_pretty_printed_bytes_obj)
+                xml_as_pretty_printed_bytes_obj = \
+                    libraries.xml.prettify(api_response.text)
+                # To also log the updated record's XML to the console, use the
+                # following code instead:
+                # xml_as_pretty_printed_bytes_obj = \
+                #     libraries.xml.prettify_and_log_xml(
+                #         api_response.text,
+                #         'Modified record'
+                #     )
 
-            logger.debug(f"MMS ID '{mms_id}' has been updated.\n")
-            return libraries.record.Record_confirmation(
-                True,
-                oclc_nums_from_record_str,
-                None
-            )
+                # Create XML file
+                with open(f'outputs/update_alma_records/xml/{mms_id}_modified.xml',
+                        'wb') as file:
+                    file.write(xml_as_pretty_printed_bytes_obj)
+
+                logger.debug(f"MMS ID '{mms_id}' has been updated.\n")
+                return libraries.record.Record_confirmation(
+                    True,
+                    oclc_nums_from_record_str,
+                    None
+                )
+            except requests.exceptions.HTTPError as http_err:
+                logger.error(
+                    libraries.xml.prettify_and_log_xml(
+                        api_response.text,
+                        'Alma API response'
+                    )
+                )
+
+                logger.exception(f"Error attempting to update MMS ID '{mms_id}'.\n")
+                logger.debug('Logged exception (which should include stack trace). Now returning from update_alma_record() method...') # delete after testing
+                return libraries.record.Record_confirmation(
+                    False,
+                    oclc_nums_from_record_str,
+                    f'{http_err}'
+                )
 
         logger.debug(f"No update needed for MMS ID '{mms_id}'.\n")
         return libraries.record.Record_confirmation(

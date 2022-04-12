@@ -218,16 +218,11 @@ def main() -> None:
 
                     if len(records_buffer) < args.batch_size:
                         records_buffer.add(mms_id, oclc_num)
-                    else:
-                        # Records buffer is full, so process these records
+
+                    # If records buffer is full, process these records
+                    if len(records_buffer) == args.batch_size:
                         logger.debug('Records buffer is full.\n')
                         records_buffer.process_records()
-
-                        # Now that its records have been processed, clear buffer
-                        records_buffer.remove_all_records()
-
-                        # Add current row's data to the empty buffer
-                        records_buffer.add(mms_id, oclc_num)
                 else:
                     # End of DataFrame has been reached. If records buffer is
                     # not empty, process those remaining records.
@@ -274,6 +269,11 @@ def main() -> None:
                             else raw_oclc_num,
                         error_msg
                     ])
+
+                # If records buffer is full, clear buffer (now that its records
+                # have been processed)
+                if len(records_buffer) == args.batch_size:
+                    records_buffer.remove_all_records()
 
     logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
 
