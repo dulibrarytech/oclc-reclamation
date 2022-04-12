@@ -198,12 +198,11 @@ def main() -> None:
                 if index < len(data):
                     # Make sure that mms_id and oclc_num are valid
                     raw_mms_id = data.at[index, 'MMS ID']
+                    raw_oclc_num = data.at[index, 'OCLC Number']
                     mms_id = libraries.record.get_valid_record_identifier(
                         raw_mms_id,
                         'MMS ID'
                     )
-
-                    raw_oclc_num = data.at[index, 'OCLC Number']
                     oclc_num = libraries.record.get_valid_record_identifier(
                         raw_oclc_num,
                         'OCLC number'
@@ -248,27 +247,54 @@ def main() -> None:
                 error_occurred = True
             finally:
                 if error_occurred:
-                    # Add record to records_with_errors spreadsheet
-                    if records_with_errors.tell() == 0:
-                        # Write header row
-                        records_with_errors_writer.writerow([
-                            'MMS ID',
-                            (f'OCLC Number(s) from Alma Record '
-                                f'[{libraries.record.subfield_a_disclaimer}]'),
-                            'Current OCLC Number',
-                            'Error'
-                        ])
+                    if args.batch_size > 1 and error_msg.startswith('HTTP Error'):
+                        for batch_index, (
+                                record_mms_id,
+                                record_oclc_num) in enumerate(
+                                records_buffer.mms_id_to_oclc_num_dict.items(),
+                                start=1):
+                            # Add record to records_with_errors spreadsheet
+                            if records_with_errors.tell() == 0:
+                                # Write header row
+                                records_with_errors_writer.writerow([
+                                    'MMS ID',
+                                    (f'OCLC Number(s) from Alma Record '
+                                        f'[{libraries.record.subfield_a_disclaimer}]'),
+                                    'Current OCLC Number',
+                                    'Error'
+                                ])
 
-                    records_with_errors_writer.writerow([
-                        mms_id
-                            if mms_id is not None
-                            else raw_mms_id,
-                        '<record not fully checked>',
-                        oclc_num
-                            if oclc_num is not None
-                            else raw_oclc_num,
-                        error_msg
-                    ])
+                            records_with_errors_writer.writerow([
+                                record_mms_id,
+                                '<record not fully checked>',
+                                record_oclc_num,
+                                (f'Error retrieving batched Alma records '
+                                    f'(record #{batch_index} of '
+                                    f'{len(records_buffer)} in batch): '
+                                    f'{error_msg}')
+                            ])
+                    else:
+                        # Add record to records_with_errors spreadsheet
+                        if records_with_errors.tell() == 0:
+                            # Write header row
+                            records_with_errors_writer.writerow([
+                                'MMS ID',
+                                (f'OCLC Number(s) from Alma Record '
+                                    f'[{libraries.record.subfield_a_disclaimer}]'),
+                                'Current OCLC Number',
+                                'Error'
+                            ])
+
+                        records_with_errors_writer.writerow([
+                            mms_id
+                                if mms_id is not None
+                                else raw_mms_id,
+                            '<record not fully checked>',
+                            oclc_num
+                                if oclc_num is not None
+                                else raw_oclc_num,
+                            error_msg
+                        ])
 
                 # If records buffer is full, clear buffer (now that its records
                 # have been processed)
