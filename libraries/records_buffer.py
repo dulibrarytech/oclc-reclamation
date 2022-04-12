@@ -183,6 +183,8 @@ class AlmaRecordsBuffer:
 
         logger.debug('Started processing records buffer...\n')
 
+        logger.info(f'{self.__str__()}') # delete after testing
+
         api_response = None
         try:
             params = {

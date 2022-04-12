@@ -171,9 +171,16 @@ def main() -> None:
             records_with_errors
         )
 
-        for index, row in data.iterrows():
+        # for index, row in data.iterrows():
+        logger.info(f'{len(data) = }') # delete after testing
+        logger.info(f'{len(data.index) = }') # delete after testing
+        for index in range(len(data) + 1):
+            raw_mms_id = None
             mms_id = None
+
+            raw_oclc_num = None
             oclc_num = None
+
             error_occurred = False
             error_msg = None
 
@@ -183,55 +190,64 @@ def main() -> None:
                     f"API is about to be reached. There are only "
                     f"{records_buffer.num_api_requests_remaining} API requests "
                     f"remaining for today. Aborting script at row {index + 2} "
-                    f"(MMS ID '{row['MMS ID']}') of input file "
+                    f"(MMS ID '{raw_mms_id}') of input file "
                     f"({args.input_file}).\n")
                 break
 
             try:
-                # Make sure that mms_id and oclc_num are valid
-                mms_id = libraries.record.get_valid_record_identifier(
-                    row['MMS ID'],
-                    'MMS ID'
-                )
-                oclc_num = libraries.record.get_valid_record_identifier(
-                    row['OCLC Number'],
-                    'OCLC number'
-                )
+                if index < len(data):
+                    # Make sure that mms_id and oclc_num are valid
+                    raw_mms_id = data.at[index, 'MMS ID']
+                    mms_id = libraries.record.get_valid_record_identifier(
+                        raw_mms_id,
+                        'MMS ID'
+                    )
 
-                # Remove leading zeros from OCLC Number
-                oclc_num = libraries.record.remove_leading_zeros(oclc_num)
+                    raw_oclc_num = data.at[index, 'OCLC Number']
+                    oclc_num = libraries.record.get_valid_record_identifier(
+                        raw_oclc_num,
+                        'OCLC number'
+                    )
 
-                assert mms_id not in records_already_processed, (f'Record with '
-                    f'MMS ID {mms_id} has already been processed.')
-                records_already_processed.add(mms_id)
+                    # Remove leading zeros from OCLC Number
+                    oclc_num = libraries.record.remove_leading_zeros(oclc_num)
 
-                if len(records_buffer) < args.batch_size:
-                    records_buffer.add(mms_id, oclc_num)
+                    assert mms_id not in records_already_processed, (f'Record '
+                        f'with MMS ID {mms_id} has already been processed.')
+                    records_already_processed.add(mms_id)
+
+                    if len(records_buffer) < args.batch_size:
+                        records_buffer.add(mms_id, oclc_num)
+                    else:
+                        # Records buffer is full, so process these records
+                        logger.debug('Records buffer is full.\n')
+                        records_buffer.process_records()
+
+                        # Now that its records have been processed, clear buffer
+                        records_buffer.remove_all_records()
+
+                        # Add current row's data to the empty buffer
+                        records_buffer.add(mms_id, oclc_num)
                 else:
-                    # Records buffer is full, so process these records
-                    logger.debug('Records buffer is full.\n')
-                    records_buffer.process_records()
-
-                    # Now that its records have been processed, clear buffer
-                    records_buffer.remove_all_records()
-
-                    # Add current row's data to the empty buffer
-                    records_buffer.add(mms_id, oclc_num)
+                    # End of DataFrame has been reached. If records buffer is
+                    # not empty, process those remaining records.
+                    if len(records_buffer) > 0:
+                        records_buffer.process_records()
             except AssertionError as assert_err:
                 logger.exception(f"An assertion error occurred when "
-                    f"processing MMS ID '{row['MMS ID']}' (at row {index + 2}"
+                    f"processing MMS ID '{raw_mms_id}' (at row {index + 2}"
                     f" of input file): {assert_err}")
                 error_msg = f"Assertion Error: {assert_err}"
                 error_occurred = True
             except HTTPError as http_err:
                 logger.exception(f"An HTTP error occurred when processing "
-                    f"MMS ID '{row['MMS ID']}' (at row {index + 2} of input "
+                    f"MMS ID '{raw_mms_id}' (at row {index + 2} of input "
                     f"file): {http_err}")
                 error_msg = f"HTTP Error: {http_err}"
                 error_occurred = True
             except Exception as err:
                 logger.exception(f"An error occurred when processing MMS ID "
-                    f"'{row['MMS ID']}' (at row {index + 2} of input file): "
+                    f"'{raw_mms_id}' (at row {index + 2} of input file): "
                     f"{err}")
                 error_msg = err
                 error_occurred = True
@@ -251,17 +267,13 @@ def main() -> None:
                     records_with_errors_writer.writerow([
                         mms_id
                             if mms_id is not None
-                            else row['MMS ID'],
+                            else raw_mms_id,
                         '<record not fully checked>',
                         oclc_num
                             if oclc_num is not None
-                            else row['OCLC Number'],
+                            else raw_oclc_num,
                         error_msg
                     ])
-
-        # If records buffer is not empty, process remaining records
-        if len(records_buffer) > 0:
-            records_buffer.process_records()
 
     logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
 
