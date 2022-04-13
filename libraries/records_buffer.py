@@ -317,11 +317,10 @@ class AlmaRecordsBuffer:
                 logger.debug(f'Finished processing MMS ID {mms_id} (record '
                     f'#{record_index} of {num_records} in buffer).\n')
         except requests.exceptions.HTTPError:
-            logger.error(
-                libraries.xml.prettify_and_log_xml(
-                    api_response.text,
-                    'Alma API response'
-                )
+            libraries.xml.prettify_and_log_xml(
+                api_response.text,
+                'Alma API response',
+                logger.error
             )
 
             # Re-raise exception so that it can be handled by the main script
@@ -597,19 +596,20 @@ class AlmaRecordsBuffer:
                     None
                 )
             except requests.exceptions.HTTPError as http_err:
-                logger.error(
-                    libraries.xml.prettify_and_log_xml(
-                        api_response.text,
-                        'Alma API response'
-                    )
+                libraries.xml.prettify_and_log_xml(
+                    api_response.text,
+                    'Alma API response',
+                    logger.error
                 )
 
-                logger.exception(f"Error attempting to update MMS ID '{mms_id}'.\n")
+                logger.exception(f"Error attempting to update MMS ID "
+                    f"'{mms_id}'.\n")
                 logger.debug('Logged exception (which should include stack trace). Now returning from update_alma_record() method...') # delete after testing
                 return libraries.record.Record_confirmation(
                     False,
                     oclc_nums_from_record_str,
-                    f'{http_err}'
+                    (f'Error attempting to update Alma record: HTTP Error: '
+                        f'{http_err}')
                 )
 
         logger.debug(f"No update needed for MMS ID '{mms_id}'.\n")
