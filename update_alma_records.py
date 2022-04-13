@@ -212,7 +212,9 @@ def main() -> None:
                     oclc_num = libraries.record.remove_leading_zeros(oclc_num)
 
                     assert mms_id not in records_already_processed, (f'Record '
-                        f'with MMS ID {mms_id} has already been processed.')
+                        f'with MMS ID {mms_id} either (1) has already been '
+                        f'processed or (2) has already been added to the '
+                        f'current batch.')
                     records_already_processed.add(mms_id)
 
                     if len(records_buffer) < args.batch_size:
