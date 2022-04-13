@@ -234,9 +234,24 @@ def main() -> None:
                 error_msg = f"Assertion Error: {assert_err}"
                 error_occurred = True
             except HTTPError as http_err:
-                logger.exception(f"An HTTP error occurred when processing "
-                    f"MMS ID '{raw_mms_id}' (at row {index + 2} of input "
-                    f"file): {http_err}")
+                if args.batch_size > 1:
+                    mms_ids_in_batch = \
+                        '\n'.join(records_buffer.mms_id_to_oclc_num_dict.keys())
+
+                    batch_name = None
+                    if index == len(data):
+                        batch_name = "final batch"
+                    else:
+                        batch_name = (f"batch ending with MMS ID '{raw_mms_id}'"
+                            f" (at row {index + 2} of input file)")
+
+                    logger.exception(f"An HTTP error occurred when retrieving "
+                        f"Alma record(s) for the {batch_name}: {http_err}\n"
+                        f"MMS ID(s) in batch:\n{mms_ids_in_batch}")
+                else:
+                    logger.exception(f"An HTTP error occurred when processing "
+                        f"MMS ID '{raw_mms_id}' (at row {index + 2} of input "
+                        f"file): {http_err}")
                 error_msg = f"HTTP Error: {http_err}"
                 error_occurred = True
             except Exception as err:
@@ -248,12 +263,12 @@ def main() -> None:
             finally:
                 if error_occurred:
                     if args.batch_size > 1 and error_msg.startswith('HTTP Error'):
+                        # Add each record in batch to records_with_errors spreadsheet
                         for batch_index, (
                                 record_mms_id,
                                 record_oclc_num) in enumerate(
                                 records_buffer.mms_id_to_oclc_num_dict.items(),
                                 start=1):
-                            # Add record to records_with_errors spreadsheet
                             if records_with_errors.tell() == 0:
                                 # Write header row
                                 records_with_errors_writer.writerow([
@@ -268,7 +283,7 @@ def main() -> None:
                                 record_mms_id,
                                 '<record not fully checked>',
                                 record_oclc_num,
-                                (f'Error retrieving batched Alma records '
+                                (f'Error retrieving batched Alma record(s) '
                                     f'(record #{batch_index} of '
                                     f'{len(records_buffer)} in batch): '
                                     f'{error_msg}')
