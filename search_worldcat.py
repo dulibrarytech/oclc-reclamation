@@ -209,7 +209,7 @@ def main() -> None:
         f'record(s) needed two WorldCat API requests (which totals '
         f'{records_buffer.num_records_needing_two_api_requests * 2} API '
         f'requests).\n\n'
-        f'Processed {len(data.index)} rows from input file:\n'
+        f'Processed {len(data.index)} row(s) from input file:\n'
         f'- {len(records_with_oclc_num.index)} record(s) with OCLC Number\n'
         f'- {len(records_with_zero_or_multiple_worldcat_matches.index)} '
         f'record(s) with zero or multiple WorldCat matches\n'

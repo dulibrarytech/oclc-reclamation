@@ -316,7 +316,7 @@ def main() -> None:
         f'(hours:minutes:seconds.microseconds).\n'
         f'The script made {records_buffer.num_api_requests_made} API '
         f'request(s).\n'
-        f'Processed {len(data.index)} rows from input file:')
+        f'Processed {len(data.index)} row(s) from input file:')
 
     if args.operation == 'get_current_oclc_number':
         print(f'- {results["num_records_with_current_oclc_num"]} record(s) '
