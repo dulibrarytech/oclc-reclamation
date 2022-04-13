@@ -265,6 +265,8 @@ def main() -> None:
             finally:
                 if error_occurred:
                     if args.batch_size > 1 and error_msg.startswith('HTTP Error'):
+                        records_buffer.num_records_with_errors += len(records_buffer)
+
                         # Add each record in batch to records_with_errors spreadsheet
                         for batch_index, (
                                 record_mms_id,
@@ -291,6 +293,8 @@ def main() -> None:
                                     f'{error_msg}')
                             ])
                     else:
+                        records_buffer.num_records_with_errors += 1
+
                         # Add record to records_with_errors spreadsheet
                         if records_with_errors.tell() == 0:
                             # Write header row
@@ -321,12 +325,25 @@ def main() -> None:
     logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
 
     print(f'End of script. Completed in: {datetime.now() - start_time} '
-        f'(hours:minutes:seconds.microseconds).\n'
-        f'{records_buffer.num_records_updated} of {len(data.index)} records updated.\n'
+        f'(hours:minutes:seconds.microseconds).\n\n'
         f'The script made {records_buffer.num_api_requests_made} API request(s).')
+
     if records_buffer.num_api_requests_remaining is not None:
         print(f'Ex Libris API requests remaining for today: '
             f'{records_buffer.num_api_requests_remaining}\n')
+
+    print(f'Processed {len(data.index)} row(s) from input file:\n'
+        f'- {records_buffer.num_records_updated} record(s) updated.\n'
+        f'- {records_buffer.num_records_with_no_update_needed} record(s) with no update needed.\n'
+        f'- {records_buffer.num_records_with_errors} record(s) with errors.\n')
+
+    total_records_in_output_files = (records_buffer.num_records_updated
+        + records_buffer.num_records_with_no_update_needed
+        + records_buffer.num_records_with_errors)
+
+    assert len(data.index) == total_records_in_output_files, (f'Total records '
+        f'in input file ({len(data.index)}) does not equal total records in '
+        f'output files ({total_records_in_output_files}).\n')
 
 
 if __name__ == "__main__":
