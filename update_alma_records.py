@@ -171,10 +171,7 @@ def main() -> None:
             records_with_errors
         )
 
-        # for index, row in data.iterrows():
-        logger.info(f'{len(data) = }') # delete after testing
-        logger.info(f'{len(data.index) = }') # delete after testing
-        for index in range(len(data) + 1):
+        for index in range(len(data.index) + 1):
             raw_mms_id = None
             mms_id = None
 
@@ -195,7 +192,7 @@ def main() -> None:
                 break
 
             try:
-                if index < len(data):
+                if index < len(data.index):
                     # Make sure that mms_id and oclc_num are valid
                     raw_mms_id = data.at[index, 'MMS ID']
                     raw_oclc_num = data.at[index, 'OCLC Number']
@@ -241,7 +238,7 @@ def main() -> None:
                         '\n'.join(records_buffer.mms_id_to_oclc_num_dict.keys())
 
                     batch_name = None
-                    if index == len(data):
+                    if index == len(data.index):
                         batch_name = "final batch"
                     else:
                         batch_name = (f"batch ending with MMS ID '{raw_mms_id}'"
