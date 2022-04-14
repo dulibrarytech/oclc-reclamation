@@ -206,19 +206,39 @@ overwritten.
 ##### Usage notes
 
 ```
-usage: update_alma_records.py [option] input_file
+usage: update_alma_records.py [-h] [-v] [--batch_size BATCH_SIZE] input_file
 
 positional arguments:
-  input_file     the name and path of the input file, which must be in either
-                 CSV (.csv) or Excel (.xlsx or .xls) format
-                 (e.g. inputs/update_alma_records/filename.csv)
+  input_file            the name and path of the input file, which must be in either CSV (.csv) or
+                        Excel (.xlsx or .xls) format (e.g. inputs/update_alma_records/filename.csv)
 
-example: python update_alma_records.py inputs/update_alma_records/filename.csv
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
+  --batch_size BATCH_SIZE
+                        the number of records to batch together when making each GET request to
+                        retrieve Alma records. Must be between 1 and 100, inclusive (default is 1).
+                        Larger batch sizes will result in fewer total Alma API requests.
+
+examples:
+  python update_alma_records.py inputs/update_alma_records/filename.csv
+  python update_alma_records.py --batch_size 10 inputs/update_alma_records/filename.csv
 ```
 
 For required format of input file, see either:
 - `inputs/update_alma_records/example.csv`
 - `inputs/update_alma_records/example.xlsx`
+
+For batch sizes greater than 1, note the following:
+- The script will make fewer `GET` requests to the Alma API because it will
+gather together multiple MMS IDs (up to the batch size) and then make a *single*
+GET request for all Alma records in that particular batch. This will reduce the
+total number of `GET` requests by a factor of the batch size.
+- However, if any MMS ID in the batch is invalid, then the entire `GET` request
+will fail and *none of the Alma records from that batch will be updated.*
+- Unlike `GET` requests, the `PUT` request for *updating* an Alma record cannot
+be batched. So the script will make the same number of `PUT` requests regardless
+of the batch size.
 
 ##### Description and script outputs
 

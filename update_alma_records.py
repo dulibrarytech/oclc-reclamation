@@ -14,11 +14,42 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+def int_in_range(value: str) -> int:
+    """Returns the given value (as an int) if it's between 1 and 100, inclusive.
+
+    Parameters
+    ----------
+    value: str
+        The value to check
+
+    Returns
+    -------
+    int
+        The value as an integer
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If (1) the value cannot be converted to an integer or (2) the value is
+        not within the range 1 to 100, inclusive
+    """
+
+    int_value = None
+
+    try:
+        int_value = int(value)
+        assert 1 <= int_value <= 100
+    except (AssertionError, ValueError):
+        raise argparse.ArgumentTypeError(f'{value} is not an integer between 1 '
+            f'and 100 (inclusive)')
+
+    return int_value
+
+
 def init_argparse() -> argparse.ArgumentParser:
     """Initializes and returns ArgumentParser object."""
 
     parser = argparse.ArgumentParser(
-        usage='%(prog)s [option] input_file',
         description=('For each row in the input file, add the corresponding '
             'OCLC Number to the specified Alma record (indicated by the MMS '
             'ID). Script results are saved to the following directory: '
@@ -36,11 +67,13 @@ def init_argparse() -> argparse.ArgumentParser:
             'update_alma_records/filename.csv)')
     )
     parser.add_argument(
-        'batch_size',
-        type=int,
+        '--batch_size',
+        type=int_in_range,
+        default='1',
         help=('the number of records to batch together when making each GET '
-            'request to retrieve Alma records. Larger batch sizes will result '
-            'in fewer total Alma API requests.')
+            'request to retrieve Alma records. Must be between 1 and 100, '
+            'inclusive (default is 1). Larger batch sizes will result in fewer '
+            'total Alma API requests.')
     )
     return parser
 
