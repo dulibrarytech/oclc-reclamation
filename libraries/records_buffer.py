@@ -1035,6 +1035,7 @@ class OclcNumDictBuffer(WorldCatRecordsBuffer):
 
         api_response_error_msg = ('Problem with Get Current OCLC Number API '
             'response')
+        api_response = None
 
         # Build URL for API request
         url = (f"{os.environ['WORLDCAT_METADATA_API_URL']}"
@@ -1119,7 +1120,7 @@ class OclcNumDictBuffer(WorldCatRecordsBuffer):
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):
             logger.exception(f'{api_response_error_msg}: Error decoding JSON')
-            logger.exception(f'{api_response.text=}')
+            logger.error(f'{api_response.text = }')
 
             # Re-raise exception so that the script is halted (since future API
             # requests may result in the same error)
@@ -1313,6 +1314,7 @@ class OclcNumSetBuffer(WorldCatRecordsBuffer):
             url += f'&cascade={self.cascade}'
 
         api_response_error_msg = f'Problem with {api_name} response'
+        api_response = None
 
         try:
             api_response, json_response = \
@@ -1408,7 +1410,7 @@ class OclcNumSetBuffer(WorldCatRecordsBuffer):
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):
             logger.exception(f'{api_response_error_msg}: Error decoding JSON')
-            logger.exception(f'{api_response.text=}')
+            logger.error(f'{api_response.text = }')
 
             # Re-raise exception so that the script is halted (since future API
             # requests may result in the same error)
