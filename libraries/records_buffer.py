@@ -168,13 +168,16 @@ class AlmaRecordsBuffer:
     def process_records(self) -> None:
         """Updates each Alma record in buffer (if an update is needed).
 
-        Sends a GET request to the Ex Libris Alma BIBs API:
-        https://developers.exlibrisgroup.com/alma/apis/bibs/
+        Sends a GET request to the Ex Libris Alma BIBs API
+        (https://developers.exlibrisgroup.com/alma/apis/bibs/) to retrieve the
+        Alma record(s) in the buffer.
 
         Raises
         ------
+        AssertionError
+            If the buffer is empty
         requests.exceptions.HTTPError
-            If the API request results in a 4XX client error or 5XX server error
+            If the GET request results in a 4XX client error or 5XX server error
             response
         """
 
@@ -375,12 +378,6 @@ class AlmaRecordsBuffer:
             - was_updated
             - orig_oclc_nums
             - error_msg
-
-        Raises
-        ------
-        requests.exceptions.HTTPError
-            If the API request results in a 4XX client error or 5XX server error
-            response
         """
 
         logger.debug(f"Attempting to update MMS ID '{mms_id}'...")
