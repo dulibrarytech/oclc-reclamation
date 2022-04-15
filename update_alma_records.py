@@ -3,6 +3,7 @@ import libraries.record
 import libraries.records_buffer
 import logging
 import logging.config
+import os
 import pandas as pd
 from csv import writer
 from datetime import datetime
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def int_in_range(value: str) -> int:
-    """Returns the given value (as an int) if it's between 1 and 100, inclusive.
+    """Returns the given value (as an int) if it's within range.
 
     Parameters
     ----------
@@ -31,17 +32,21 @@ def int_in_range(value: str) -> int:
     ------
     argparse.ArgumentTypeError
         If (1) the value cannot be converted to an integer or (2) the value is
-        not within the range 1 to 100, inclusive
+        not within range
     """
 
     int_value = None
 
     try:
         int_value = int(value)
-        assert 1 <= int_value <= 100
+        assert 1 <= int_value <= int(os.environ[
+            'ALMA_BIBS_API_MAX_RECORDS_PER_GET_REQUEST']
+        )
     except (AssertionError, ValueError):
         raise argparse.ArgumentTypeError(f'{value} is not an integer between 1 '
-            f'and 100 (inclusive)')
+            f'and '
+            f'{int(os.environ["ALMA_BIBS_API_MAX_RECORDS_PER_GET_REQUEST"])} '
+            f'(inclusive)')
 
     return int_value
 
@@ -70,10 +75,11 @@ def init_argparse() -> argparse.ArgumentParser:
         '--batch_size',
         type=int_in_range,
         default='1',
-        help=('the number of records to batch together when making each GET '
-            'request to retrieve Alma records. Must be between 1 and 100, '
-            'inclusive (default is 1). Larger batch sizes will result in fewer '
-            'total Alma API requests.')
+        help=(f'the number of records to batch together when making each GET '
+            f'request to retrieve Alma records. Must be between 1 and '
+            f'{int(os.environ["ALMA_BIBS_API_MAX_RECORDS_PER_GET_REQUEST"])}, '
+            f'inclusive (default is 1). Larger batch sizes will result in '
+            f'fewer total Alma API requests.')
     )
     return parser
 
