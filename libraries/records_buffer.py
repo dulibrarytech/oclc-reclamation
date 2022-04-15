@@ -626,15 +626,15 @@ class AlmaRecordsBuffer:
         Parameters
         ----------
         num_api_requests_remaining: int
-            The number of daily Ex Libris API requests remaining
+            The number of daily Alma API requests remaining
         """
 
         self.num_api_requests_made += 1
         self.num_api_requests_remaining = num_api_requests_remaining
 
         logger.debug(f'After API request, there are '
-            f'{self.num_api_requests_remaining} Ex Libris API requests '
-            f'remaining for today.')
+            f'{self.num_api_requests_remaining} Alma API requests remaining '
+            f'for today.')
 
 
 class WorldCatRecordsBuffer:

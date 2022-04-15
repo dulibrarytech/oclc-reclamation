@@ -221,13 +221,21 @@ def main() -> None:
             error_msg = None
 
             if (records_buffer.num_api_requests_remaining is not None
-                    and records_buffer.num_api_requests_remaining < 10):
-                logger.error(f"The daily request threshold for the Ex Libris "
-                    f"API is about to be reached. There are only "
+                    and records_buffer.num_api_requests_remaining < int(
+                        os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS']
+                    )):
+                row_location = (f'at row {index + 2}'
+                    if index < len(data.index)
+                    else 'after final row')
+
+                logger.error(f"The Alma Daily API Request Threshold is about "
+                    f"to be reached. There are "
                     f"{records_buffer.num_api_requests_remaining} API requests "
-                    f"remaining for today. Aborting script at row {index + 2} "
-                    f"(MMS ID '{raw_mms_id}') of input file "
-                    f"({args.input_file}).\n")
+                    f"remaining for today, and you've elected to leave at "
+                    f"least "
+                    f"{os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS']} "
+                    f"API requests available for other purposes. Aborting "
+                    f"script {row_location} of input file.\n")
                 break
 
             try:
@@ -272,6 +280,7 @@ def main() -> None:
                 error_msg = f"Assertion Error: {assert_err}"
                 error_occurred = True
             except HTTPError as http_err:
+                logger.info(f'{type(http_err) = }') # delete after testing
                 if args.batch_size > 1:
                     mms_ids_in_batch = \
                         '\n'.join(records_buffer.mms_id_to_oclc_num_dict.keys())
@@ -293,6 +302,7 @@ def main() -> None:
                 error_msg = f"HTTP Error: {http_err}"
                 error_occurred = True
             except Exception as err:
+                logger.info(f'{type(err) = }') # delete after testing
                 logger.exception(f"An error occurred when processing MMS ID "
                     f"'{raw_mms_id}' (at row {index + 2} of input file): "
                     f"{err}")
@@ -365,7 +375,7 @@ def main() -> None:
         f'The script made {records_buffer.num_api_requests_made} API request(s).')
 
     if records_buffer.num_api_requests_remaining is not None:
-        print(f'Ex Libris API requests remaining for today: '
+        print(f'Alma API requests remaining for today: '
             f'{records_buffer.num_api_requests_remaining}\n')
 
     print(f'Processed {len(data.index)} row(s) from input file:\n'
