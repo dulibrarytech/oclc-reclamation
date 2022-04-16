@@ -202,12 +202,6 @@ class AlmaRecordsBuffer:
                 self.num_api_requests_remaining
                 > int(os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS'])
             )
-            logger.info(f"{self.num_api_requests_remaining = }") # delete after testing
-            logger.info(f"{os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS'] = }") # delete after testing
-            logger.info(f"{self.num_api_requests_remaining} > "
-                f"{int(os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS'])} = "
-                f"{are_enough_daily_api_requests_remaining}") # delete after testing
-            logger.info(f"{are_enough_daily_api_requests_remaining = }")
 
             assert are_enough_daily_api_requests_remaining, (f"Not enough "
                 f"Alma Daily API Requests remaining. "
@@ -217,8 +211,6 @@ class AlmaRecordsBuffer:
                 f"API requests available for other purposes. Aborting script.")
 
         logger.debug('Started processing records buffer...\n')
-
-        logger.info(f'{self.__str__()}') # delete after testing
 
         api_response = None
         try:
@@ -282,8 +274,6 @@ class AlmaRecordsBuffer:
                     bib_element
                 )
 
-                logger.info(f'{updated_record_confirmation = }') # delete after testing
-
                 if updated_record_confirmation.was_updated:
                     self.num_records_updated += 1
 
@@ -319,12 +309,6 @@ class AlmaRecordsBuffer:
                     ])
                 else:
                     self.num_records_with_errors += 1
-
-                    logger.info('Error within process_records() method. Inside '
-                        '"else" block because updated_record_confirmation.was_update is False and '
-                        'updated_record_confirmation.error_msg is not None') # delete after testing
-
-                    logger.info(f'{type(updated_record_confirmation.error_msg) = }') # delete after testing
 
                     # Add record to records_with_errors spreadsheet
                     if self.records_with_errors.tell() == 0:
@@ -584,13 +568,6 @@ class AlmaRecordsBuffer:
                 }
                 payload = ET.tostring(alma_record, encoding='UTF-8')
 
-                # # delete after testing (entire 'if' block)
-                # # Code for testing how update_alma_record() method handles an HTTP Error
-                # if mms_id == '991027570199702766':
-                #     logger.info(f'{mms_id = }')
-                #     mms_id = '12345'
-                #     logger.info(f'Changed mms_id to {mms_id}')
-
                 # Make PUT request to update Alma record
                 api_response = requests.put(
                     f'{os.environ["ALMA_BIBS_API_URL"]}{mms_id}',
@@ -633,7 +610,7 @@ class AlmaRecordsBuffer:
 
                 logger.exception(f"Error attempting to update MMS ID "
                     f"'{mms_id}'.\n")
-                logger.debug('Logged exception (which should include stack trace). Now returning from update_alma_record() method...') # delete after testing
+
                 return libraries.record.Record_confirmation(
                     False,
                     oclc_nums_from_record_str,

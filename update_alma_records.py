@@ -285,21 +285,6 @@ def main() -> None:
                 error_occurred = True
             finally:
                 if error_occurred:
-                    # delete after testing:
-                    # An {error_name} occurred when {action} {record_or_batch_name} (at {row_location}): {exception_text}
-                    # An assertion error occurred when processing the batch ending with MMS ID '{raw_mms_id}' ({row_location}): {assert_err}
-                    #   MMS ID(s) in batch:
-                    #   {mms_ids_in_batch}"
-                    # An assertion error occurred when processing MMS ID '{raw_mms_id}' ({row_location}): {assert_err}
-                    # An HTTP error occurred when retrieving Alma record(s) for the {batch_name}: {http_err}
-                    #   MMS ID(s) in batch:
-                    #   {mms_ids_in_batch}"
-                    # An HTTP error occurred when processing MMS ID '{raw_mms_id}' ({row_location}): {http_err}
-                    # An error occurred when processing the batch ending with MMS ID '{raw_mms_id}' ({row_location}): {assert_err}
-                    #   MMS ID(s) in batch:
-                    #   {mms_ids_in_batch}"
-                    # An error occurred when processing MMS ID '{raw_mms_id}' ({row_location}): {assert_err}
-
                     if args.batch_size > 1 and batch_level_error:
                         records_buffer.num_records_with_errors += len(records_buffer)
 
@@ -307,9 +292,14 @@ def main() -> None:
                             if error_msg.startswith('HTTP Error')
                             else 'processing batched Alma record(s)')
 
+                        mms_ids_in_batch = '\n'.join(
+                            records_buffer.mms_id_to_oclc_num_dict.keys()
+                        )
+
                         # Log where the error occurred
                         logger.error(f'This error occurred when {action} for '
-                            f'the {batch_name}.\n')
+                            f'the {batch_name}.\n'
+                            f'MMS ID(s) in batch:\n{mms_ids_in_batch}\n')
 
                         # Add each record in batch to records_with_errors spreadsheet
                         for batch_index, (
