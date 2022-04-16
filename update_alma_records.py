@@ -220,29 +220,20 @@ def main() -> None:
             error_occurred = False
             error_msg = None
 
-            if (records_buffer.num_api_requests_remaining is not None
-                    and records_buffer.num_api_requests_remaining < int(
-                        os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS']
-                    )):
-                row_location = (f'at row {index + 2}'
-                    if index < len(data.index)
-                    else 'after final row')
-
-                logger.error(f"The Alma Daily API Request Threshold is about "
-                    f"to be reached. There are "
-                    f"{records_buffer.num_api_requests_remaining} API requests "
-                    f"remaining for today, and you've elected to leave at "
-                    f"least "
-                    f"{os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS']} "
-                    f"API requests available for other purposes. Aborting "
-                    f"script {row_location} of input file.\n")
-                break
+            row_location = None
+            batch_name = None
+            batch_level_error = True
 
             try:
                 if index < len(data.index):
+                    row_location = f'at row {index + 2} of input file'
+
                     # Make sure that mms_id and oclc_num are valid
                     raw_mms_id = data.at[index, 'MMS ID']
                     raw_oclc_num = data.at[index, 'OCLC Number']
+                    batch_name = (f"batch ending with MMS ID '{raw_mms_id}' "
+                        f"({row_location})")
+
                     mms_id = libraries.record.get_valid_record_identifier(
                         raw_mms_id,
                         'MMS ID'
@@ -269,49 +260,56 @@ def main() -> None:
                         logger.debug('Records buffer is full.\n')
                         records_buffer.process_records()
                 else:
-                    # End of DataFrame has been reached. If records buffer is
-                    # not empty, process those remaining records.
+                    # End of DataFrame has been reached.
+                    row_location = 'after processing final row of input file'
+                    batch_name = 'final batch'
+
+                    # If records buffer is not empty, process the remaining
+                    # records.
                     if len(records_buffer) > 0:
                         records_buffer.process_records()
             except AssertionError as assert_err:
-                logger.exception(f"An assertion error occurred when "
-                    f"processing MMS ID '{raw_mms_id}' (at row {index + 2}"
-                    f" of input file): {assert_err}")
-                error_msg = f"Assertion Error: {assert_err}"
+                logger.exception(f'An assertion error occurred: {assert_err}')
+                error_msg = f'Assertion Error: {assert_err}'
+                batch_level_error = error_msg.startswith(
+                    'Assertion Error: Not enough Alma Daily API Requests'
+                )
                 error_occurred = True
             except HTTPError as http_err:
-                logger.info(f'{type(http_err) = }') # delete after testing
-                if args.batch_size > 1:
-                    mms_ids_in_batch = \
-                        '\n'.join(records_buffer.mms_id_to_oclc_num_dict.keys())
-
-                    batch_name = None
-                    if index == len(data.index):
-                        batch_name = "final batch"
-                    else:
-                        batch_name = (f"batch ending with MMS ID '{raw_mms_id}'"
-                            f" (at row {index + 2} of input file)")
-
-                    logger.exception(f"An HTTP error occurred when retrieving "
-                        f"Alma record(s) for the {batch_name}: {http_err}\n"
-                        f"MMS ID(s) in batch:\n{mms_ids_in_batch}")
-                else:
-                    logger.exception(f"An HTTP error occurred when processing "
-                        f"MMS ID '{raw_mms_id}' (at row {index + 2} of input "
-                        f"file): {http_err}")
-                error_msg = f"HTTP Error: {http_err}"
+                logger.exception(f'An HTTP error occurred: {http_err}')
+                error_msg = f'HTTP Error: {http_err}'
                 error_occurred = True
             except Exception as err:
-                logger.info(f'{type(err) = }') # delete after testing
-                logger.exception(f"An error occurred when processing MMS ID "
-                    f"'{raw_mms_id}' (at row {index + 2} of input file): "
-                    f"{err}")
-                error_msg = err
+                logger.exception(f'An error occurred: {err}')
+                error_msg = f'{err}'
                 error_occurred = True
             finally:
                 if error_occurred:
-                    if args.batch_size > 1 and error_msg.startswith('HTTP Error'):
+                    # delete after testing:
+                    # An {error_name} occurred when {action} {record_or_batch_name} (at {row_location}): {exception_text}
+                    # An assertion error occurred when processing the batch ending with MMS ID '{raw_mms_id}' ({row_location}): {assert_err}
+                    #   MMS ID(s) in batch:
+                    #   {mms_ids_in_batch}"
+                    # An assertion error occurred when processing MMS ID '{raw_mms_id}' ({row_location}): {assert_err}
+                    # An HTTP error occurred when retrieving Alma record(s) for the {batch_name}: {http_err}
+                    #   MMS ID(s) in batch:
+                    #   {mms_ids_in_batch}"
+                    # An HTTP error occurred when processing MMS ID '{raw_mms_id}' ({row_location}): {http_err}
+                    # An error occurred when processing the batch ending with MMS ID '{raw_mms_id}' ({row_location}): {assert_err}
+                    #   MMS ID(s) in batch:
+                    #   {mms_ids_in_batch}"
+                    # An error occurred when processing MMS ID '{raw_mms_id}' ({row_location}): {assert_err}
+
+                    if args.batch_size > 1 and batch_level_error:
                         records_buffer.num_records_with_errors += len(records_buffer)
+
+                        action = ('retrieving batched Alma record(s)'
+                            if error_msg.startswith('HTTP Error')
+                            else 'processing batched Alma record(s)')
+
+                        # Log where the error occurred
+                        logger.error(f'This error occurred when {action} for '
+                            f'the {batch_name}.\n')
 
                         # Add each record in batch to records_with_errors spreadsheet
                         for batch_index, (
@@ -333,13 +331,20 @@ def main() -> None:
                                 record_mms_id,
                                 '<record not fully checked>',
                                 record_oclc_num,
-                                (f'Error retrieving batched Alma record(s) '
-                                    f'(record #{batch_index} of '
+                                (f'Error {action} (record #{batch_index} of '
                                     f'{len(records_buffer)} in batch): '
                                     f'{error_msg}')
                             ])
                     else:
                         records_buffer.num_records_with_errors += 1
+
+                        # Log where the error occurred
+                        if index < len(data.index):
+                            logger.error(f"This error occurred when processing "
+                                f"MMS ID '{raw_mms_id}' ({row_location}).\n")
+                        else:
+                            logger.error(f'This error occurred {row_location}.'
+                                '\n')
 
                         # Add record to records_with_errors spreadsheet
                         if records_with_errors.tell() == 0:
@@ -353,15 +358,21 @@ def main() -> None:
                             ])
 
                         records_with_errors_writer.writerow([
-                            mms_id
+                            (mms_id
                                 if mms_id is not None
-                                else raw_mms_id,
+                                else raw_mms_id),
                             '<record not fully checked>',
-                            oclc_num
+                            (oclc_num
                                 if oclc_num is not None
-                                else raw_oclc_num,
+                                else raw_oclc_num),
                             error_msg
                         ])
+
+                    # Stop processing records if there are not enough Alma Daily
+                    # API Requests remaining
+                    if error_msg.startswith('Assertion Error: Not enough Alma '
+                            'Daily API Requests'):
+                        break
 
                 # If records buffer is full, clear buffer (now that its records
                 # have been processed)
@@ -378,14 +389,15 @@ def main() -> None:
         print(f'Alma API requests remaining for today: '
             f'{records_buffer.num_api_requests_remaining}\n')
 
-    print(f'Processed {len(data.index)} row(s) from input file:\n'
-        f'- {records_buffer.num_records_updated} record(s) updated.\n'
-        f'- {records_buffer.num_records_with_no_update_needed} record(s) with no update needed.\n'
-        f'- {records_buffer.num_records_with_errors} record(s) with errors.\n')
-
     total_records_in_output_files = (records_buffer.num_records_updated
         + records_buffer.num_records_with_no_update_needed
         + records_buffer.num_records_with_errors)
+
+    print(f'Processed {total_records_in_output_files} of {len(data.index)} '
+        f'row(s) from input file:\n'
+        f'- {records_buffer.num_records_updated} record(s) updated.\n'
+        f'- {records_buffer.num_records_with_no_update_needed} record(s) with no update needed.\n'
+        f'- {records_buffer.num_records_with_errors} record(s) with errors.\n')
 
     assert len(data.index) == total_records_in_output_files, (f'Total records '
         f'in input file ({len(data.index)}) does not equal total records in '

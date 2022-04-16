@@ -172,10 +172,23 @@ class AlmaRecordsBuffer:
         (https://developers.exlibrisgroup.com/alma/apis/bibs/) to retrieve the
         Alma record(s) in the buffer.
 
+        Before processing records, this method tries to ensure there are enough
+        Alma Daily API Requests remaining (accounting for the minimum set by the
+        ALMA_MIN_REMAINING_DAILY_API_REQUESTS environment variable).
+        Nonetheless, the remaining Alma Daily API Requests could sink below this
+        desired minimum in the following two cases:
+        - Case 1: The number of remaining Alma Daily API Requests is unknown
+          because this is the first API request made by the script.
+        - Case 2: Although there are enough remaining Alma Daily API Requests
+          when this method is called, the number of additional API requests made
+          when processing these records causes the desired minimum to be
+          breached.
+
         Raises
         ------
         AssertionError
-            If the buffer is empty
+            If the buffer is empty OR if there are not enough Alma Daily API
+            Requests remaining
         requests.exceptions.HTTPError
             If the GET request results in a 4XX client error or 5XX server error
             response
@@ -183,6 +196,25 @@ class AlmaRecordsBuffer:
 
         assert len(self.mms_id_to_oclc_num_dict) != 0, ('Cannot process '
             'records because records buffer is empty.')
+
+        if self.num_api_requests_remaining is not None:
+            are_enough_daily_api_requests_remaining = (
+                self.num_api_requests_remaining
+                > int(os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS'])
+            )
+            logger.info(f"{self.num_api_requests_remaining = }") # delete after testing
+            logger.info(f"{os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS'] = }") # delete after testing
+            logger.info(f"{self.num_api_requests_remaining} > "
+                f"{int(os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS'])} = "
+                f"{are_enough_daily_api_requests_remaining}") # delete after testing
+            logger.info(f"{are_enough_daily_api_requests_remaining = }")
+
+            assert are_enough_daily_api_requests_remaining, (f"Not enough "
+                f"Alma Daily API Requests remaining. "
+                f"There are {self.num_api_requests_remaining} API requests "
+                f"remaining for today, and you're trying to leave at least "
+                f"{os.environ['ALMA_MIN_REMAINING_DAILY_API_REQUESTS']} "
+                f"API requests available for other purposes. Aborting script.")
 
         logger.debug('Started processing records buffer...\n')
 
