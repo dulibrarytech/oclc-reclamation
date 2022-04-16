@@ -286,7 +286,9 @@ def main() -> None:
             finally:
                 if error_occurred:
                     if args.batch_size > 1 and batch_level_error:
-                        records_buffer.num_records_with_errors += len(records_buffer)
+                        records_buffer.num_records_with_errors += len(
+                            records_buffer
+                        )
 
                         action = ('retrieving batched Alma record(s)'
                             if error_msg.startswith('HTTP Error')
@@ -301,7 +303,8 @@ def main() -> None:
                             f'the {batch_name}.\n'
                             f'MMS ID(s) in batch:\n{mms_ids_in_batch}\n')
 
-                        # Add each record in batch to records_with_errors spreadsheet
+                        # Add each record in batch to records_with_errors
+                        # spreadsheet
                         for batch_index, (
                                 record_mms_id,
                                 record_oclc_num) in enumerate(
@@ -373,7 +376,8 @@ def main() -> None:
 
     print(f'End of script. Completed in: {datetime.now() - start_time} '
         f'(hours:minutes:seconds.microseconds).\n\n'
-        f'The script made {records_buffer.num_api_requests_made} API request(s).')
+        f'The script made {records_buffer.num_api_requests_made} API '
+        f'request(s).')
 
     if records_buffer.num_api_requests_remaining is not None:
         print(f'Alma API requests remaining for today: '
@@ -386,7 +390,8 @@ def main() -> None:
     print(f'Processed {total_records_in_output_files} of {len(data.index)} '
         f'row(s) from input file:\n'
         f'- {records_buffer.num_records_updated} record(s) updated.\n'
-        f'- {records_buffer.num_records_with_no_update_needed} record(s) with no update needed.\n'
+        f'- {records_buffer.num_records_with_no_update_needed} record(s) with '
+        f'no update needed.\n'
         f'- {records_buffer.num_records_with_errors} record(s) with errors.\n')
 
     assert len(data.index) == total_records_in_output_files, (f'Total records '

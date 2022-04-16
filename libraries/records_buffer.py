@@ -408,7 +408,8 @@ class AlmaRecordsBuffer:
         oclc_nums_from_record = list()
         oclc_nums_for_019_field = set()
         found_035_field_with_current_oclc_num = False
-        record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix = False
+        record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix = \
+            False
         error_msg = None
         found_error_in_record = False
 
@@ -442,16 +443,18 @@ class AlmaRecordsBuffer:
                     field_035_element_index,
                     found_error_in_record)
 
-            oclc_nums_from_record.append(subfield_a_without_oclc_org_code_prefix)
+            oclc_nums_from_record.append(
+                subfield_a_without_oclc_org_code_prefix
+            )
 
             # Check for potentially-valid OCLC number with invalid prefix
             found_potentially_valid_oclc_num_with_invalid_oclc_prefix = \
                 found_valid_oclc_num and not found_valid_oclc_prefix
 
             if found_potentially_valid_oclc_num_with_invalid_oclc_prefix:
-                invalid_prefix_msg = (f'035 field #{field_035_element_index + 1} '
-                    f'contains an OCLC number with an invalid prefix: '
-                    f'{extracted_oclc_num}. '
+                invalid_prefix_msg = (f'035 field '
+                    f'#{field_035_element_index + 1} contains an OCLC number '
+                    f'with an invalid prefix: {extracted_oclc_num}. '
                     f'{libraries.record.valid_oclc_number_prefixes_str}')
                 if error_msg is None:
                     error_msg = invalid_prefix_msg
@@ -468,18 +471,20 @@ class AlmaRecordsBuffer:
                     extracted_oclc_num == oclc_num
                 logger.debug(f'Does the extracted OCLC number '
                     f'({extracted_oclc_num}) match the current OCLC number '
-                    f'({oclc_num})? {extracted_oclc_num_matches_current_oclc_num}')
+                    f'({oclc_num})? '
+                    f'{extracted_oclc_num_matches_current_oclc_num}')
 
                 if (not extracted_oclc_num_matches_current_oclc_num
                         or found_035_field_with_current_oclc_num):
-                    # This 035 field either (1) contains an old, empty or invalid
-                    # OCLC number or (2) is a duplicate of another 035 field with
-                    # the current OCLC number. In either case, remove this 035
-                    # field.
+                    # This 035 field either (1) contains an old, empty or
+                    # invalid OCLC number or (2) is a duplicate of another 035
+                    # field with the current OCLC number. In either case, remove
+                    # this 035 field.
                     record_element.remove(field_035_element)
-                    logger.debug(f'Removed 035 field #'
-                        f'{field_035_element_index + 1}, whose (first) subfield a '
-                        f'is: {subfield_a_data.string_with_oclc_num}')
+                    logger.debug(f'Removed 035 field '
+                        f'#{field_035_element_index + 1}, whose (first) '
+                        f'subfield a is: '
+                        f'{subfield_a_data.string_with_oclc_num}')
 
                     if (not extracted_oclc_num_matches_current_oclc_num
                             and len(extracted_oclc_num) > 0
@@ -505,9 +510,9 @@ class AlmaRecordsBuffer:
         # Don't update the record if it contains a potentially-valid OCLC number
         # with an invalid prefix.
         if record_contains_potentially_valid_oclc_num_with_invalid_oclc_prefix:
-            logger.error(f"Did not update MMS ID '{mms_id}' because it contains at "
-                f"least one potentially-valid OCLC number with an invalid prefix."
-                f"\n")
+            logger.error(f"Did not update MMS ID '{mms_id}' because it "
+                f"contains at least one potentially-valid OCLC number with an "
+                f"invalid prefix.\n")
 
             return libraries.record.Record_confirmation(
                 False,
@@ -515,7 +520,8 @@ class AlmaRecordsBuffer:
                 error_msg
             )
 
-        # Only add or edit the 019 field if oclc_nums_for_019_field set is non-empty
+        # Only add or edit the 019 field if oclc_nums_for_019_field set is
+        # non-empty
         if oclc_nums_for_019_field:
             # Search record for 019 field
             first_019_element = record_element.find('./datafield[@tag="019"]')
@@ -1396,7 +1402,8 @@ class OclcNumSetBuffer(WorldCatRecordsBuffer):
 
                     results['num_records_with_errors'] += 1
 
-                    # Add record to records_with_errors_when_setting_holding.csv
+                    # Add record to
+                    # records_with_errors_when_{set_or_unset_choice}ting_holding.csv
                     if self.records_with_errors.tell() == 0:
                         # Write header row
                         self.records_with_errors_writer.writerow([

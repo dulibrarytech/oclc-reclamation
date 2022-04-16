@@ -578,8 +578,8 @@ spreadsheets output by `compare_alma_to_worldcat.py`).
 records you truly want to unset.
     1. This spreadsheet represents the OCLC numbers found in the
     `worldcat_records_directory` but not the `alma_records_file`. So you have to
-    be sure that the `alma_records_file` (i.e. the Alma Master List) contains *all*
-    records whose holdings should be set in WorldCat for your institution.
+    be sure that the `alma_records_file` (i.e. the Alma Master List) contains
+    *all* records whose holdings should be set in WorldCat for your institution.
     2. If the `alma_records_file` is missing relevant records (perhaps because
     your Cataloging Team is manually fixing these Alma records), then
     `outputs/compare_alma_to_worldcat/records_to_unset_in_worldcat.csv` will

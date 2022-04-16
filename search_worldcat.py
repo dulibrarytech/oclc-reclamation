@@ -171,7 +171,8 @@ def main() -> None:
 
     # Create CSV output files
     records_with_oclc_num = data.dropna(subset=['oclc_num'])
-    logger.debug(f"Records with a single OCLC Number:\n{records_with_oclc_num}\n")
+    logger.debug(f'Records with a single OCLC Number:\n{records_with_oclc_num}'
+        f'\n')
     records_with_oclc_num.to_csv(
         'outputs/search_worldcat/records_with_oclc_num.csv',
         # columns=['mms_id', 'oclc_num'],
@@ -183,15 +184,15 @@ def main() -> None:
             f"num_records_held_by_{os.environ['OCLC_INSTITUTION_SYMBOL']}",
             'num_records_total'])
         # This drops the rows where BOTH num_records values are missing
-    logger.debug(f"Records with zero or multiple WorldCat matches:\n"
-        f"{records_with_zero_or_multiple_worldcat_matches}\n")
+    logger.debug(f'Records with zero or multiple WorldCat matches:\n'
+        f'{records_with_zero_or_multiple_worldcat_matches}\n')
     records_with_zero_or_multiple_worldcat_matches.to_csv(
         'outputs/search_worldcat/records_with_zero_or_multiple_worldcat_matches.csv',
         # columns=['mms_id', 'lccn_fixed', 'lccn', 'isbn', 'issn'],
         index=False)
 
     records_with_errors = data.dropna(subset=['error'])
-    logger.debug(f"Records with errors:\n{records_with_errors}\n")
+    logger.debug(f'Records with errors:\n{records_with_errors}\n')
     records_with_errors.to_csv(
         'outputs/search_worldcat/records_with_errors_when_searching_worldcat.csv',
         # columns=['mms_id', 'lccn_fixed', 'lccn', 'isbn', 'issn', 'error'],
