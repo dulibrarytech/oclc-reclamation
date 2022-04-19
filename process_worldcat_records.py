@@ -212,12 +212,11 @@ def main() -> None:
 
             try:
                 if index < len(data.index):
-                    logger.debug(f'Started processing row {index + 2} of input file...')
+                    logger.debug(f'Started processing row {index + 2} of input '
+                        f'file...')
 
                     if args.operation == 'get_current_oclc_number':
                         raw_mms_id = data.at[index, 'MMS ID']
-                        logger.info(f'{raw_mms_id = }') # delete after testing
-                        logger.info(f'{type(raw_mms_id) = }') # delete after testing
                         raw_orig_oclc_num = data.at[
                             index,
                             "Unique OCLC Number from Alma Record's 035 $a"
@@ -230,27 +229,23 @@ def main() -> None:
                     else:
                         raw_orig_oclc_num = data.at[index, 'OCLC Number']
 
-                    logger.info(f'{raw_orig_oclc_num = }') # delete after testing
-                    logger.info(f'{type(raw_orig_oclc_num) = }') # delete after testing
-
                     # Make sure OCLC Number is valid
                     orig_oclc_num = libraries.record.get_valid_record_identifier(
                         raw_orig_oclc_num, 'OCLC number')
                     orig_oclc_num = \
                         libraries.record.remove_leading_zeros(orig_oclc_num)
-                    logger.info(f'{orig_oclc_num = }') # delete after testing
-                    logger.info(f'{type(orig_oclc_num) = }') # delete after testing
                     assert orig_oclc_num != '0', (f"Invalid OCLC number: "
                         f"'{orig_oclc_num}'. It cannot be zero.")
 
                     if args.operation == 'get_current_oclc_number':
-                        assert mms_id not in records_already_processed, (f'Record '
-                            f'with MMS ID {mms_id} has already been processed.')
+                        assert mms_id not in records_already_processed, (
+                            f'Record with MMS ID {mms_id} has already been '
+                            f'processed.')
                         records_already_processed.add(mms_id)
                     else:
                         assert orig_oclc_num not in records_already_processed, (
-                            f'Record with OCLC Number {orig_oclc_num} has already '
-                            f'been processed.')
+                            f'Record with OCLC Number {orig_oclc_num} has '
+                            f'already been processed.')
                         records_already_processed.add(orig_oclc_num)
 
                     if len(records_buffer) < int(os.environ[
@@ -262,8 +257,8 @@ def main() -> None:
 
                     if len(records_buffer) == int(os.environ[
                             'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST']):
-                        # records_buffer has the maximum records possible per API
-                        # request, so process these records
+                        # records_buffer has the maximum records possible per
+                        # API request, so process these records
                         logger.debug('Records buffer is full.\n')
                         records_buffer.process_records(results)
                 else:
@@ -323,8 +318,8 @@ def main() -> None:
                         ])
 
                 if index < len(data.index):
-                    logger.debug(f'Finished processing row {index + 2} of input '
-                        f'file.\n')
+                    logger.debug(f'Finished processing row {index + 2} of '
+                        f'input file.\n')
 
                 # If records buffer is full, clear buffer (now that its records
                 # have been processed)
