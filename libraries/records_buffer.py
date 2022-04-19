@@ -817,7 +817,7 @@ class WorldCatRecordsBuffer:
             # delimiter (which separates the date from the time) for a space, as
             # in '2021-09-30 22:43:07Z'.
             refresh_token_expires_at = 0.0
-            if 'WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT' in os.environ:
+            if os.getenv('WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT'):
                 logger.debug(f'WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT '
                     f'variable exists in .env file, so using this value: '
                     f'{os.getenv("WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT")}'
@@ -838,7 +838,7 @@ class WorldCatRecordsBuffer:
 
             # Obtain a new Access Token
             token = None
-            if ('WORLDCAT_METADATA_API_REFRESH_TOKEN' in os.environ
+            if (os.getenv('WORLDCAT_METADATA_API_REFRESH_TOKEN_EXPIRES_AT')
                     and refresh_token_expires_in > 25):
                 # Use Refresh Token to request new Access Token
                 token = self.oauth_session.refresh_token(
