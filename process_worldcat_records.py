@@ -200,73 +200,85 @@ def main() -> None:
                 records_to_update,
                 records_with_errors)
 
-        # Loop over each row in DataFrame and check whether OCLC number is the
-        # current one
-        for index, row in data.iterrows():
-            logger.debug(f'Started processing row {index + 2} of input file...')
+        for index in range(len(data.index) + 1):
+            raw_mms_id = None
+            mms_id = None
+
+            raw_orig_oclc_num = None
+            orig_oclc_num = None
+
             error_occurred = False
             error_msg = None
 
             try:
-                mms_id = None
-                orig_oclc_num = None
-                if args.operation == 'get_current_oclc_number':
-                    mms_id = row['MMS ID']
+                if index < len(data.index):
+                    logger.debug(f'Started processing row {index + 2} of input file...')
+
+                    if args.operation == 'get_current_oclc_number':
+                        raw_mms_id = data.at[index, 'MMS ID']
+                        logger.info(f'{raw_mms_id = }') # delete after testing
+                        logger.info(f'{type(raw_mms_id) = }') # delete after testing
+                        raw_orig_oclc_num = data.at[
+                            index,
+                            "Unique OCLC Number from Alma Record's 035 $a"
+                        ]
+
+                        mms_id = libraries.record.get_valid_record_identifier(
+                            raw_mms_id,
+                            'MMS ID'
+                        )
+                    else:
+                        raw_orig_oclc_num = data.at[index, 'OCLC Number']
+
+                    logger.info(f'{raw_orig_oclc_num = }') # delete after testing
+                    logger.info(f'{type(raw_orig_oclc_num) = }') # delete after testing
+
+                    # Make sure OCLC Number is valid
+                    orig_oclc_num = libraries.record.get_valid_record_identifier(
+                        raw_orig_oclc_num, 'OCLC number')
                     orig_oclc_num = \
-                        row["Unique OCLC Number from Alma Record's 035 $a"]
-                    mms_id = libraries.record.get_valid_record_identifier(
-                        mms_id,
-                        'MMS ID'
-                    )
-                else:
-                    orig_oclc_num = row['OCLC Number']
+                        libraries.record.remove_leading_zeros(orig_oclc_num)
+                    logger.info(f'{orig_oclc_num = }') # delete after testing
+                    logger.info(f'{type(orig_oclc_num) = }') # delete after testing
+                    assert orig_oclc_num != '0', (f"Invalid OCLC number: "
+                        f"'{orig_oclc_num}'. It cannot be zero.")
 
-                # Make sure OCLC Number is valid
-                orig_oclc_num = libraries.record.get_valid_record_identifier(
-                    orig_oclc_num, 'OCLC number')
-                orig_oclc_num = \
-                    libraries.record.remove_leading_zeros(orig_oclc_num)
-                assert orig_oclc_num != '0', (f"Invalid OCLC number: "
-                    f"'{orig_oclc_num}'. It cannot be zero.")
-
-                if args.operation == 'get_current_oclc_number':
-                    assert mms_id not in records_already_processed, (f'Record '
-                        f'with MMS ID {mms_id} has already been processed.')
-                    records_already_processed.add(mms_id)
-                else:
-                    assert orig_oclc_num not in records_already_processed, (
-                        f'Record with OCLC Number {orig_oclc_num} has already '
-                        f'been processed.')
-                    records_already_processed.add(orig_oclc_num)
-
-                if len(records_buffer) < int(os.environ[
-                        'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST']):
                     if args.operation == 'get_current_oclc_number':
-                        records_buffer.add(orig_oclc_num, mms_id)
+                        assert mms_id not in records_already_processed, (f'Record '
+                            f'with MMS ID {mms_id} has already been processed.')
+                        records_already_processed.add(mms_id)
                     else:
-                        records_buffer.add(orig_oclc_num)
+                        assert orig_oclc_num not in records_already_processed, (
+                            f'Record with OCLC Number {orig_oclc_num} has already '
+                            f'been processed.')
+                        records_already_processed.add(orig_oclc_num)
+
+                    if len(records_buffer) < int(os.environ[
+                            'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST']):
+                        if args.operation == 'get_current_oclc_number':
+                            records_buffer.add(orig_oclc_num, mms_id)
+                        else:
+                            records_buffer.add(orig_oclc_num)
+
+                    if len(records_buffer) == int(os.environ[
+                            'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST']):
+                        # records_buffer has the maximum records possible per API
+                        # request, so process these records
+                        logger.debug('Records buffer is full.\n')
+                        records_buffer.process_records(results)
                 else:
-                    # records_buffer has the maximum records possible per API
-                    # request, so process these records
-                    logger.debug('Records buffer is full.\n')
-                    records_buffer.process_records(results)
-
-                    # Now that its records have been processed, clear buffer
-                    records_buffer.remove_all_records()
-
-                    # Add current row's data to the empty buffer
-                    if args.operation == 'get_current_oclc_number':
-                        records_buffer.add(orig_oclc_num, mms_id)
-                    else:
-                        records_buffer.add(orig_oclc_num)
+                    # End of DataFrame has been reached.
+                    # If records_buffer is not empty, process remaining records
+                    if len(records_buffer) > 0:
+                        records_buffer.process_records(results)
             except AssertionError as assert_err:
                 if args.operation == 'get_current_oclc_number':
                     logger.exception(f"An assertion error occurred when "
-                        f"processing MMS ID '{row['MMS ID']}' (at row "
+                        f"processing MMS ID '{raw_mms_id}' (at row "
                         f"{index + 2} of input file): {assert_err}")
                 else:
                     logger.exception(f"An assertion error occurred when "
-                        f"processing OCLC Number '{row['OCLC Number']}' (at "
+                        f"processing OCLC Number '{raw_orig_oclc_num}' (at "
                         f"row {index + 2} of input file): {assert_err}")
                 error_msg = f"Assertion Error: {assert_err}"
                 error_occurred = True
@@ -285,8 +297,12 @@ def main() -> None:
                             ])
 
                         records_with_errors_writer.writerow([
-                            mms_id,
-                            orig_oclc_num,
+                            (mms_id
+                                if mms_id is not None
+                                else raw_mms_id),
+                            (orig_oclc_num
+                                if orig_oclc_num is not None
+                                else raw_orig_oclc_num),
                             error_msg
                         ])
                     else:
@@ -299,16 +315,22 @@ def main() -> None:
                             ])
 
                         records_with_errors_writer.writerow([
-                            orig_oclc_num,
+                            (orig_oclc_num
+                                if orig_oclc_num is not None
+                                else raw_orig_oclc_num),
                             '',
                             error_msg
                         ])
-                logger.debug(f'Finished processing row {index + 2} of input '
-                    f'file.\n')
 
-        # If records_buffer is not empty, process remaining records
-        if len(records_buffer) > 0:
-            records_buffer.process_records(results)
+                if index < len(data.index):
+                    logger.debug(f'Finished processing row {index + 2} of input '
+                        f'file.\n')
+
+                # If records buffer is full, clear buffer (now that its records
+                # have been processed)
+                if len(records_buffer) == int(os.environ[
+                        'WORLDCAT_METADATA_API_MAX_RECORDS_PER_REQUEST']):
+                    records_buffer.remove_all_records()
 
     logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
 
