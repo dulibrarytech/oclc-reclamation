@@ -740,8 +740,31 @@ class WorldCatRecordsBuffer:
         """
 
         transaction_id = ''
-        if ('OCLC_INSTITUTION_SYMBOL' in os.environ
-                or 'WORLDCAT_PRINCIPAL_ID' in os.environ):
+        include_worldcat_transaction_id = os.getenv(
+            'INCLUDE_WORLDCAT_TRANSACTION_ID',
+            'False').lower() in ('true', 't', '1', 'yes', 'y')
+
+        logger.error(f"{'OCLC_INSTITUTION_SYMBOL' in os.environ = }") # delete after testing
+        if 'OCLC_INSTITUTION_SYMBOL' in os.environ:
+            logger.error(f"{os.environ['OCLC_INSTITUTION_SYMBOL'] = }") # delete after testing
+        logger.error(f"{os.getenv('OCLC_INSTITUTION_SYMBOL') = }") # delete after testing
+        if os.getenv('OCLC_INSTITUTION_SYMBOL'):
+            logger.error(f"os.getenv('OCLC_INSTITUTION_SYMBOL') evaluates to True") # delete after testing
+        else:
+            logger.error(f"os.getenv('OCLC_INSTITUTION_SYMBOL') evaluates to False") # delete after testing
+
+        logger.error(f"{'WORLDCAT_PRINCIPAL_ID' in os.environ = }") # delete after testing
+        if 'WORLDCAT_PRINCIPAL_ID' in os.environ:
+            logger.error(f"{os.environ['WORLDCAT_PRINCIPAL_ID'] = }") # delete after testing
+        logger.error(f"{os.getenv('WORLDCAT_PRINCIPAL_ID') = }") # delete after testing
+        if os.getenv('WORLDCAT_PRINCIPAL_ID'):
+            logger.error(f"os.getenv('WORLDCAT_PRINCIPAL_ID') evaluates to True") # delete after testing
+        else:
+            logger.error(f"os.getenv('WORLDCAT_PRINCIPAL_ID') evaluates to False") # delete after testing
+
+        if include_worldcat_transaction_id and (
+                os.getenv('OCLC_INSTITUTION_SYMBOL')
+                or os.getenv('WORLDCAT_PRINCIPAL_ID')):
             # Add OCLC Institution Symbol, if present
             transaction_id = os.getenv('OCLC_INSTITUTION_SYMBOL', '')
 
@@ -751,7 +774,7 @@ class WorldCatRecordsBuffer:
             # Add timestamp and, if present, your WorldCat Principal ID
             transaction_id += time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
 
-            if 'WORLDCAT_PRINCIPAL_ID' in os.environ:
+            if os.getenv('WORLDCAT_PRINCIPAL_ID'):
                 transaction_id += f"_{os.getenv('WORLDCAT_PRINCIPAL_ID')}"
 
         logger.debug(f'{transaction_id=}')
