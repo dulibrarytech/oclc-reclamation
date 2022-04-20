@@ -92,14 +92,14 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
   - `pip install -r requirements.txt`
 - Add `.env` file to root folder (you can copy `.env-example`)
   - To use the `update_alma_records.py` script, initialize these variables:
+    - `ALMA_API_KEY`
+      - See [Alma API Key](#alma-api-key) section for how to request one.
     - `ALMA_API_BASE_URL`
       - If you're in North America, use
       `https://api-na.hosted.exlibrisgroup.com`
       - If not,
       [look here](https://developers.exlibrisgroup.com/alma/apis/#calling) for
       the base URL for your geographic region
-    - `ALMA_API_KEY`
-      - See [Alma API Key](#alma-api-key) section for how to request one.
   - To use the `search_worldcat.py` and `process_worldcat_records.py` scripts,
   initialize these variables:
     - `OCLC_INSTITUTION_SYMBOL`
