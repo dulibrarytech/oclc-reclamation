@@ -79,12 +79,10 @@ def main() -> None:
         f'alma_records_with_current_oclc_num = '
         f'{args.alma_records_with_current_oclc_num}')
 
-    logger.info(f'Started {parser.prog} script with {command_line_args_str}')
+    logger.info(f'Started {parser.prog} script with {command_line_args_str}\n')
 
     # Create sets
     mms_ids_already_processed = set()
-    logger.debug(f'{mms_ids_already_processed=}')
-    logger.debug(f'{type(mms_ids_already_processed)=}\n')
 
     # Populate alma_records_with_current_oclc_num set from input file.
     # If there is no input file, then this set will remain empty.
@@ -95,8 +93,7 @@ def main() -> None:
         0,
         True)
     # logger.debug(f'{alma_records_with_current_oclc_num=}')
-    logger.debug(f'{len(alma_records_with_current_oclc_num)=}')
-    logger.debug(f'{type(alma_records_with_current_oclc_num)=}\n')
+    logger.debug(f'{len(alma_records_with_current_oclc_num)=}\n')
 
     with open('outputs/extract_record_identifiers/master_list_records_with_'
             'current_oclc_num.csv', mode='a',
