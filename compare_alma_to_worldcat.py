@@ -109,11 +109,11 @@ def main() -> None:
 
     logger.debug(f'Finished checking directory: {worldcat_records_directory}\n')
 
-    # logger.debug(f'{alma_records_set=}')
-    logger.debug(f'{len(alma_records_set)=}\n')
+    # logger.debug(f'{alma_records_set = }')
+    logger.info(f'{len(alma_records_set) = }\n')
 
-    # logger.debug(f'{worldcat_records_set=}')
-    logger.debug(f'{len(worldcat_records_set)=}\n')
+    # logger.debug(f'{worldcat_records_set = }')
+    logger.info(f'{len(worldcat_records_set) = }\n')
 
     # Perform set comparisons and add results to appropriate output file
     with open('outputs/compare_alma_to_worldcat/records_with_no_action_needed'

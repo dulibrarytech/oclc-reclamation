@@ -105,7 +105,7 @@ def set_to_csv(source_set: Set[str], set_name: str, csv_writer: csv.writer,
     """
 
     # logger.debug(f'{set_name} = {source_set}')
-    logger.debug(f'len({set_name}) = {len(source_set)}\n')
+    logger.info(f'len({set_name}) = {len(source_set)}\n')
 
     if csv_writer is not None and len(source_set) > 0:
         csv_writer.writerow([col_heading])
