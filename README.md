@@ -92,9 +92,9 @@ All other content is released under [CC-BY-4.0](https://creativecommons.org/lice
   - `pip install -r requirements.txt`
 - Add `.env` file to root folder (you can copy `.env-example`)
   - To use the `update_alma_records.py` script, initialize these variables:
-    - `ALMA_BIBS_API_URL`
+    - `ALMA_API_BASE_URL`
       - If you're in North America, use
-      `https://api-na.hosted.exlibrisgroup.com/almaws/v1/bibs/`
+      `https://api-na.hosted.exlibrisgroup.com`
       - If not,
       [look here](https://developers.exlibrisgroup.com/alma/apis/#calling) for
       the base URL for your geographic region

@@ -224,7 +224,8 @@ class AlmaRecordsBuffer:
 
             # Make GET request to retrieve all Alma records in buffer
             api_response = requests.get(
-                f'{os.environ["ALMA_BIBS_API_URL"]}',
+                (f'{os.environ["ALMA_API_BASE_URL"]}'
+                    f'{os.environ["ALMA_BIBS_API_PATH"]}'),
                 params=params,
                 headers=self.api_request_headers,
                 timeout=45
@@ -576,7 +577,8 @@ class AlmaRecordsBuffer:
 
                 # Make PUT request to update Alma record
                 api_response = requests.put(
-                    f'{os.environ["ALMA_BIBS_API_URL"]}{mms_id}',
+                    (f'{os.environ["ALMA_API_BASE_URL"]}'
+                        f'{os.environ["ALMA_BIBS_API_PATH"]}/{mms_id}'),
                     headers=headers,
                     data=payload,
                     timeout=45
