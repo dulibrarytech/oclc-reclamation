@@ -245,8 +245,6 @@ class AlmaRecordsBuffer:
             mms_ids_retrieved = set()
             for record_index, bib_element in enumerate(root, start=1):
                 mms_id = bib_element.find('mms_id').text
-                logger.info(f'{mms_id = }') # delete after testing
-                logger.info(f'{type(mms_id) = }') # delete after testing
                 mms_ids_retrieved.add(mms_id)
 
                 logger.debug(f'Started processing MMS ID {mms_id} (record '
@@ -350,8 +348,9 @@ class AlmaRecordsBuffer:
             for mms_id_not_retrieved in mms_ids_not_retrieved:
                 self.num_records_with_errors += 1
 
-                logger.error(f"MMS ID '{mms_id_not_retrieved}' was not "
-                    f"retrieved by GET request")
+                logger.error(f"Error retrieving Alma record: MMS ID "
+                    f"'{mms_id_not_retrieved}' was not retrieved by GET "
+                    f"request (perhaps because it is invalid).\n")
 
                 # Add record to records_with_errors spreadsheet
                 if self.records_with_errors.tell() == 0:
@@ -374,11 +373,6 @@ class AlmaRecordsBuffer:
                     ('Error retrieving Alma record (perhaps because MMS ID is '
                         'invalid).')
                 ])
-
-            # delete after testing
-            logger.info(f'Number of Alma records not retrieved by GET '
-                f'request: {len(self.mms_id_to_oclc_num_dict) - num_records_retrieved}')
-            logger.info(f'{len(mms_ids_not_retrieved) = }')
         except requests.exceptions.HTTPError:
             libraries.xml.prettify_and_log_xml(
                 api_response.text,
