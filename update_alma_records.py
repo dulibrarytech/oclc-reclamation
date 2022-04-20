@@ -374,29 +374,30 @@ def main() -> None:
 
     logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
 
-    print(f'End of script. Completed in: {datetime.now() - start_time} '
-        f'(hours:minutes:seconds.microseconds).\n\n'
-        f'The script made {records_buffer.num_api_requests_made} API '
-        f'request(s).')
+    logger.info(f'Script completed in: {datetime.now() - start_time} '
+        f'(hours:minutes:seconds.microseconds).\n')
+
+    logger.info(f'The script made {records_buffer.num_api_requests_made} API '
+        f'request(s).\n')
 
     if records_buffer.num_api_requests_remaining is not None:
-        print(f'Alma API requests remaining for today: '
+        logger.info(f'Alma API requests remaining for today: '
             f'{records_buffer.num_api_requests_remaining}\n')
 
     total_records_in_output_files = (records_buffer.num_records_updated
         + records_buffer.num_records_with_no_update_needed
         + records_buffer.num_records_with_errors)
 
-    print(f'Processed {total_records_in_output_files} of {len(data.index)} '
-        f'row(s) from input file:\n'
-        f'- {records_buffer.num_records_updated} record(s) updated.\n'
+    logger.info(f'Processed {total_records_in_output_files} of '
+        f'{len(data.index)} row(s) from input file:\n'
+        f'- {records_buffer.num_records_updated} record(s) updated\n'
         f'- {records_buffer.num_records_with_no_update_needed} record(s) with '
-        f'no update needed.\n'
-        f'- {records_buffer.num_records_with_errors} record(s) with errors.\n')
+        f'no update needed\n'
+        f'- {records_buffer.num_records_with_errors} record(s) with errors\n')
 
     assert len(data.index) == total_records_in_output_files, (f'Total records '
         f'in input file ({len(data.index)}) does not equal total records in '
-        f'output files ({total_records_in_output_files}).\n')
+        f'output files ({total_records_in_output_files})\n')
 
 
 if __name__ == "__main__":

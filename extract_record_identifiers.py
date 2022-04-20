@@ -290,8 +290,8 @@ def main() -> None:
 
     logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
 
-    print(f'End of script. Completed in: {datetime.now() - start_time} ' \
-        f'(hours:minutes:seconds.microseconds)\n')
+    logger.info(f'Script completed in: {datetime.now() - start_time} '
+        f'(hours:minutes:seconds.microseconds)')
 
 
 if __name__ == "__main__":

@@ -329,24 +329,26 @@ def main() -> None:
 
     logger.info(f'Finished {parser.prog} script with {command_line_args_str}\n')
 
-    print(f'End of script. Completed in: {datetime.now() - start_time} '
-        f'(hours:minutes:seconds.microseconds).\n'
-        f'The script made {records_buffer.num_api_requests_made} API '
-        f'request(s).\n'
-        f'Processed {len(data.index)} row(s) from input file:')
+    logger.info(f'Script completed in: {datetime.now() - start_time} '
+        f'(hours:minutes:seconds.microseconds).\n')
+
+    logger.info(f'The script made {records_buffer.num_api_requests_made} API '
+        f'request(s).\n')
 
     if args.operation == 'get_current_oclc_number':
-        print(f'- {results["num_records_with_current_oclc_num"]} record(s) '
+        logger.info(f'Processed {len(data.index)} row(s) from input file:\n'
+            f'- {results["num_records_with_current_oclc_num"]} record(s) '
             f'with current OCLC number\n'
             f'- {results["num_records_with_old_oclc_num"]} record(s) with '
             f'old OCLC number\n'
             f'- {results["num_records_with_errors"]} record(s) with errors')
     else:
-        print(f'- {results["num_records_updated"]} record(s) updated, '
+        logger.info(f'Processed {len(data.index)} row(s) from input file:\n'
+            f'- {results["num_records_updated"]} record(s) updated, '
             f'i.e. holding was successfully {set_or_unset_choice}\n'
             f'- {results["num_records_with_no_update_needed"]} record(s) not '
             f'updated because holding was already {set_or_unset_choice}\n'
-            f'- {results["num_records_with_errors"]} record(s) with errors\n')
+            f'- {results["num_records_with_errors"]} record(s) with errors')
 
 if __name__ == "__main__":
     main()
