@@ -236,17 +236,21 @@ class AlmaRecordsBuffer:
             libraries.api.log_response_and_raise_for_status(api_response)
 
             root = ET.fromstring(api_response.text)
-            num_records = int(root.attrib['total_record_count'])
+            num_records_retrieved = int(root.attrib['total_record_count'])
 
-            logger.debug(f'The GET request retrieved {num_records} Alma '
-                f'record(s).\n')
+            logger.debug(f'The GET request retrieved {num_records_retrieved} '
+                f'Alma record(s).\n')
 
             # Loop through each Alma record (i.e. each 'bib' element)
+            mms_ids_retrieved = set()
             for record_index, bib_element in enumerate(root, start=1):
                 mms_id = bib_element.find('mms_id').text
+                logger.info(f'{mms_id = }') # delete after testing
+                logger.info(f'{type(mms_id) = }') # delete after testing
+                mms_ids_retrieved.add(mms_id)
 
                 logger.debug(f'Started processing MMS ID {mms_id} (record '
-                    f'#{record_index} of {num_records} in buffer)...')
+                    f'#{record_index} of {num_records_retrieved} in buffer)...')
 
                 xml_as_pretty_printed_bytes_obj = libraries.xml.prettify(
                     ET.tostring(bib_element, encoding='UTF-8')
@@ -335,7 +339,46 @@ class AlmaRecordsBuffer:
                     ])
 
                 logger.debug(f'Finished processing MMS ID {mms_id} (record '
-                    f'#{record_index} of {num_records} in buffer).\n')
+                    f'#{record_index} of {num_records_retrieved} in buffer).\n')
+
+            # If there are Alma records in this buffer that were not retrieved
+            # by the GET request, then add these to the records_with_errors
+            # spreadsheet
+            mms_ids_not_retrieved = \
+                self.mms_id_to_oclc_num_dict.keys() - mms_ids_retrieved
+
+            for mms_id_not_retrieved in mms_ids_not_retrieved:
+                self.num_records_with_errors += 1
+
+                logger.error(f"MMS ID '{mms_id_not_retrieved}' was not "
+                    f"retrieved by GET request")
+
+                # Add record to records_with_errors spreadsheet
+                if self.records_with_errors.tell() == 0:
+                    # Write header row
+                    self.records_with_errors_writer.writerow([
+                        'MMS ID',
+                        (f'OCLC Number(s) from Alma Record '
+                            f'[{libraries.record.subfield_a_disclaimer}]'),
+                        'Current OCLC Number',
+                        'Error'
+                    ])
+
+                self.records_with_errors_writer.writerow([
+                    mms_id_not_retrieved,
+                    '<record not fully checked>',
+                    self.mms_id_to_oclc_num_dict.get(
+                        mms_id_not_retrieved,
+                        '<error retrieving OCLC Number>'
+                    ),
+                    ('Error retrieving Alma record (perhaps because MMS ID is '
+                        'invalid).')
+                ])
+
+            # delete after testing
+            logger.info(f'Number of Alma records not retrieved by GET '
+                f'request: {len(self.mms_id_to_oclc_num_dict) - num_records_retrieved}')
+            logger.info(f'{len(mms_ids_not_retrieved) = }')
         except requests.exceptions.HTTPError:
             libraries.xml.prettify_and_log_xml(
                 api_response.text,
