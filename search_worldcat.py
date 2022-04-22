@@ -8,6 +8,7 @@ import numpy as np
 import os
 import pandas as pd
 from datetime import datetime
+from requests.exceptions import HTTPError
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -130,6 +131,7 @@ def main() -> None:
     for row in data.itertuples(name='Record_from_input_file'):
         logger.debug(f'Started processing row {row.Index + 2} of input file...')
         error_occurred = False
+        consecutive_errors_occurred = False
         error_msg = None
 
         try:
@@ -149,20 +151,76 @@ def main() -> None:
             # Add current row's data to the empty buffer and process that record
             records_buffer.add(row)
             records_buffer.process_records(
-                args.search_my_library_holdings_first)
+                args.search_my_library_holdings_first
+            )
         except AssertionError as assert_err:
-            logger.exception(f"An assertion error occurred when processing MMS "
-                f"ID '{row.mms_id}' (at row {row.Index + 2} of input file): "
-                f"{assert_err}")
-            error_msg = f"Assertion Error: {assert_err}"
+            logger.exception(f'An assertion error occurred: {assert_err}')
+            error_msg = f'Assertion Error: {assert_err}'
+            error_occurred = True
+        except HTTPError as first_http_err:
+            logger.exception(f'An HTTP error occurred: {first_http_err}')
+            error_msg = f'HTTP Error: {first_http_err}'
+            error_occurred = True
+
+            http_status_code = None
+            if hasattr(first_http_err, 'response'):
+                logger.info('response exists') # delete after testing
+                if hasattr(first_http_err.response, 'text'):
+                    logger.info('response.text exists') # delete after testing
+                    logger.error(f'{first_http_err.response.text = }')
+                http_status_code = getattr(
+                    first_http_err.response,
+                    'status_code',
+                    None
+                )
+
+            # delete after testing (entire block)
+            logger.error(f'{http_status_code = }')
+            logger.error(f'{type(http_status_code) = }')
+            logger.error(f'{str(http_status_code).startswith("4") = }')
+            logger.error(f'{str(http_status_code).startswith("5") = }')
+
+            if str(http_status_code).startswith('5'):
+                # Try processing records buffer again
+                try:
+                    logger.debug('Trying one more time to process this records '
+                        'buffer...')
+                    records_buffer.process_records(
+                        args.search_my_library_holdings_first
+                    )
+
+                    # Records buffer was processed without an HTTP error this
+                    # time, so reset error variables
+                    error_msg = None
+                    error_occurred = False
+                except HTTPError as second_http_err:
+                    logger.exception(f'A second HTTP error occurred when '
+                        f'reprocessing the same records buffer: '
+                        f'{second_http_err}')
+                    error_msg = f'HTTP Error: {second_http_err}'
+                    error_occurred = True
+                    consecutive_errors_occurred = True
+        except Exception as err:
+            logger.exception(f'An error occurred: {err}')
+            error_msg = f'{err}'
             error_occurred = True
         finally:
             if error_occurred:
+                logger.error(f"This error occurred when processing MMS ID "
+                    f"'{row.mms_id}' (at row {row.Index + 2} of input file).\n")
+
                 # Update Error column of input file for the given row
                 data.loc[row.Index, 'error'] = error_msg
 
             logger.debug(f'Finished processing row {row.Index + 2} of input '
                 f'file.\n')
+
+            # If a second attempt to process this records buffer fails, then
+            # don't process any more records from input file
+            if consecutive_errors_occurred:
+                logger.error('Consecutive errors occurred when processing the '
+                    'same records buffer. Halting script.\n')
+                break
 
             # Now that row has been processed, clear buffer
             records_buffer.remove_all_records()
@@ -212,19 +270,20 @@ def main() -> None:
         f'{records_buffer.num_records_needing_two_api_requests * 2} API '
         f'requests)\n')
 
-    logger.info(f'Processed {len(data.index)} row(s) from input file:\n'
-        f'- {len(records_with_oclc_num.index)} record(s) with OCLC Number\n'
-        f'- {len(records_with_zero_or_multiple_worldcat_matches.index)} '
-        f'record(s) with zero or multiple WorldCat matches\n'
-        f'- {len(records_with_errors.index)} record(s) with errors\n')
-
     total_records_in_output_files = (
         len(records_with_oclc_num.index)
         + len(records_with_zero_or_multiple_worldcat_matches.index)
         + len(records_with_errors.index))
 
+    logger.info(f'Processed {total_records_in_output_files} of '
+        f'{len(data.index)} row(s) from input file:\n'
+        f'- {len(records_with_oclc_num.index)} record(s) with OCLC Number\n'
+        f'- {len(records_with_zero_or_multiple_worldcat_matches.index)} '
+        f'record(s) with zero or multiple WorldCat matches\n'
+        f'- {len(records_with_errors.index)} record(s) with errors\n')
+
     assert len(data.index) == total_records_in_output_files, (f'Total records '
-        f'in input file ({len(data.index)}) does not equal total records in '
+        f'in input file ({len(data.index)}) do not equal total records in '
         f'output files ({total_records_in_output_files}).\n')
 
 

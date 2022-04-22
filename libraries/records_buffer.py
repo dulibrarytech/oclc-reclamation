@@ -1533,6 +1533,8 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
         self.num_records_needing_one_api_request = 0
         self.num_records_needing_two_api_requests = 0
 
+        self.api_request_count = 0 # delete after testing
+
         # Create OAuth2Session for WorldCat Metadata API
         super().__init__()
 
@@ -1724,6 +1726,12 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
         api_response_label = 'Search Brief Bibliographic Resources API response'
 
         try:
+            # delete after testing (entire block)
+            if self.api_request_count >= 3:
+                url = (f"{os.environ['WORLDCAT_METADATA_API_URL_FOR_SEARCH']}"
+                    f"/brief-bibs") # This causes a 403 error, which is being used for testing purposes
+                # raise requests.exceptions.HTTPError('504 Server Error (this is a test)')
+
             num_records_held_by_your_library = None
             num_records_label = (f"records held by "
                 f"{os.environ['OCLC_INSTITUTION_SYMBOL']}")
@@ -1856,13 +1864,26 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
         except json.decoder.JSONDecodeError:
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):
-            logger.exception(f'Problem with {api_response_label}: Error '
+            logger.error(f'Problem with {api_response_label}: Error '
                 f'decoding JSON')
-            logger.error(f'{api_response.text = }')
 
-            # Re-raise exception so that the script is halted (since future API
-            # requests may result in the same error)
+            if hasattr(api_response, 'text'):
+                logger.error(f'{api_response.text = }')
+
+            # Re-raise exception
             raise
+        # # No need to catch HTTP Error because we want to raise it without
+        # # logging anything here
+        # except requests.exceptions.HTTPError:
+        #     logger.error(f'HTTP Error with Search Brief Bibliographic '
+        #         f'Resources API request')
+        #
+        #     # Re-raise exception so that the script can be halted if needed
+        #     raise
+        # delete after testing (entire 'finally' block)
+        finally:
+            self.api_request_count += 1
+            logger.info(f'{self.api_request_count = }') # delete after testing
 
         logger.debug('Finished processing records buffer.')
 
