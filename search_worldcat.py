@@ -187,6 +187,11 @@ def main() -> None:
                     # time, so reset error variables
                     error_msg = None
                     error_occurred = False
+                except AssertionError as assert_err:
+                    logger.exception(f'An assertion error occurred: '
+                        f'{assert_err}')
+                    error_msg = f'Assertion Error: {assert_err}'
+                    error_occurred = True
                 except HTTPError as second_http_err:
                     logger.exception(f'A second HTTP error occurred when '
                         f'reprocessing the same records buffer: '
@@ -194,6 +199,15 @@ def main() -> None:
                     error_msg = f'HTTP Error: {second_http_err}'
                     error_occurred = True
                     consecutive_errors_occurred = True
+                except JSONDecodeError as json_decode_err:
+                    logger.exception(f'A JSON Decode Error occurred: '
+                        f'{json_decode_err}')
+                    error_msg = f'JSON Decode Error: {json_decode_err}'
+                    error_occurred = True
+                except Exception as err:
+                    logger.exception(f'An error occurred: {err}')
+                    error_msg = f'{err}'
+                    error_occurred = True
         except JSONDecodeError as json_decode_err:
             logger.exception(f'A JSON Decode Error occurred: {json_decode_err}')
             error_msg = f'JSON Decode Error: {json_decode_err}'
