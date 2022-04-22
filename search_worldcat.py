@@ -7,6 +7,7 @@ import logging.config
 import numpy as np
 import os
 import pandas as pd
+import time
 from datetime import datetime
 from json.decoder import JSONDecodeError
 from requests.exceptions import HTTPError
@@ -177,6 +178,9 @@ def main() -> None:
             if str(http_status_code).startswith('5'):
                 # Try processing records buffer again
                 try:
+                    wait_time = 2
+                    logger.debug(f'Waiting {wait_time} seconds...')
+                    time.sleep(wait_time)
                     logger.debug('Trying one more time to process this records '
                         'buffer...')
                     records_buffer.process_records(
@@ -280,7 +284,9 @@ def main() -> None:
         f'- {records_buffer.num_records_needing_two_api_requests} Alma '
         f'record(s) needed two WorldCat API requests (which totals '
         f'{records_buffer.num_records_needing_two_api_requests * 2} API '
-        f'requests)\n')
+        f'requests)\n'
+        f'- Any extra API requests are likely because search(es) had to be '
+        f'retried due to an HTTP Error\n')
 
     total_records_in_output_files = (
         len(records_with_oclc_num.index)
