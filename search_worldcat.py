@@ -8,6 +8,7 @@ import numpy as np
 import os
 import pandas as pd
 from datetime import datetime
+from json.decoder import JSONDecodeError
 from requests.exceptions import HTTPError
 
 dotenv_file = dotenv.find_dotenv()
@@ -162,23 +163,16 @@ def main() -> None:
             error_msg = f'HTTP Error: {first_http_err}'
             error_occurred = True
 
-            http_status_code = None
+            http_status_code = ''
             if hasattr(first_http_err, 'response'):
-                logger.info('response exists') # delete after testing
                 if hasattr(first_http_err.response, 'text'):
-                    logger.info('response.text exists') # delete after testing
-                    logger.error(f'{first_http_err.response.text = }')
+                    logger.error(f'API Response:\n'
+                        f'{first_http_err.response.text}')
                 http_status_code = getattr(
                     first_http_err.response,
                     'status_code',
-                    None
+                    ''
                 )
-
-            # delete after testing (entire block)
-            logger.error(f'{http_status_code = }')
-            logger.error(f'{type(http_status_code) = }')
-            logger.error(f'{str(http_status_code).startswith("4") = }')
-            logger.error(f'{str(http_status_code).startswith("5") = }')
 
             if str(http_status_code).startswith('5'):
                 # Try processing records buffer again
@@ -200,6 +194,10 @@ def main() -> None:
                     error_msg = f'HTTP Error: {second_http_err}'
                     error_occurred = True
                     consecutive_errors_occurred = True
+        except JSONDecodeError as json_decode_err:
+            logger.exception(f'A JSON Decode Error occurred: {json_decode_err}')
+            error_msg = f'JSON Decode Error: {json_decode_err}'
+            error_occurred = True
         except Exception as err:
             logger.exception(f'An error occurred: {err}')
             error_msg = f'{err}'

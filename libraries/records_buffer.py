@@ -1175,11 +1175,20 @@ class OclcNumDictBuffer(WorldCatRecordsBuffer):
         except json.decoder.JSONDecodeError:
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):
-            logger.exception(f'{api_response_error_msg}: Error decoding JSON')
-            logger.error(f'{api_response.text = }')
+            # # delete after testing to confirm that replacement code below works
+            # logger.exception(f'{api_response_error_msg}: Error decoding JSON')
+            # logger.error(f'{api_response.text = }')
+            #
+            # # Re-raise exception so that the script is halted (since future API
+            # # requests may result in the same error)
+            # raise
 
-            # Re-raise exception so that the script is halted (since future API
-            # requests may result in the same error)
+            logger.error(f'{api_response_error_msg}: Error decoding JSON')
+
+            if hasattr(api_response, 'text'):
+                logger.error(f'API Response:\n{api_response.text}\n')
+
+            # Re-raise exception
             raise
 
         logger.debug('Finished processing records buffer.')
@@ -1466,11 +1475,20 @@ class OclcNumSetBuffer(WorldCatRecordsBuffer):
         except json.decoder.JSONDecodeError:
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):
-            logger.exception(f'{api_response_error_msg}: Error decoding JSON')
-            logger.error(f'{api_response.text = }')
+            # # delete after testing to confirm that replacement code below works
+            # logger.exception(f'{api_response_error_msg}: Error decoding JSON')
+            # logger.error(f'{api_response.text = }')
+            #
+            # # Re-raise exception so that the script is halted (since future API
+            # # requests may result in the same error)
+            # raise
 
-            # Re-raise exception so that the script is halted (since future API
-            # requests may result in the same error)
+            logger.error(f'{api_response_error_msg}: Error decoding JSON')
+
+            if hasattr(api_response, 'text'):
+                logger.error(f'API Response:\n{api_response.text}\n')
+
+            # Re-raise exception
             raise
 
         logger.debug('Finished processing records buffer.')
@@ -1747,6 +1765,9 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
                             f"{os.environ['OCLC_INSTITUTION_SYMBOL']}"),
                         (f"{api_response_label} ({num_records_label})"))
 
+                json_decode_error = json.loads('{ "name":"John", "age":30, '
+                    '"city";"New York"}') # This causes a json.decoder.JSONDecodeError, which is being used for testing purposes
+
                 num_records_held_by_your_library = self.get_num_records_dict(
                     json_response['numberOfRecords'],
                     used_held_by_filter=True)
@@ -1864,14 +1885,15 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
         except json.decoder.JSONDecodeError:
         # except (requests.exceptions.JSONDecodeError,
         #         json.decoder.JSONDecodeError):
-            logger.error(f'Problem with {api_response_label}: Error '
-                f'decoding JSON')
+            logger.error(f'Problem with {api_response_label}: Error decoding '
+                f'JSON')
 
             if hasattr(api_response, 'text'):
-                logger.error(f'{api_response.text = }')
+                logger.error(f'API Response:\n{api_response.text}\n')
 
             # Re-raise exception
             raise
+
         # # No need to catch HTTP Error because we want to raise it without
         # # logging anything here
         # except requests.exceptions.HTTPError:
