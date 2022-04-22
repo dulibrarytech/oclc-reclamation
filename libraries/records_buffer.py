@@ -1864,7 +1864,8 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
 
             num_api_requests_made_during_current_search = (
                 self.num_api_requests_made
-                    - num_api_requests_made_before_current_search)
+                - num_api_requests_made_before_current_search
+            )
 
             if num_api_requests_made_during_current_search == 1:
                 self.num_records_needing_one_api_request += 1
