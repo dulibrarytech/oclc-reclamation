@@ -178,7 +178,7 @@ def main() -> None:
             if str(http_status_code).startswith('5'):
                 # Try processing records buffer again
                 try:
-                    wait_time = 2
+                    wait_time = 15
                     logger.debug(f'Waiting {wait_time} seconds...')
                     time.sleep(wait_time)
                     logger.debug('Trying one more time to process this records '
