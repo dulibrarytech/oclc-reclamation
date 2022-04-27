@@ -350,7 +350,8 @@ class AlmaRecordsBuffer:
 
                 logger.error(f"Error retrieving Alma record: MMS ID "
                     f"'{mms_id_not_retrieved}' was not retrieved by GET "
-                    f"request (perhaps because it is invalid).\n")
+                    f"request (perhaps because it is invalid or no longer in "
+                    f"Alma).\n")
 
                 # Add record to records_with_errors spreadsheet
                 if self.records_with_errors.tell() == 0:
@@ -371,7 +372,7 @@ class AlmaRecordsBuffer:
                         '<error retrieving OCLC Number>'
                     ),
                     ('Error retrieving Alma record (perhaps because MMS ID is '
-                        'invalid).')
+                        'invalid or no longer in Alma).')
                 ])
         except requests.exceptions.HTTPError:
             libraries.xml.prettify_and_log_xml(
