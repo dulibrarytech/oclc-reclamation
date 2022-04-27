@@ -257,7 +257,8 @@ def main() -> None:
 
                     # If records buffer is full, process these records
                     if len(records_buffer) == args.batch_size:
-                        logger.debug('Records buffer is full.\n')
+                        logger.debug(f'Records buffer is full ({row_location}).'
+                            f'\n')
                         records_buffer.process_records()
                 else:
                     # End of DataFrame has been reached.
@@ -278,6 +279,20 @@ def main() -> None:
             except HTTPError as http_err:
                 logger.exception(f'An HTTP error occurred: {http_err}')
                 error_msg = f'HTTP Error: {http_err}'
+                error_occurred = True
+            except KeyError as key_err:
+                logger.exception(f'A key error occurred: Unable to access the '
+                    f'{key_err} key.')
+
+                if str(key_err).strip("'") in {'MMS ID', 'OCLC Number'}:
+                    error_msg = (f'Input file must contain a column named: '
+                        f'{key_err}')
+                    logger.error(error_msg)
+                    error_msg = f'Key Error: {error_msg}'
+                    batch_level_error = False
+                else:
+                    error_msg = f'Key Error: Unable to access the {key_err} key'
+
                 error_occurred = True
             except Exception as err:
                 logger.exception(f'An error occurred: {err}')
@@ -361,10 +376,12 @@ def main() -> None:
                             error_msg
                         ])
 
-                    # Stop processing records if there are not enough Alma Daily
-                    # API Requests remaining
-                    if error_msg.startswith('Assertion Error: Not enough Alma '
-                            'Daily API Requests'):
+                    # Stop processing records if one of the following errors
+                    # occur
+                    if error_msg.startswith((
+                            'Assertion Error: Not enough Alma Daily API Requests',
+                            'Key Error: Input file must contain a column'
+                            )):
                         break
 
                 # If records buffer is full, clear buffer (now that its records
