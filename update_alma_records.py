@@ -5,10 +5,10 @@ import logging
 import logging.config
 import os
 import pandas as pd
+import requests
 from csv import writer
 from datetime import datetime
 from dotenv import load_dotenv
-from requests.exceptions import HTTPError
 
 load_dotenv()
 
@@ -276,8 +276,20 @@ def main() -> None:
                     'Assertion Error: Not enough Alma Daily API Requests'
                 )
                 error_occurred = True
-            except HTTPError as http_err:
-                logger.exception(f'An HTTP error occurred: {http_err}')
+            except requests.exceptions.ConnectionError as connection_err:
+                logger.exception(f'A second error occurred (Connection Error) '
+                    f'when trying to retrieve Alma record(s): {connection_err}')
+
+                error_msg = f'Connection Error: {connection_err}'
+                error_occurred = True
+            except requests.exceptions.HTTPError as http_err:
+                logger.exception(f'A second error occurred (HTTP Error) when '
+                    f'trying to retrieve Alma record(s): {http_err}')
+
+                if (hasattr(http_err, 'response')
+                        and hasattr(http_err.response, 'text')):
+                    logger.error(f'API Response:\n{http_err.response.text}')
+
                 error_msg = f'HTTP Error: {http_err}'
                 error_occurred = True
             except KeyError as key_err:
@@ -380,8 +392,11 @@ def main() -> None:
                     # occur
                     if error_msg.startswith((
                             'Assertion Error: Not enough Alma Daily API Requests',
+                            'Connection Error',
+                            'HTTP Error',
                             'Key Error: Input file must contain a column'
                             )):
+                        logger.error('Halting script because of above error.\n')
                         break
 
                 # If records buffer is full, clear buffer (now that its records

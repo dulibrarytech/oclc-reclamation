@@ -165,6 +165,157 @@ class AlmaRecordsBuffer:
         self.mms_id_to_oclc_num_dict[mms_id] = oclc_num
         logger.debug(f'Added {mms_id} to records buffer.')
 
+    def make_api_request_and_log_response(
+            self,
+            http_method: str,
+            mms_id: str = None,
+            payload: bytes = None
+        ) -> requests.models.Response:
+        """Makes the specified API request and logs the response.
+
+        Parameters
+        ----------
+        http_method: str
+            The HTTP Method to make (only GET or PUT is supported here)
+        mms_id: str, default is None
+            The MMS ID of the Alma record being updated (for PUT requests only)
+        payload: bytes, default is None
+            The XML data string for updating the Alma record (for PUT requests
+            only)
+
+        Returns
+        -------
+        requests.models.Response
+            The API response
+
+        Raises
+        ------
+        AssertionError
+            If http_method is not a supported HTTP Method (i.e. 'get' or 'put')
+            OR if mms_id or payload is None and the http_method is 'put'
+        requests.exceptions.HTTPError
+            If the API request results in a 4XX client error or 5XX server error
+            response
+        """
+
+        alma_api_url = (f'{os.environ["ALMA_API_BASE_URL"]}'
+            f'{os.environ["ALMA_BIBS_API_PATH"]}')
+        http_method = http_method.lower()
+        timeout = 90
+        api_response = None
+
+        assert http_method in {'get', 'put'}, (f'Unsupported HTTP Method '
+            f'("{http_method}"). Expecting either "get" or "put".')
+
+        if http_method == 'put':
+            assert mms_id is not None, (f'Cannot make PUT request without MMS '
+                f'ID ({mms_id = }).')
+            assert payload is not None, (f"Cannot make PUT request without the "
+                f"updated Alma record's payload ({payload = }).")
+
+            logger.info(f'{type(mms_id) = }') # delete after testing
+            logger.info(f'{type(payload) = }') # delete after testing
+
+            headers = {
+                'Authorization': self.api_request_headers['Authorization'],
+                'Content-Type': 'application/xml'
+            }
+
+            # delete after testing
+            if mms_id == '991027570199702766':
+                logger.info('Adding zzzz to mms_id so that it causes an error')
+                mms_id += 'zzzz'
+
+            api_response = requests.put(
+                f'{alma_api_url}/{mms_id}',
+                headers=headers,
+                data=payload,
+                timeout=timeout
+            )
+        else:
+            # http_method == 'get'
+            params = {
+                'view': 'full',
+                'mms_id': ','.join(self.mms_id_to_oclc_num_dict.keys())
+            }
+
+            api_response = requests.get(
+                alma_api_url,
+                params=params,
+                headers=self.api_request_headers,
+                timeout=timeout
+            )
+
+        logger.info(f'{type(api_response) = }') # delete after testing
+
+        if (hasattr(api_response, 'headers')
+                and api_response.headers.get('X-Exl-Api-Remaining')):
+            self.update_num_api_requests(
+                int(api_response.headers['X-Exl-Api-Remaining'])
+            )
+
+        libraries.api.log_response_and_raise_for_status(api_response)
+
+        return api_response
+
+    def make_api_request_and_retry_if_needed(
+            self,
+            http_method: str,
+            mms_id: str = None,
+            payload: bytes = None
+        ) -> requests.models.Response:
+        """Makes the specified API request, retrying once if needed
+
+        Parameters
+        ----------
+        http_method: str
+            The HTTP Method to make (only GET or PUT is supported here)
+        mms_id: str, default is None
+            The MMS ID of the Alma record being updated (for PUT requests only)
+        payload: bytes, default is None
+            The XML data string for updating the Alma record (for PUT requests
+            only)
+
+        Returns
+        -------
+        requests.models.Response
+            The API response
+
+        Raises
+        ------
+        AssertionError
+            If http_method is not a supported HTTP Method (i.e. 'get' or 'put')
+            OR if mms_id or payload is None and the http_method is 'put'
+        requests.exceptions.HTTPError
+            If the API request results in a 4XX client error or 5XX server error
+            response
+        """
+
+        api_response = None
+        try:
+            api_response = self.make_api_request_and_log_response(
+                http_method,
+                mms_id,
+                payload
+            )
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError) as err:
+            logger.exception(f'An HTTP Error or Connection Error occurred: '
+                f'{err}')
+
+            wait_time = 15
+            logger.debug(f'Waiting {wait_time} seconds...')
+            time.sleep(wait_time)
+            logger.debug('Trying one more time to make API request...')
+
+            api_response = self.make_api_request_and_log_response(
+                http_method,
+                mms_id,
+                payload
+            )
+
+        return api_response
+
     def process_records(self) -> None:
         """Updates each Alma record in buffer (if an update is needed).
 
@@ -212,146 +363,89 @@ class AlmaRecordsBuffer:
 
         logger.debug('Started processing records buffer...\n')
 
-        api_response = None
-        try:
-            params = {
-                'view': 'full',
-                'mms_id': ','.join(self.mms_id_to_oclc_num_dict.keys())
-            }
+        logger.debug(f'Making GET request for '
+            f'{len(self.mms_id_to_oclc_num_dict)} Alma record(s)...')
 
-            logger.debug(f'Making GET request for '
-                f'{len(self.mms_id_to_oclc_num_dict)} Alma record(s)...')
+        # Make GET request to retrieve all Alma records in buffer
+        api_response = self.make_api_request_and_retry_if_needed('get')
 
-            # Make GET request to retrieve all Alma records in buffer
-            api_response = requests.get(
-                (f'{os.environ["ALMA_API_BASE_URL"]}'
-                    f'{os.environ["ALMA_BIBS_API_PATH"]}'),
-                params=params,
-                headers=self.api_request_headers,
-                timeout=45
+        root = ET.fromstring(api_response.text)
+        num_records_retrieved = int(root.attrib['total_record_count'])
+
+        logger.debug(f'The GET request retrieved {num_records_retrieved} '
+            f'Alma record(s).\n')
+
+        # Loop through each Alma record (i.e. each 'bib' element)
+        mms_ids_retrieved = set()
+        for record_index, bib_element in enumerate(root, start=1):
+            mms_id = bib_element.find('mms_id').text
+            mms_ids_retrieved.add(mms_id)
+
+            logger.debug(f'Started processing MMS ID {mms_id} (record '
+                f'#{record_index} of {num_records_retrieved} in buffer)...')
+
+            xml_as_pretty_printed_bytes_obj = libraries.xml.prettify(
+                ET.tostring(bib_element, encoding='UTF-8')
             )
-            self.update_num_api_requests(
-                int(api_response.headers['X-Exl-Api-Remaining'])
+            # To also log the record's XML to the console, use the following
+            # code instead:
+            # xml_as_pretty_printed_bytes_obj = \
+            #     libraries.xml.prettify_and_log_xml(
+            #         ET.tostring(bib_element, encoding='UTF-8'),
+            #         'Original record'
+            #     )
+
+            # Create XML file
+            with open(
+                    f'outputs/update_alma_records/xml/{mms_id}_original.xml',
+                    'wb') as file:
+                file.write(xml_as_pretty_printed_bytes_obj)
+
+            # Note: The update_alma_record() method returns a
+            # Record_confirmation NamedTuple (see libraries/record.py) which
+            # should adhere to the following rule:
+            # - If the was_updated field is True, then the error_msg field
+            # will be None.
+            updated_record_confirmation = self.update_alma_record(
+                mms_id,
+                bib_element
             )
-            libraries.api.log_response_and_raise_for_status(api_response)
 
-            root = ET.fromstring(api_response.text)
-            num_records_retrieved = int(root.attrib['total_record_count'])
+            if updated_record_confirmation.was_updated:
+                self.num_records_updated += 1
 
-            logger.debug(f'The GET request retrieved {num_records_retrieved} '
-                f'Alma record(s).\n')
-
-            # Loop through each Alma record (i.e. each 'bib' element)
-            mms_ids_retrieved = set()
-            for record_index, bib_element in enumerate(root, start=1):
-                mms_id = bib_element.find('mms_id').text
-                mms_ids_retrieved.add(mms_id)
-
-                logger.debug(f'Started processing MMS ID {mms_id} (record '
-                    f'#{record_index} of {num_records_retrieved} in buffer)...')
-
-                xml_as_pretty_printed_bytes_obj = libraries.xml.prettify(
-                    ET.tostring(bib_element, encoding='UTF-8')
-                )
-                # To also log the record's XML to the console, use the following
-                # code instead:
-                # xml_as_pretty_printed_bytes_obj = \
-                #     libraries.xml.prettify_and_log_xml(
-                #         ET.tostring(bib_element, encoding='UTF-8'),
-                #         'Original record'
-                #     )
-
-                # Create XML file
-                with open(
-                        f'outputs/update_alma_records/xml/{mms_id}_original.xml',
-                        'wb') as file:
-                    file.write(xml_as_pretty_printed_bytes_obj)
-
-                # Note: The update_alma_record() method returns a
-                # Record_confirmation NamedTuple (see libraries/record.py) which
-                # should adhere to the following rule:
-                # - If the was_updated field is True, then the error_msg field
-                # will be None.
-                updated_record_confirmation = self.update_alma_record(
-                    mms_id,
-                    bib_element
-                )
-
-                if updated_record_confirmation.was_updated:
-                    self.num_records_updated += 1
-
-                    # Add record to records_updated spreadsheet
-                    if self.records_updated.tell() == 0:
-                        # Write header row
-                        self.records_updated_writer.writerow([
-                            'MMS ID',
-                            (f'Original OCLC Number(s) '
-                                f'[{libraries.record.subfield_a_disclaimer}]'),
-                            'New OCLC Number'
-                        ])
-
+                # Add record to records_updated spreadsheet
+                if self.records_updated.tell() == 0:
+                    # Write header row
                     self.records_updated_writer.writerow([
-                        mms_id,
-                        updated_record_confirmation.orig_oclc_nums,
-                        self.mms_id_to_oclc_num_dict[mms_id]
+                        'MMS ID',
+                        (f'Original OCLC Number(s) '
+                            f'[{libraries.record.subfield_a_disclaimer}]'),
+                        'New OCLC Number'
                     ])
-                elif updated_record_confirmation.error_msg is None:
-                    self.num_records_with_no_update_needed += 1
 
-                    # Add record to records_with_no_update_needed spreadsheet
-                    if self.records_with_no_update_needed.tell() == 0:
-                        # Write header row
-                        self.records_with_no_update_needed_writer.writerow([
-                            'MMS ID',
-                            'OCLC Number'
-                        ])
+                self.records_updated_writer.writerow([
+                    mms_id,
+                    updated_record_confirmation.orig_oclc_nums,
+                    self.mms_id_to_oclc_num_dict[mms_id]
+                ])
+            elif updated_record_confirmation.error_msg is None:
+                self.num_records_with_no_update_needed += 1
 
+                # Add record to records_with_no_update_needed spreadsheet
+                if self.records_with_no_update_needed.tell() == 0:
+                    # Write header row
                     self.records_with_no_update_needed_writer.writerow([
-                        mms_id,
-                        self.mms_id_to_oclc_num_dict[mms_id]
-                    ])
-                else:
-                    self.num_records_with_errors += 1
-
-                    # Add record to records_with_errors spreadsheet
-                    if self.records_with_errors.tell() == 0:
-                        # Write header row
-                        self.records_with_errors_writer.writerow([
-                            'MMS ID',
-                            (f'OCLC Number(s) from Alma Record '
-                                f'[{libraries.record.subfield_a_disclaimer}]'),
-                            'Current OCLC Number',
-                            'Error'
-                        ])
-
-                    self.records_with_errors_writer.writerow([
-                        mms_id,
-                        updated_record_confirmation.orig_oclc_nums
-                            if updated_record_confirmation.orig_oclc_nums is not None
-                            else '<record not fully checked>',
-                        self.mms_id_to_oclc_num_dict.get(
-                            mms_id,
-                            '<error retrieving OCLC Number>'
-                        ),
-                        updated_record_confirmation.error_msg
+                        'MMS ID',
+                        'OCLC Number'
                     ])
 
-                logger.debug(f'Finished processing MMS ID {mms_id} (record '
-                    f'#{record_index} of {num_records_retrieved} in buffer).\n')
-
-            # If there are Alma records in this buffer that were not retrieved
-            # by the GET request, then add these to the records_with_errors
-            # spreadsheet
-            mms_ids_not_retrieved = \
-                self.mms_id_to_oclc_num_dict.keys() - mms_ids_retrieved
-
-            for mms_id_not_retrieved in mms_ids_not_retrieved:
+                self.records_with_no_update_needed_writer.writerow([
+                    mms_id,
+                    self.mms_id_to_oclc_num_dict[mms_id]
+                ])
+            else:
                 self.num_records_with_errors += 1
-
-                logger.error(f"Error retrieving Alma record: MMS ID "
-                    f"'{mms_id_not_retrieved}' was not retrieved by GET "
-                    f"request (perhaps because it is invalid or no longer in "
-                    f"Alma).\n")
 
                 # Add record to records_with_errors spreadsheet
                 if self.records_with_errors.tell() == 0:
@@ -365,25 +459,55 @@ class AlmaRecordsBuffer:
                     ])
 
                 self.records_with_errors_writer.writerow([
-                    mms_id_not_retrieved,
-                    '<record not fully checked>',
+                    mms_id,
+                    updated_record_confirmation.orig_oclc_nums
+                        if updated_record_confirmation.orig_oclc_nums is not None
+                        else '<record not fully checked>',
                     self.mms_id_to_oclc_num_dict.get(
-                        mms_id_not_retrieved,
+                        mms_id,
                         '<error retrieving OCLC Number>'
                     ),
-                    ('Error retrieving Alma record (perhaps because MMS ID is '
-                        'invalid or no longer in Alma).')
+                    updated_record_confirmation.error_msg
                 ])
-        except requests.exceptions.HTTPError:
-            libraries.xml.prettify_and_log_xml(
-                api_response.text,
-                'Alma API response',
-                logger.error
-            )
 
-            # Re-raise exception so that it can be handled by the main script
-            # (which will include a more complete stack trace)
-            raise
+            logger.debug(f'Finished processing MMS ID {mms_id} (record '
+                f'#{record_index} of {num_records_retrieved} in buffer).\n')
+
+        # If there are Alma records in this buffer that were not retrieved
+        # by the GET request, then add these to the records_with_errors
+        # spreadsheet
+        mms_ids_not_retrieved = \
+            self.mms_id_to_oclc_num_dict.keys() - mms_ids_retrieved
+
+        for mms_id_not_retrieved in mms_ids_not_retrieved:
+            self.num_records_with_errors += 1
+
+            logger.error(f"Error retrieving Alma record: MMS ID "
+                f"'{mms_id_not_retrieved}' was not retrieved by GET "
+                f"request (perhaps because it is invalid or no longer in "
+                f"Alma).\n")
+
+            # Add record to records_with_errors spreadsheet
+            if self.records_with_errors.tell() == 0:
+                # Write header row
+                self.records_with_errors_writer.writerow([
+                    'MMS ID',
+                    (f'OCLC Number(s) from Alma Record '
+                        f'[{libraries.record.subfield_a_disclaimer}]'),
+                    'Current OCLC Number',
+                    'Error'
+                ])
+
+            self.records_with_errors_writer.writerow([
+                mms_id_not_retrieved,
+                '<record not fully checked>',
+                self.mms_id_to_oclc_num_dict.get(
+                    mms_id_not_retrieved,
+                    '<error retrieving OCLC Number>'
+                ),
+                ('Error retrieving Alma record (perhaps because MMS ID is '
+                    'invalid or no longer in Alma).')
+            ])
 
         logger.debug('Finished processing records buffer.\n')
 
@@ -605,26 +729,15 @@ class AlmaRecordsBuffer:
             need_to_update_record = True
 
         if need_to_update_record:
-            api_response = None
             try:
-                headers = {
-                    'Authorization': self.api_request_headers['Authorization'],
-                    'Content-Type': 'application/xml'
-                }
                 payload = ET.tostring(alma_record, encoding='UTF-8')
 
                 # Make PUT request to update Alma record
-                api_response = requests.put(
-                    (f'{os.environ["ALMA_API_BASE_URL"]}'
-                        f'{os.environ["ALMA_BIBS_API_PATH"]}/{mms_id}'),
-                    headers=headers,
-                    data=payload,
-                    timeout=45
+                api_response = self.make_api_request_and_retry_if_needed(
+                    'put',
+                    mms_id,
+                    payload
                 )
-                self.update_num_api_requests(
-                    int(api_response.headers['X-Exl-Api-Remaining'])
-                )
-                libraries.api.log_response_and_raise_for_status(api_response)
 
                 xml_as_pretty_printed_bytes_obj = \
                     libraries.xml.prettify(api_response.text)
@@ -647,21 +760,19 @@ class AlmaRecordsBuffer:
                     oclc_nums_from_record_str,
                     None
                 )
-            except requests.exceptions.HTTPError as http_err:
-                libraries.xml.prettify_and_log_xml(
-                    api_response.text,
-                    'Alma API response',
-                    logger.error
-                )
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.HTTPError) as err:
+                logger.exception(f"A second HTTP Error or Connection Error "
+                    f"occurred when trying to update MMS ID '{mms_id}'.\n")
 
-                logger.exception(f"Error attempting to update MMS ID "
-                    f"'{mms_id}'.\n")
+                if hasattr(err, 'response') and hasattr(err.response, 'text'):
+                    logger.error(f'API Response:\n{err.response.text}')
 
                 return libraries.record.Record_confirmation(
                     False,
                     oclc_nums_from_record_str,
-                    (f'Error attempting to update Alma record: HTTP Error: '
-                        f'{http_err}')
+                    (f'Error attempting to update Alma record: HTTP Error or '
+                        f'Connection Error: {err}')
                 )
 
         logger.debug(f"No update needed for MMS ID '{mms_id}'.\n")
