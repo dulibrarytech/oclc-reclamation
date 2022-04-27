@@ -67,6 +67,10 @@ class AlmaRecordsBuffer:
     -------
     add(mms_id, oclc_num)
         Adds the given record to this buffer (i.e. mms_id_to_oclc_num_dict)
+    make_api_request_and_log_response(http_method, mms_id, payload)
+        Makes the specified API request and logs the response
+    make_api_request_and_retry_if_needed(http_method, mms_id, payload)
+        Makes the specified API request, retrying once if needed
     process_records()
         Updates each Alma record in buffer (if an update is needed)
     remove_all_records()
@@ -213,18 +217,10 @@ class AlmaRecordsBuffer:
             assert payload is not None, (f"Cannot make PUT request without the "
                 f"updated Alma record's payload ({payload = }).")
 
-            logger.info(f'{type(mms_id) = }') # delete after testing
-            logger.info(f'{type(payload) = }') # delete after testing
-
             headers = {
                 'Authorization': self.api_request_headers['Authorization'],
                 'Content-Type': 'application/xml'
             }
-
-            # delete after testing
-            if mms_id == '991027570199702766':
-                logger.info('Adding zzzz to mms_id so that it causes an error')
-                mms_id += 'zzzz'
 
             api_response = requests.put(
                 f'{alma_api_url}/{mms_id}',
@@ -246,8 +242,6 @@ class AlmaRecordsBuffer:
                 timeout=timeout
             )
 
-        logger.info(f'{type(api_response) = }') # delete after testing
-
         if (hasattr(api_response, 'headers')
                 and api_response.headers.get('X-Exl-Api-Remaining')):
             self.update_num_api_requests(
@@ -264,7 +258,7 @@ class AlmaRecordsBuffer:
             mms_id: str = None,
             payload: bytes = None
         ) -> requests.models.Response:
-        """Makes the specified API request, retrying once if needed
+        """Makes the specified API request, retrying once if needed.
 
         Parameters
         ----------
