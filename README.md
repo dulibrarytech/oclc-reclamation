@@ -350,7 +350,7 @@ optional arguments:
                    the operation if a local holdings record or local bibliographic record exists.
                    Choose either 0 or 1 (default is 0).
                    0 - don't unset holding if local holdings record or local bibliographic
-                       records exists;
+                       record exists;
                    1 - unset holding and delete local holdings record and local bibliographic
                        record (if one exists)
 
