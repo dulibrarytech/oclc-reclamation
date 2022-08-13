@@ -6,6 +6,7 @@ import logging
 import logging.config
 import os
 import pandas as pd
+import requests
 from csv import writer
 from datetime import datetime
 
@@ -210,12 +211,23 @@ def main() -> None:
             error_occurred = False
             error_msg = None
 
+            row_location = None
+            batch_name = None
+            batch_level_error = True
+
+            input_file_col_headings = set()
+
             try:
                 if index < len(data.index):
-                    logger.debug(f'Started processing row {index + 2} of input '
-                        f'file...')
+                    row_location = f'row {index + 2} of input file'
+
+                    logger.debug(f'Started processing {row_location}...')
 
                     if args.operation == 'get_current_oclc_number':
+                        input_file_col_headings.add('MMS ID')
+                        input_file_col_headings.add(
+                            "Unique OCLC Number from Alma Record's 035 $a")
+
                         raw_mms_id = data.at[index, 'MMS ID']
                         raw_orig_oclc_num = data.at[
                             index,
@@ -226,8 +238,16 @@ def main() -> None:
                             raw_mms_id,
                             'MMS ID'
                         )
+
+                        batch_name = (f"batch ending with MMS ID "
+                            f"'{raw_mms_id}' (at {row_location})")
                     else:
+                        input_file_col_headings.add('OCLC Number')
+
                         raw_orig_oclc_num = data.at[index, 'OCLC Number']
+
+                        batch_name = (f"batch ending with OCLC Number "
+                            f"'{raw_orig_oclc_num}' (at {row_location})")
 
                     # Make sure OCLC Number is valid
                     orig_oclc_num = libraries.record.get_valid_record_identifier(
@@ -263,63 +283,186 @@ def main() -> None:
                         records_buffer.process_records(results)
                 else:
                     # End of DataFrame has been reached.
+                    row_location = 'after processing final row of input file'
+                    batch_name = 'final batch'
+
                     # If records_buffer is not empty, process remaining records
                     if len(records_buffer) > 0:
                         records_buffer.process_records(results)
             except AssertionError as assert_err:
-                if args.operation == 'get_current_oclc_number':
-                    logger.exception(f"An assertion error occurred when "
-                        f"processing MMS ID '{raw_mms_id}' (at row "
-                        f"{index + 2} of input file): {assert_err}")
-                else:
-                    logger.exception(f"An assertion error occurred when "
-                        f"processing OCLC Number '{raw_orig_oclc_num}' (at "
-                        f"row {index + 2} of input file): {assert_err}")
+                logger.exception(f'An assertion error occurred: {assert_err}')
                 error_msg = f"Assertion Error: {assert_err}"
+                batch_level_error = False
+                error_occurred = True
+            except requests.exceptions.ConnectionError as connection_err:
+                logger.exception(f'A second error occurred (Connection Error) '
+                    f'when making WorldCat API request: {connection_err}')
+
+                error_msg = f'Connection Error: {connection_err}'
+                error_occurred = True
+            except requests.exceptions.HTTPError as http_err:
+                logger.exception(f'A second error occurred (HTTP Error) when '
+                    f'making WorldCat API request: {http_err}')
+
+                if (hasattr(http_err, 'response')
+                        and hasattr(http_err.response, 'text')):
+                    logger.error(f'API Response:\n{http_err.response.text}')
+
+                error_msg = f'HTTP Error: {http_err}'
+                error_occurred = True
+            except KeyError as key_err:
+                logger.exception(f'A key error occurred: Unable to access the '
+                    f'{key_err} key.')
+
+                if str(key_err).strip("'") in input_file_col_headings:
+                    error_msg = (f'Input file must contain a column named: '
+                        f'{key_err}')
+                    logger.error(error_msg)
+                    error_msg = f'Key Error: {error_msg}'
+                    batch_level_error = False
+                else:
+                    error_msg = f'Key Error: Unable to access the {key_err} key'
+
+                error_occurred = True
+            except Exception as err:
+                logger.exception(f'An error occurred: {err}')
+                error_msg = f'{err}'
                 error_occurred = True
             finally:
                 if error_occurred:
-                    results['num_records_with_errors'] += 1
+                    if batch_level_error:
+                        results['num_records_with_errors'] += len(
+                            records_buffer
+                        )
 
-                    # Add record to records_with_errors spreadsheet
-                    if args.operation == 'get_current_oclc_number':
-                        if records_with_errors.tell() == 0:
-                            # Write header row
-                            records_with_errors_writer.writerow([
-                                'MMS ID',
-                                'OCLC Number',
-                                'Error'
-                            ])
+                        action = ('making WorldCat API request'
+                            if error_msg.startswith('HTTP Error')
+                            else 'processing records buffer')
 
-                        records_with_errors_writer.writerow([
-                            (mms_id
-                                if mms_id is not None
-                                else raw_mms_id),
-                            (orig_oclc_num
-                                if orig_oclc_num is not None
-                                else raw_orig_oclc_num),
-                            error_msg
-                        ])
+                        records_in_batch_str = None
+                        if args.operation == 'get_current_oclc_number':
+                            records_in_batch_str = '\n'.join(
+                                records_buffer.oclc_num_dict.values()
+                            )
+                        else:
+                            records_in_batch_str = '\n'.join(
+                                records_buffer.oclc_num_set
+                            )
+
+                        # Log where the error occurred
+                        logger.error(f'This error occurred when {action} for '
+                            f'the {batch_name}.\n'
+                            f'Record(s) in batch:\n{records_in_batch_str}\n')
+
+                        # Add each record in batch to records_with_errors
+                        # spreadsheet
+                        if args.operation == 'get_current_oclc_number':
+                            for batch_index, (
+                                    record_oclc_num,
+                                    record_mms_id
+                                    ) in enumerate(
+                                    records_buffer.oclc_num_dict.items(),
+                                    start=1):
+                                if records_with_errors.tell() == 0:
+                                    # Write header row
+                                    records_with_errors_writer.writerow([
+                                        'MMS ID',
+                                        'OCLC Number',
+                                        'Error'
+                                    ])
+
+                                records_with_errors_writer.writerow([
+                                    record_mms_id,
+                                    record_oclc_num,
+                                    (f'Error {action} (record #{batch_index} '
+                                        f'of {len(records_buffer)} in batch): '
+                                        f'{error_msg}')
+                                ])
+                        else:
+                            for batch_index, record_oclc_num in enumerate(
+                                    records_buffer.oclc_num_set,
+                                    start=1):
+                                if records_with_errors.tell() == 0:
+                                    # Write header row
+                                    records_with_errors_writer.writerow([
+                                        'Requested OCLC Number',
+                                        'New OCLC Number (if applicable)',
+                                        'Error'
+                                    ])
+
+                                records_with_errors_writer.writerow([
+                                    record_oclc_num,
+                                    '',
+                                    (f'Error {action} (record #{batch_index} '
+                                        f'of {len(records_buffer)} in batch): '
+                                        f'{error_msg}')
+                                ])
                     else:
-                        if records_with_errors.tell() == 0:
-                            # Write header row
+                        results['num_records_with_errors'] += 1
+
+                        # Log where the error occurred
+                        if index < len(data.index):
+                            if args.operation == 'get_current_oclc_number':
+                                logger.error(f"This error occurred when "
+                                    f"processing MMS ID '{raw_mms_id}' (at "
+                                    f"{row_location}).\n")
+                            else:
+                                logger.error(f"This error occurred when "
+                                    f"processing OCLC Number "
+                                    f"'{raw_orig_oclc_num}' (at "
+                                    f"{row_location}).\n")
+                        else:
+                            logger.error(f'This error occurred {row_location}.'
+                                '\n')
+
+                        # Add record to records_with_errors spreadsheet
+                        if args.operation == 'get_current_oclc_number':
+                            if records_with_errors.tell() == 0:
+                                # Write header row
+                                records_with_errors_writer.writerow([
+                                    'MMS ID',
+                                    'OCLC Number',
+                                    'Error'
+                                ])
+
                             records_with_errors_writer.writerow([
-                                'Requested OCLC Number',
-                                'New OCLC Number (if applicable)',
-                                'Error'
+                                (mms_id
+                                    if mms_id is not None
+                                    else raw_mms_id),
+                                (orig_oclc_num
+                                    if orig_oclc_num is not None
+                                    else raw_orig_oclc_num),
+                                error_msg
+                            ])
+                        else:
+                            if records_with_errors.tell() == 0:
+                                # Write header row
+                                records_with_errors_writer.writerow([
+                                    'Requested OCLC Number',
+                                    'New OCLC Number (if applicable)',
+                                    'Error'
+                                ])
+
+                            records_with_errors_writer.writerow([
+                                (orig_oclc_num
+                                    if orig_oclc_num is not None
+                                    else raw_orig_oclc_num),
+                                '',
+                                error_msg
                             ])
 
-                        records_with_errors_writer.writerow([
-                            (orig_oclc_num
-                                if orig_oclc_num is not None
-                                else raw_orig_oclc_num),
-                            '',
-                            error_msg
-                        ])
+                    # Stop processing records if one of the following errors
+                    # occur
+                    if error_msg.startswith((
+                            'Connection Error',
+                            'HTTP Error',
+                            'Key Error: Input file must contain a column'
+                            )):
+                        logger.error('Halting script because of above error.\n')
+                        break
 
                 if index < len(data.index):
-                    logger.debug(f'Finished processing row {index + 2} of '
-                        f'input file.\n')
+                    logger.debug(f'Finished processing {row_location}.\n')
 
                 # If records buffer is full, clear buffer (now that its records
                 # have been processed)
@@ -335,20 +478,39 @@ def main() -> None:
     logger.info(f'The script made {records_buffer.num_api_requests_made} API '
         f'request(s).\n')
 
+    total_records_in_output_files = None
+
     if args.operation == 'get_current_oclc_number':
-        logger.info(f'Processed {len(data.index)} row(s) from input file:\n'
+        total_records_in_output_files = (
+            results["num_records_with_current_oclc_num"]
+            + results["num_records_with_old_oclc_num"]
+            + results["num_records_with_errors"])
+
+        logger.info(f'Processed {total_records_in_output_files} of '
+            f'{len(data.index)} row(s) from input file:\n'
             f'- {results["num_records_with_current_oclc_num"]} record(s) '
             f'with current OCLC number\n'
             f'- {results["num_records_with_old_oclc_num"]} record(s) with '
             f'old OCLC number\n'
-            f'- {results["num_records_with_errors"]} record(s) with errors')
+            f'- {results["num_records_with_errors"]} record(s) with errors\n')
     else:
-        logger.info(f'Processed {len(data.index)} row(s) from input file:\n'
+        total_records_in_output_files = (
+            results["num_records_updated"]
+            + results["num_records_with_no_update_needed"]
+            + results["num_records_with_errors"])
+
+        logger.info(f'Processed {total_records_in_output_files} of '
+            f'{len(data.index)} row(s) from input file:\n'
             f'- {results["num_records_updated"]} record(s) updated, '
             f'i.e. holding was successfully {set_or_unset_choice}\n'
             f'- {results["num_records_with_no_update_needed"]} record(s) not '
             f'updated because holding was already {set_or_unset_choice}\n'
-            f'- {results["num_records_with_errors"]} record(s) with errors')
+            f'- {results["num_records_with_errors"]} record(s) with errors\n')
+
+    assert len(data.index) == total_records_in_output_files, (f'Total records '
+        f'in input file ({len(data.index)}) does not equal total records in '
+        f'output files ({total_records_in_output_files})\n')
+
 
 if __name__ == "__main__":
     main()

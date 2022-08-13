@@ -1066,6 +1066,57 @@ class WorldCatRecordsBuffer:
 
         return api_response, json_response
 
+    def make_api_request_and_retry_if_needed(
+            self,
+            api_request: Callable[..., requests.models.Response],
+            api_url: str,
+            api_response_label: str
+        ) -> Tuple[requests.models.Response, Dict[str, Any]]:
+        """Makes the specified API request, retrying once if needed.
+
+        Parameters
+        ----------
+        api_request: Callable[..., requests.models.Response]
+            The specific WorldCat Metadata API request to make
+        api_url: str
+            The specific WorldCat Metadata API URL to use
+        api_response_label: str
+            The label (which identifies the API response) to use when logging
+            the response
+
+        Returns
+        -------
+        Tuple[requests.models.Response, Dict[str, Any]]
+            Tuple with the API response and its corresponding JSON response
+        """
+
+        api_response, json_response = None, None
+        try:
+            api_response, json_response = \
+                self.make_api_request_and_log_response(
+                    api_request,
+                    api_url,
+                    api_response_label
+                )
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError) as err:
+            logger.exception(f'An HTTP Error or Connection Error occurred: '
+                f'{err}')
+
+            wait_time = 15
+            logger.debug(f'Waiting {wait_time} seconds...')
+            time.sleep(wait_time)
+            logger.debug('Trying one more time to make API request...')
+
+            api_response, json_response = \
+                self.make_api_request_and_log_response(
+                    api_request,
+                    api_url,
+                    api_response_label
+                )
+
+        return api_response, json_response
+
 
 class OclcNumDictBuffer(WorldCatRecordsBuffer):
     """A buffer containing a dictionary mapping OCLC Number to MMS ID.
@@ -1206,7 +1257,7 @@ class OclcNumDictBuffer(WorldCatRecordsBuffer):
 
         try:
             api_response, json_response = \
-                super().make_api_request_and_log_response(
+                super().make_api_request_and_retry_if_needed(
                     self.oauth_session.get,
                     url,
                     'Get Current OCLC Number API response'
@@ -1489,7 +1540,7 @@ class OclcNumSetBuffer(WorldCatRecordsBuffer):
 
         try:
             api_response, json_response = \
-                super().make_api_request_and_log_response(
+                super().make_api_request_and_retry_if_needed(
                     api_request,
                     url,
                     f'{api_name} response'
