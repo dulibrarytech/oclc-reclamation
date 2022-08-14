@@ -1103,7 +1103,7 @@ class WorldCatRecordsBuffer:
             logger.exception(f'An HTTP Error or Connection Error occurred: '
                 f'{err}')
 
-            wait_time = 15
+            wait_time = 30
             logger.debug(f'Waiting {wait_time} seconds...')
             time.sleep(wait_time)
             logger.debug('Trying one more time to make API request...')
