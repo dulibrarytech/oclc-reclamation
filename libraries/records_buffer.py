@@ -297,9 +297,9 @@ class AlmaRecordsBuffer:
             logger.exception(f'An HTTP Error or Connection Error occurred: '
                 f'{err}')
 
-            wait_time = 15
-            logger.debug(f'Waiting {wait_time} seconds...')
-            time.sleep(wait_time)
+            logger.debug(f'Waiting {os.environ["ALMA_BIBS_API_WAIT_TIME"]} '
+                f'seconds...')
+            time.sleep(int(os.environ["ALMA_BIBS_API_WAIT_TIME"]))
             logger.debug('Trying one more time to make API request...')
 
             api_response = self.make_api_request_and_log_response(
@@ -1103,9 +1103,9 @@ class WorldCatRecordsBuffer:
             logger.exception(f'An HTTP Error or Connection Error occurred: '
                 f'{err}')
 
-            wait_time = 30
-            logger.debug(f'Waiting {wait_time} seconds...')
-            time.sleep(wait_time)
+            logger.debug(f'Waiting '
+                f'{os.environ["WORLDCAT_METADATA_API_WAIT_TIME"]} seconds...')
+            time.sleep(int(os.environ["WORLDCAT_METADATA_API_WAIT_TIME"]))
             logger.debug('Trying one more time to make API request...')
 
             api_response, json_response = \
