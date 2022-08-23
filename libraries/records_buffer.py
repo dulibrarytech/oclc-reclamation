@@ -1908,7 +1908,7 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
 
             if search_my_library_holdings_first:
                 api_response, json_response = \
-                    super().make_api_request_and_log_response(
+                    super().make_api_request_and_retry_if_needed(
                         self.oauth_session.get,
                         (f"{url}&heldBySymbol="
                             f"{os.environ['OCLC_INSTITUTION_SYMBOL']}"),
@@ -1941,7 +1941,7 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
                     json_response = None
 
                     api_response, json_response = \
-                        super().make_api_request_and_log_response(
+                        super().make_api_request_and_retry_if_needed(
                             self.oauth_session.get,
                             url,
                             (f'{api_response_label} (all records; no "held by" '
@@ -1966,7 +1966,7 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
             else:
                 # First search WITHOUT "held by" filter
                 api_response, json_response = \
-                    super().make_api_request_and_log_response(
+                    super().make_api_request_and_retry_if_needed(
                         self.oauth_session.get,
                         url,
                         (f'{api_response_label} (all records; no "held by" '
@@ -1994,7 +1994,7 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
                     json_response = None
 
                     api_response, json_response = \
-                        super().make_api_request_and_log_response(
+                        super().make_api_request_and_retry_if_needed(
                             self.oauth_session.get,
                             (f"{url}&heldBySymbol="
                                 f"{os.environ['OCLC_INSTITUTION_SYMBOL']}"),

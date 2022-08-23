@@ -7,10 +7,10 @@ import logging.config
 import numpy as np
 import os
 import pandas as pd
+import requests
 import time
 from datetime import datetime
 from json.decoder import JSONDecodeError
-from requests.exceptions import HTTPError
 
 dotenv_file = dotenv.find_dotenv()
 dotenv.load_dotenv(dotenv_file)
@@ -128,12 +128,14 @@ def main() -> None:
 
     records_already_processed = set()
     records_buffer = libraries.records_buffer.RecordSearchBuffer(data)
+    row_location = None
 
     # Loop over rows in DataFrame
     for row in data.itertuples(name='Record_from_input_file'):
-        logger.debug(f'Started processing row {row.Index + 2} of input file...')
+        row_location = f'row {row.Index + 2} of input file'
+        logger.debug(f'Started processing {row_location}...')
+
         error_occurred = False
-        consecutive_errors_occurred = False
         error_msg = None
 
         try:
@@ -157,86 +159,69 @@ def main() -> None:
             )
         except AssertionError as assert_err:
             logger.exception(f'An assertion error occurred: {assert_err}')
+
             error_msg = f'Assertion Error: {assert_err}'
             error_occurred = True
-        except HTTPError as first_http_err:
-            logger.exception(f'An HTTP error occurred: {first_http_err}')
-            error_msg = f'HTTP Error: {first_http_err}'
+        except AttributeError as attribute_err:
+            logger.exception(f'An attribute error occurred: {attribute_err}')
+
+            if 'mms_id' in repr(attribute_err):
+                error_msg = 'Input file must contain a column named mms_id'
+                logger.error(error_msg)
+                error_msg = f'Attribute Error: {error_msg}'
+            else:
+                error_msg = f'Attribute Error: {attribute_err}'
+
             error_occurred = True
+        except requests.exceptions.ConnectionError as connection_err:
+            logger.exception(f'A second error occurred (Connection Error) '
+                f'when making WorldCat API request: {connection_err}')
 
-            http_status_code = ''
-            if hasattr(first_http_err, 'response'):
-                if hasattr(first_http_err.response, 'text'):
-                    logger.error(f'API Response:\n'
-                        f'{first_http_err.response.text}')
-                http_status_code = getattr(
-                    first_http_err.response,
-                    'status_code',
-                    ''
-                )
+            error_msg = f'Connection Error: {connection_err}'
+            error_occurred = True
+        except requests.exceptions.HTTPError as http_err:
+            logger.exception(f'A second error occurred (HTTP Error) when '
+                f'making WorldCat API request: {http_err}')
 
-            if str(http_status_code).startswith('5'):
-                # Try processing records buffer again
-                try:
-                    wait_time = 15
-                    logger.debug(f'Waiting {wait_time} seconds...')
-                    time.sleep(wait_time)
-                    logger.debug('Trying one more time to process this records '
-                        'buffer...')
-                    records_buffer.process_records(
-                        args.search_my_library_holdings_first
-                    )
+            if (hasattr(http_err, 'response')
+                    and hasattr(http_err.response, 'text')):
+                logger.error(f'API Response:\n{http_err.response.text}')
 
-                    # Records buffer was processed without an HTTP error this
-                    # time, so reset error variables
-                    error_msg = None
-                    error_occurred = False
-                except AssertionError as assert_err:
-                    logger.exception(f'An assertion error occurred: '
-                        f'{assert_err}')
-                    error_msg = f'Assertion Error: {assert_err}'
-                    error_occurred = True
-                except HTTPError as second_http_err:
-                    logger.exception(f'A second HTTP error occurred when '
-                        f'reprocessing the same records buffer: '
-                        f'{second_http_err}')
-                    error_msg = f'HTTP Error: {second_http_err}'
-                    error_occurred = True
-                    consecutive_errors_occurred = True
-                except JSONDecodeError as json_decode_err:
-                    logger.exception(f'A JSON Decode Error occurred: '
-                        f'{json_decode_err}')
-                    error_msg = f'JSON Decode Error: {json_decode_err}'
-                    error_occurred = True
-                except Exception as err:
-                    logger.exception(f'An error occurred: {err}')
-                    error_msg = f'{err}'
-                    error_occurred = True
+            error_msg = f'HTTP Error: {http_err}'
+            error_occurred = True
         except JSONDecodeError as json_decode_err:
             logger.exception(f'A JSON Decode Error occurred: {json_decode_err}')
+
             error_msg = f'JSON Decode Error: {json_decode_err}'
             error_occurred = True
         except Exception as err:
             logger.exception(f'An error occurred: {err}')
+
             error_msg = f'{err}'
             error_occurred = True
         finally:
             if error_occurred:
-                logger.error(f"This error occurred when processing MMS ID "
-                    f"'{row.mms_id}' (at row {row.Index + 2} of input file).\n")
+                # Log where the error occurred
+                if hasattr(row, 'mms_id'):
+                    logger.error(f"This error occurred when processing MMS ID "
+                        f"'{row.mms_id}' (at {row_location}).\n")
+                else:
+                    logger.error(f"This error occurred when processing "
+                        f"{row_location}.\n")
 
                 # Update Error column of input file for the given row
                 data.loc[row.Index, 'error'] = error_msg
 
-            logger.debug(f'Finished processing row {row.Index + 2} of input '
-                f'file.\n')
+                # Stop processing records if one of the following errors occur
+                if error_msg.startswith((
+                        'Attribute Error',
+                        'Connection Error',
+                        'HTTP Error'
+                        )):
+                    logger.error('Halting script because of above error.\n')
+                    break
 
-            # If a second attempt to process this records buffer fails, then
-            # don't process any more records from input file
-            if consecutive_errors_occurred:
-                logger.error('Consecutive errors occurred when processing the '
-                    'same records buffer. Halting script.\n')
-                break
+            logger.debug(f'Finished processing {row_location}.\n')
 
             # Now that row has been processed, clear buffer
             records_buffer.remove_all_records()
@@ -286,7 +271,7 @@ def main() -> None:
         f'{records_buffer.num_records_needing_two_api_requests * 2} API '
         f'requests)\n'
         f'- Any extra API requests are likely because search(es) had to be '
-        f'retried due to an HTTP Error\n')
+        f'retried due to an HTTP Error or a Connection Error\n')
 
     total_records_in_output_files = (
         len(records_with_oclc_num.index)
