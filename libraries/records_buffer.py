@@ -197,6 +197,8 @@ class AlmaRecordsBuffer:
         AssertionError
             If http_method is not a supported HTTP Method (i.e. 'get' or 'put')
             OR if mms_id or payload is None and the http_method is 'put'
+        requests.exceptions.ConnectionError
+            If the API request results in a Connection Error
         requests.exceptions.HTTPError
             If the API request results in a 4XX client error or 5XX server error
             response
@@ -280,6 +282,8 @@ class AlmaRecordsBuffer:
         AssertionError
             If http_method is not a supported HTTP Method (i.e. 'get' or 'put')
             OR if mms_id or payload is None and the http_method is 'put'
+        requests.exceptions.ConnectionError
+            If the API request results in a Connection Error
         requests.exceptions.HTTPError
             If the API request results in a 4XX client error or 5XX server error
             response
@@ -334,6 +338,8 @@ class AlmaRecordsBuffer:
         AssertionError
             If the buffer is empty OR if there are not enough Alma Daily API
             Requests remaining
+        requests.exceptions.ConnectionError
+            If the GET request results in a Connection Error
         requests.exceptions.HTTPError
             If the GET request results in a 4XX client error or 5XX server error
             response
@@ -835,6 +841,8 @@ class WorldCatRecordsBuffer:
         Makes the specified API request to the WorldCat Metadata API
     make_api_request_and_log_response(api_request, api_url, api_response_label)
         Makes the specified API request and logs the response
+    make_api_request_and_retry_if_needed(api_request, api_url, api_response_label)
+        Makes the specified API request, retrying once if needed
     """
 
     def __init__(self) -> None:
@@ -1053,6 +1061,14 @@ class WorldCatRecordsBuffer:
         -------
         Tuple[requests.models.Response, Dict[str, Any]]
             Tuple with the API response and its corresponding JSON response
+
+        Raises
+        ------
+        requests.exceptions.ConnectionError
+            If the API request results in a Connection Error
+        requests.exceptions.HTTPError
+            If the API request results in a 4XX client error or 5XX server error
+            response
         """
 
         api_response = self.make_api_request(
@@ -1088,6 +1104,14 @@ class WorldCatRecordsBuffer:
         -------
         Tuple[requests.models.Response, Dict[str, Any]]
             Tuple with the API response and its corresponding JSON response
+
+        Raises
+        ------
+        requests.exceptions.ConnectionError
+            If the API request results in a Connection Error
+        requests.exceptions.HTTPError
+            If the API request results in a 4XX client error or 5XX server error
+            response
         """
 
         api_response, json_response = None, None
@@ -1242,6 +1266,11 @@ class OclcNumDictBuffer(WorldCatRecordsBuffer):
         ------
         json.decoder.JSONDecodeError
             If there is an error decoding the API response
+        requests.exceptions.ConnectionError
+            If the GET request results in a Connection Error
+        requests.exceptions.HTTPError
+            If the GET request results in a 4XX client error or 5XX server error
+            response
         """
 
         logger.debug('Started processing records buffer...')
@@ -1515,6 +1544,11 @@ class OclcNumSetBuffer(WorldCatRecordsBuffer):
         ------
         json.decoder.JSONDecodeError
             If there is an error decoding the API response
+        requests.exceptions.ConnectionError
+            If the API request results in a Connection Error
+        requests.exceptions.HTTPError
+            If the API request results in a 4XX client error or 5XX server error
+            response
         """
 
         logger.debug('Started processing records buffer...')
@@ -1830,6 +1864,11 @@ class RecordSearchBuffer(WorldCatRecordsBuffer):
             identifiers are either empty or invalid)
         json.decoder.JSONDecodeError
             If there is an error decoding the API response
+        requests.exceptions.ConnectionError
+            If the GET request results in a Connection Error
+        requests.exceptions.HTTPError
+            If the GET request results in a 4XX client error or 5XX server error
+            response
         """
 
         logger.debug('Started processing records buffer...')
